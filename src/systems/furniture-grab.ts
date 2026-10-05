@@ -15,7 +15,7 @@
 // `phase=held`); this system moves it and, on release, writes its final pose. The evaluation (snap and
 // placement rules) runs only when the hand, the rotation or the other pieces changed, not on every frame.
 
-import { createSystem, Vector3, type Entity, type Mesh, type Object3D, type World } from '@iwsdk/core';
+import { createSystem, Quaternion, Vector3, type Entity, type Mesh, type Object3D, type World } from '@iwsdk/core';
 import { Furniture } from '../components/furniture';
 import { tagEntity } from '../components/tag-entity';
 import { slog } from '../log';
@@ -30,7 +30,18 @@ import {
   type GrabSource,
   type HeldEval,
 } from '../logic/furniture-grab';
-import { handToPlan, isOverModel, type MiniatureRoot, type Vec3Tuple } from '../logic/furniture-pose';
+import {
+  createWristRotation,
+  handToPlan,
+  isOverModel,
+  relativeTwist,
+  rotateStep,
+  twistAboutY,
+  updateWristRotation,
+  type MiniatureRoot,
+  type Vec3Tuple,
+  type WristRotation,
+} from '../logic/furniture-pose';
 import { pickPiece } from '../logic/furniture-pick';
 import { bbox, type Point2 } from '../logic/geometry';
 import type { House } from '../logic/house';
@@ -88,6 +99,16 @@ interface Held {
   /** Piece centre minus hand at the start of the grab, plan metres. */
   offset: [number, number];
   rotationDeg: number;
+  /** Quarter turns taken by the wrist since the start of the pinch (D19), and the wrist twist at that moment (degrees). */
+  wrist: WristRotation;
+  initialTwist: number;
+  /**
+   * False for a piece of the model until the pinch has settled (CAPTURE_DELAY_MS): the grip pose of a hand moves a
+   * little while the fingers close, so the grab offset and the wrist reference are taken after that. Until then the
+   * piece stays where it was.
+   */
+  captured: boolean;
+  grabbedAt: number;
   /** The piece as stored when it was grabbed (model source). */
   original: PlacedPiece | null;
   /** The last evaluation (what a release would do). */
@@ -103,6 +124,8 @@ const DEG_TO_RAD = Math.PI / 180;
 const PREVIEW_ID = 'ui:furniture-preview';
 /** A status of the piece in the hand is logged after it has lasted this long (milliseconds). */
 const STATUS_SETTLE_MS = 200;
+/** A piece of the model follows the hand only after the pinch has settled (milliseconds). */
+const CAPTURE_DELAY_MS = 150;
 
 export class FurnitureGrabSystem extends createSystem({}) {
   private readonly machine = createGrabMachine();
@@ -116,6 +139,7 @@ export class FurnitureGrabSystem extends createSystem({}) {
   private readonly planTuple: Vec3Tuple = [0, 0, 0];
   private readonly rootPose: MiniatureRoot = { x: 0, y: 0, z: 0, yawRad: 0, scale: 1 };
   private readonly center: [number, number] = [0, 0];
+  private readonly quat = new Quaternion();
   private box = bbox([]);
   private lastPlanX = NaN;
   private lastPlanZ = NaN;
@@ -160,6 +184,11 @@ export class FurnitureGrabSystem extends createSystem({}) {
     if (!ctx || !held) return;
 
     if (held.pending && performance.now() - held.pendingSince >= STATUS_SETTLE_MS) this.flushStatus(held);
+    if (!held.captured) {
+      if (performance.now() - held.grabbedAt < CAPTURE_DELAY_MS) return;
+      this.capture(ctx, held);
+    }
+    this.updateRotation(held);
     this.readHand(ctx, held.hand);
     const planX = this.planTuple[0];
     const planZ = this.planTuple[1];
@@ -240,8 +269,57 @@ export class FurnitureGrabSystem extends createSystem({}) {
     held.pending = null;
   }
 
+  /** Takes the grab offset (piece centre minus hand) and the wrist reference once the pinch has settled. */
+  private capture(ctx: GrabContext, held: Held): void {
+    held.captured = true;
+    this.readHand(ctx, held.hand);
+    if (held.original) {
+      held.offset[0] = held.original.x - this.planTuple[0];
+      held.offset[1] = held.original.z - this.planTuple[1];
+    }
+    held.wrist = createWristRotation(held.rotationDeg);
+    held.initialTwist = this.wristTwist(held.hand);
+    this.logHand(held);
+  }
+
+  /** For the QA: where the pinch point is (the grip pose of the hand differs from the pose set by the emulator tools). */
+  private logHand(held: Held): void {
+    slog(
+      `furniture hand ${held.hand} world=${this.worldTuple[0].toFixed(3)},${this.worldTuple[1].toFixed(3)},${this.worldTuple[2].toFixed(3)} plan=${this.planTuple[0].toFixed(2)},${this.planTuple[1].toFixed(2)}`,
+    );
+  }
+
+  /** The twist of the holding wrist about +Y, degrees (counter-clockwise positive). */
+  private wristTwist(hand: GrabHand): number {
+    this.world.player.gripSpaces[hand].getWorldQuaternion(this.quat);
+    return twistAboutY(this.quat.x, this.quat.y, this.quat.z, this.quat.w);
+  }
+
+  /** Turns the piece with the wrist: a quarter turn beyond 50 degrees, given back below 40 (D19). */
+  private updateRotation(held: Held): void {
+    const twist = relativeTwist(this.wristTwist(held.hand), held.initialTwist);
+    this.setRotation(held, updateWristRotation(held.wrist, twist));
+  }
+
+  /** The tap of the other hand: +90 degrees clockwise; the wrist is rebased so it does not undo the step. */
+  private tap(held: Held): void {
+    this.setRotation(held, rotateStep(held.rotationDeg));
+    held.wrist = createWristRotation(held.rotationDeg);
+    held.initialTwist = this.wristTwist(held.hand);
+  }
+
+  private setRotation(held: Held, rotationDeg: number): void {
+    if (rotationDeg === held.rotationDeg) return;
+    held.rotationDeg = rotationDeg;
+    slog(`furniture rotated ${held.id} rot=${rotationDeg}`);
+  }
+
   private onPinch(ctx: GrabContext, hand: GrabHand): void {
-    if (this.held) return; // a second pinch while holding is not a grab (the tap that rotates, T2.14)
+    if (this.held) {
+      // A second pinch while holding is never a grab: the tap of the other hand turns the piece a quarter turn.
+      if (hand !== this.held.hand && pinchClaims.ownerOf(hand) === null) this.tap(this.held);
+      return;
+    }
     if (pinchClaims.ownerOf(hand) !== null) return; // the menu (or another owner) has this pinch
     if (isMiniatureGestureActive()) return;
     this.readHand(ctx, hand);
@@ -255,7 +333,6 @@ export class FurnitureGrabSystem extends createSystem({}) {
       pinchClaims.release(hand, 'furniture');
       return;
     }
-    const offset: [number, number] = [piece.x - this.planTuple[0], piece.z - this.planTuple[1]];
     this.begin(ctx, {
       id,
       catalogId: piece.catalogId,
@@ -264,8 +341,12 @@ export class FurnitureGrabSystem extends createSystem({}) {
       item,
       entity,
       object: entity.object3D,
-      offset,
+      offset: [0, 0],
       rotationDeg: piece.rotationDeg,
+      wrist: createWristRotation(piece.rotationDeg),
+      initialTwist: 0,
+      captured: false,
+      grabbedAt: 0,
       original: piece,
     });
   }
@@ -293,6 +374,10 @@ export class FurnitureGrabSystem extends createSystem({}) {
       object,
       offset: [0, 0],
       rotationDeg: 0,
+      wrist: createWristRotation(0),
+      initialTwist: 0,
+      captured: true,
+      grabbedAt: 0,
       original: null,
     });
   }
@@ -308,6 +393,8 @@ export class FurnitureGrabSystem extends createSystem({}) {
       return;
     }
     this.held = held;
+    held.grabbedAt = performance.now();
+    held.initialTwist = this.wristTwist(held.hand);
     this.dirty = true;
     this.lastPlanX = NaN;
     this.lastPlanZ = NaN;
@@ -316,11 +403,10 @@ export class FurnitureGrabSystem extends createSystem({}) {
     held.entity.setValue(Furniture, 'hand', held.hand);
     ctx.visuals.setOutline(held.object, 'none'); // the preview frame shows the status while held
     slog(`furniture grabbed ${held.id} source=${held.source} hand=${held.hand}`);
-    // For the QA: where the pinch point was (the grip pose of the hand differs from the pose set by the emulator tools).
-    this.readHand(ctx, held.hand);
-    slog(
-      `furniture hand ${held.hand} world=${this.worldTuple[0].toFixed(3)},${this.worldTuple[1].toFixed(3)},${this.worldTuple[2].toFixed(3)} plan=${this.planTuple[0].toFixed(2)},${this.planTuple[1].toFixed(2)}`,
-    );
+    if (held.captured) {
+      this.readHand(ctx, held.hand);
+      this.logHand(held);
+    }
   }
 
   /** The hand lets go: the piece goes to the preview frame, or back where it came from. */
