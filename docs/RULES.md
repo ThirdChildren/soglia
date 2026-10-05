@@ -37,6 +37,13 @@ Il `contest-reviewer` lo ricontrolla a ogni gate.
 - **glTF senza compressione Draco e senza texture KTX2.** I decoder di `@iwsdk/core` vengono da
   `unpkg.com/three@0.<rev>.0` e non esiste un'opzione supportata per percorsi locali. Il nucleo
   non deve dipendere da servizi esterni (regola 10 di `CLAUDE.md`). Vale per `asset-curator`.
+- **Eccezione alla regola 6 (CC0): asset di runtime del framework con licenza MIT, citati.** I
+  modelli delle mani che IWSDK mostra in una sessione a mani (`generic-hand/left.glb` e
+  `right.glb` del pacchetto `@webxr-input-profiles/assets` 1.0.20, MIT, Copyright 2019 Amazon)
+  non sono CC0 né creati da noi, ma sono parte del framework ufficiale e senza di essi le mani
+  non si vedono. Sono copiati in `public/models/hands/` con la licenza accanto, citati in
+  `CREDITS.md` con autore e licenza. Nessun altro asset non CC0 è ammesso senza una voce analoga
+  qui; sono generici e non raffigurano marchi.
 - **Host esterni noti nel bundle di produzione** (default di `@iwsdk/core` / `@iwsdk/xr-input`,
   verificato su `@iwsdk/core` 1.0.1, nessuna opzione per cambiarli):
   `unpkg.com` (decoder Draco/KTX2, scatta solo caricando un glTF compresso, vietato sopra) e

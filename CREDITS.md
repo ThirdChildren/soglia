@@ -5,7 +5,7 @@ assets provided by Meta for the contest, or assets created by the author are all
 
 | Id | Asset | Author | Source (URL) | License | Changes |
 |---|---|---|---|---|---|
-| — | — | — | — | — | — |
+| hands-generic | Generic hand models (`generic-hand/left.glb`, `right.glb`), served from `public/models/hands/` | Amazon (WebXR Input Profiles, immersive-web) | https://github.com/immersive-web/webxr-input-profiles (npm `@webxr-input-profiles/assets@1.0.20`) | MIT (copy in `public/models/hands/LICENSE.md`) | None. Runtime assets of the IWSDK framework (the hand visuals shown in a hands-only session); copied locally so they are not fetched from a CDN. They are not CC0: see the exception in `docs/RULES.md`. |
 
 ## Libraries
 
