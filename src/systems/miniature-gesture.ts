@@ -3,13 +3,12 @@
 // gesture is our own. The maths is in src/logic/two-hand.ts; this file only reads the hands, applies
 // the result to `miniature:root` and talks to the store.
 //
-// Pinch per hand comes from the WebXR `selectstart` / `selectend` events of the XR session (the
-// same events IWSDK uses for hand pinch), keyed by handedness. Hand position is the grip pose of
-// each hand. The gesture starts when both hands pinch and are near the model (REACH_XZ / REACH_Y in
-// two-hand.ts: 0.35 m sideways, 0.25 m vertically from the model centre), and ends when either
-// hand releases or the session ends. While it runs it sets only the uniform scale and the rotation
-// around +Y of the root; the position is never touched and the tilt is zeroed every frame. The
-// store is updated once, on release.
+// Pinch per hand and the pinch point come from the shared module `pinch-input` (WebXR `selectstart`
+// / `selectend` events, grip pose of each hand). The gesture starts when both hands pinch and are
+// near the model (REACH_XZ / REACH_Y in two-hand.ts: 0.35 m sideways, 0.25 m vertically from the
+// model centre), and ends when either hand releases or the session ends. While it runs it sets
+// only the uniform scale and the rotation around +Y of the root; the position is never touched and
+// the tilt is zeroed every frame. The store is updated once, on release.
 
 import { createSystem, Object3D, Quaternion, Vector3, type Entity, type World } from '@iwsdk/core';
 import { StableId } from '../components/stable-id';
@@ -24,6 +23,7 @@ import {
   type TwoHandResult,
   type TwoHandSession,
 } from '../logic/two-hand';
+import { isPinching, onPinchEnd, onPinchStart, pinchPoint } from './pinch-input';
 
 interface GestureContext {
   store: Store;
@@ -64,9 +64,6 @@ export class MiniatureGestureSystem extends createSystem({
   roots: { required: [StableId] },
 }) {
   private root: Entity | null = null;
-  private xrSession: XRSession | null = null;
-  private pinchLeft = false;
-  private pinchRight = false;
   private session: TwoHandSession | null = null;
   private readonly result: TwoHandResult = { scale: 1, yawDeg: 0 };
   private readonly leftPos = new Vector3();
@@ -74,24 +71,24 @@ export class MiniatureGestureSystem extends createSystem({
   private readonly center = new Vector3();
   private readonly worldQuat = new Quaternion();
 
-  private readonly onSelectStart = (event: XRInputSourceEvent): void => {
-    this.setPinch(event, true);
-  };
-  private readonly onSelectEnd = (event: XRInputSourceEvent): void => {
-    this.setPinch(event, false);
-  };
+  init(): void {
+    // Updated in the pinch events, not only in update(): the room press of the second pinch can
+    // arrive before the next frame. A session that ends releases both hands through the same events.
+    const refresh = (): void => {
+      shared.bothPinching = isPinching('left') && isPinching('right');
+    };
+    this.cleanupFuncs.push(onPinchStart(refresh), onPinchEnd(refresh));
+  }
 
   update(): void {
     const ctx = context;
     if (!ctx) return;
-    this.syncSession();
 
     const root = this.findRoot();
     const object = root?.object3D;
     if (!object) return;
 
-    const bothPinching = this.pinchLeft && this.pinchRight;
-    shared.bothPinching = bothPinching;
+    const bothPinching = shared.bothPinching;
 
     if (this.session) {
       if (!bothPinching) {
@@ -121,48 +118,9 @@ export class MiniatureGestureSystem extends createSystem({
     for (const listener of startListeners) listener();
   }
 
-  /** Follows the current XR session: attaches the pinch listeners, drops everything when it ends. */
-  private syncSession(): void {
-    const xr = this.world.renderer.xr;
-    const current = xr.isPresenting ? xr.getSession() : null;
-    if (current === this.xrSession) return;
-
-    const previous = this.xrSession;
-    if (previous) {
-      previous.removeEventListener('selectstart', this.onSelectStart);
-      previous.removeEventListener('selectend', this.onSelectEnd);
-    }
-    this.pinchLeft = false;
-    this.pinchRight = false;
-    shared.bothPinching = false;
-    if (this.session && context) {
-      // The session ended in the middle of a gesture: close it so that the store keeps the result.
-      const object = this.findRoot()?.object3D;
-      if (object) this.endGesture(context, object);
-    }
-    this.xrSession = current;
-    if (current) {
-      if (typeof current.addEventListener === 'function') {
-        current.addEventListener('selectstart', this.onSelectStart);
-        current.addEventListener('selectend', this.onSelectEnd);
-      } else {
-        slog('feature XRSession.addEventListener unavailable');
-      }
-    }
-  }
-
-  private setPinch(event: XRInputSourceEvent, pinching: boolean): void {
-    const handedness = event.inputSource?.handedness;
-    if (handedness === 'left') this.pinchLeft = pinching;
-    else if (handedness === 'right') this.pinchRight = pinching;
-    // Updated here, not only in update(): the room press of the second pinch can arrive before the next frame.
-    shared.bothPinching = this.pinchLeft && this.pinchRight;
-  }
-
   private readHands(): void {
-    const grips = this.world.player.gripSpaces;
-    grips.left.getWorldPosition(this.leftPos);
-    grips.right.getWorldPosition(this.rightPos);
+    pinchPoint('left', this.leftPos);
+    pinchPoint('right', this.rightPos);
   }
 
   /** Uniform scale and yaw only: no translation, and the tilt is reset every frame. */
