@@ -18,7 +18,7 @@
 import { createSystem, Quaternion, Vector3, type Entity, type Mesh, type Object3D, type World } from '@iwsdk/core';
 import { Furniture } from '../components/furniture';
 import { tagEntity } from '../components/tag-entity';
-import { slog } from '../log';
+import { slog, swarn } from '../log';
 import { findItem, type CatalogItem } from '../logic/catalog';
 import { evaluatePiece, outlineFor, statusKey } from '../logic/furniture-diff';
 import {
@@ -47,8 +47,8 @@ import { bbox, type Point2 } from '../logic/geometry';
 import type { House } from '../logic/house';
 import { planCenter } from '../logic/house-layout';
 import { stableId } from '../logic/ids';
-import type { PlacedPiece, PlacementResult } from '../logic/placement-rules';
-import { moveFurniture, placeFurniture, type Store } from '../logic/state';
+import { MAX_PIECES, type PlacedPiece, type PlacementResult } from '../logic/placement-rules';
+import { moveFurniture, placeFurniture, removeFurniture, type Store } from '../logic/state';
 import type { FurnitureVisuals } from '../ui/furniture-visuals';
 import { forgetPieceStatus, getFurnitureEntity, logPieceStatus } from './furniture';
 import { onMenuItemPick, releaseMenuHand } from './menu-items';
@@ -355,6 +355,10 @@ export class FurnitureGrabSystem extends createSystem({}) {
     if (this.held) return; // one piece at a time: the menu claim of this hand lasts until its pinch ends
     const item = findItem(ctx.catalog, catalogId);
     if (!item) return;
+    if (ctx.store.get().furniture.length >= MAX_PIECES) {
+      swarn(`furniture limit reached max=${MAX_PIECES}`);
+      return; // the menu keeps this pinch until it ends: nothing is picked
+    }
     // The menu holds the hand after its pick: free it, then take it as `furniture`.
     releaseMenuHand(hand);
     if (!pinchClaims.claim(hand, 'furniture')) return;
@@ -451,7 +455,7 @@ export class FurnitureGrabSystem extends createSystem({}) {
     }
   }
 
-  /** A piece sent back: a new piece disappears (the counter is not used up); a piece of the model goes back to its place. */
+  /** A piece sent back: a new piece disappears (the counter is not used up); a piece of the model is removed from it. */
   private returnPiece(ctx: GrabContext, held: Held, from: GrabSource): void {
     if (from === 'menu') {
       held.entity.dispose({ disposeResources: false });
@@ -459,9 +463,9 @@ export class FurnitureGrabSystem extends createSystem({}) {
       slog(`furniture returned ${held.id} from=menu`);
       return;
     }
-    // Model pieces are removed from the model in task T2.15; until then they go back to their place.
-    this.restore(ctx, held);
-    slog(`furniture kept ${held.id} (released outside the house)`);
+    // A piece of the model released outside is taken out of it (an undoable action, like any other).
+    ctx.store.dispatch(removeFurniture(held.id));
+    slog(`furniture returned ${held.id} from=model`);
   }
 
   /** Puts the entity of a model piece back to its stored pose and shows its stored status. */
