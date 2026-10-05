@@ -51,6 +51,8 @@ Vengono dal regolamento ufficiale e dal design. Un task che ne viola una non è 
 6. **Contenuti.** Solo asset **CC0 / pubblico dominio**, forniti da Meta per il concorso o creati
    da noi. Ogni asset va in `CREDITS.md`. **Niente marchi, loghi, prodotti di marca, persone
    riconoscibili.**
+   Le eccezioni ammesse (asset di runtime del framework con licenza MIT; eventuali font OFL) sono
+   solo quelle scritte in `docs/RULES.md`: nessun asset non CC0 senza una voce lì.
 7. **Onestà.** Dati simulati (es. mappa dell'interesse) etichettati **"Sample data"** nell'app.
 8. **Campo visivo.** UI essenziale vicino al centro della vista, pannelli a 0,5–0,8 m, niente
    elementi critici ai bordi: deve funzionare anche con il campo visivo più stretto dei Meta VR Glasses.
