@@ -8,6 +8,7 @@ import { slog, swarn } from './log';
 import { formatParamsLine, hasInvalidHouse, mergeParams, parseParams } from './logic/params';
 import { createInitialState, createStore, setMiniature } from './logic/state';
 import { buildHouse } from './systems/house-builder';
+import { installLocalControllers } from './systems/local-controllers';
 import { installLocalHands } from './systems/local-hands';
 import { createMiniature } from './systems/miniature';
 import { createMiniatureGesture } from './systems/miniature-gesture';
@@ -35,6 +36,7 @@ async function start(): Promise<void> {
     projectOptions,
   );
   installLocalHands(world);
+  installLocalControllers(world);
   world.registerSystem(ErrorPanelSystem);
   slog('world ready');
   if (params.debug) attachStats(world);

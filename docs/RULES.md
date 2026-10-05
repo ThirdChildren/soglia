@@ -50,10 +50,12 @@ Il `contest-reviewer` lo ricontrolla a ogni gate.
   `cdn.jsdelivr.net` (profili e modelli di **mani e controller**: di default IWSDK scarica da qui
   il modello `generic-hand` a ogni sessione con mani tracciate, quindi senza rete le mani sono
   invisibili; dal 2026-10-05 i due glb delle mani sono locali in `public/models/hands/`
-  (`src/systems/local-hands.ts`) e non partono più richieste per le mani; **restano i modelli dei
-  controller**: nell'emulatore IWER la sessione parte con i controller connessi e la richiesta a
-  `meta-quest-touch-plus` parte comunque; sul Quest, a sole mani, probabilmente no, da provare) e
-  `api.dicebear.com` (immagine casuale di default del componente Avatar di `@pmndrs/uikit-horizon`:
+  (`src/systems/local-hands.ts`) e non partono più richieste per le mani; dal 2026-10-05 anche i
+  **controller** non scaricano più nulla: `src/systems/local-controllers.ts` sostituisce il loro
+  visual con una capsula procedurale (nessun glb, nessuna texture) e rimpiazza il loader degli
+  adapter, quindi nell'emulatore IWER, con i controller connessi, non parte alcuna richiesta
+  verso `cdn.jsdelivr.net`; il ripiego, se l'hook non esistesse in una versione futura di IWSDK, è
+  un warning `[soglia] feature controller-loader-hook unavailable`) e `api.dicebear.com` (immagine casuale di default del componente Avatar di `@pmndrs/uikit-horizon`:
   **non usare mai Avatar senza `src`**).
   Da ricontrollare a ogni aggiornamento di IWSDK;
   sul visore va verificato che non partano richieste (`qa/device/DEBT.md`).

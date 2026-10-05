@@ -25,9 +25,9 @@ Le prove rimandate mentre il visore non c'è si elencano in `qa/device/DEBT.md`.
 - [ ] Nessuna stringa italiana visibile.
 - [ ] **Mani locali**: con la rete bloccata (o `cdn.jsdelivr.net` irraggiungibile) le mani si vedono
       (glb in `public/models/hands/`), nessun warning `[xr-input] Failed to load visual asset`.
-- [ ] **Prova con i controller**: accendi i controller e riavvia la sessione. Registra se parte una
-      richiesta a `cdn.jsdelivr.net` per i loro modelli (profilo `meta-quest-touch-plus`), se i
-      controller si vedono, e che l'app non li richieda mai (resta tutta completabile a mani).
+- [ ] **Prova con i controller**: accendi i controller e riavvia la sessione. Si vede una capsula
+      grigia locale (non il modello Meta), non parte alcuna richiesta a `cdn.jsdelivr.net` e l'app
+      non li richiede mai (resta tutta completabile a mani).
 
 ## M1 · Casa e plastico
 - [ ] Il plastico compare a un'altezza comoda da seduti; distanza e scala naturali.
