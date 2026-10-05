@@ -12,8 +12,8 @@ Legenda stato: ⬜ da fare · 🟨 in corso · ✅ PC-done · 🟩 Device-done
 
 | Milestone | Periodo | Stato |
 |---|---|---|
-| M0 Setup e strumenti | 30 set – 1 ott | ⬜ |
-| M1 Casa e plastico | 2 – 7 ott | ⬜ |
+| M0 Setup e strumenti | 30 set – 1 ott | 🟨 (piano: `docs/plans/M0.md`) |
+| M1 Casa e plastico | 2 – 7 ott | 🟨 (piano: `docs/plans/M1.md`) |
 | M2 Arredare con le mani | 8 – 14 ott | ⬜ |
 | M3 Dentro la casa e i miei mobili | 15 – 21 ott | ⬜ |
 | M4 Segnalazioni e persistenza | 22 – 28 ott | ⬜ |
@@ -39,6 +39,7 @@ prima della consegna.
 
 **Gate PC**: `npm test` gira (anche con un solo test dello schema), `npm run build` ok,
 `npx @iwsdk/cli dev up --ai-mode agent` avviato e `xr_get_session_status` risponde.
+Scenari in `qa/scenarios/M0-*.md` (S0.1 toolchain, S0.2 runtime e sessione XR, S0.3 avvio pulito).
 **Gate visore**: nessuno.
 
 ## M1 · Casa e plastico
@@ -59,6 +60,11 @@ con due mani.
 | S1.2 Due mani | pizzico a due mani e allontanamento → la scala del plastico aumenta; rotazione di ~90° |
 | S1.3 Etichetta stanza | pizzico sul soggiorno → etichetta con area 23,9 m² (± 0,1) |
 | S1.4 Budget | `?debug=1` → draw call e triangoli entro il budget di `CLAUDE.md` |
+| S1.5 Casa B ed errori | `?house=apartment-b` → 4 stanze, 9 muri; `?house=nope` → pannello d'errore, nessuna richiesta di rete (aggiunto dal piano M1) |
+| S1.6 Onboarding | mano fantasma: pizzico → due mani → fine, senza testo (aggiunto dal piano M1) |
+
+Scenari in `qa/scenarios/M1-*.md`. Gli strumenti MCP non navigano a URL con parametri: la QA scrive
+`dev-params.local.txt` e fa `browser_reload_page` (vedi `docs/plans/M1.md`, decisione D1).
 
 **Unit test**: area dei poligoni, aperture dentro la lunghezza del muro, schema valido per A e B.
 **Gate visore (rimandabile)**: altezza e distanza del plastico comode da seduti, leggibilità delle
