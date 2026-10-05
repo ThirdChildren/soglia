@@ -4,6 +4,7 @@ import {
   ROLES,
   formatParamsLine,
   isQueryString,
+  hasInvalidHouse,
   mergeParams,
   parseParams,
   type ParamKey,
@@ -520,5 +521,23 @@ describe('loadDevParams outside development', () => {
     expect(parsed?.params.house).toBe('apartment-b');
     expect(parsed?.params.debug).toBe(true);
     expect(parsed?.present.slice().sort()).toEqual(['debug', 'house']);
+  });
+});
+
+describe('hasInvalidHouse', () => {
+  it('is true when the house value was discarded', () => {
+    expect(hasInvalidHouse(parseParams('house=../apartment-a').warnings)).toBe(true);
+    expect(hasInvalidHouse(parseParams('house=<b>').warnings)).toBe(true);
+  });
+
+  it('is false for a valid or missing house and for other invalid keys', () => {
+    expect(hasInvalidHouse(parseParams('house=apartment-b').warnings)).toBe(false);
+    expect(hasInvalidHouse(parseParams('').warnings)).toBe(false);
+    expect(hasInvalidHouse(parseParams('role=nope').warnings)).toBe(false);
+  });
+
+  it('works on the merged warnings of the dev file too', () => {
+    const merged = mergeParams(parseParams(''), parseParams('house=..%2Fx'));
+    expect(hasInvalidHouse(merged.warnings)).toBe(true);
   });
 });

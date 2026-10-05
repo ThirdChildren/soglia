@@ -176,3 +176,8 @@ export function formatParamsLine(source: ParamsSource, p: Params): string {
     `seed=${p.seed} debug=${p.debug} time=${p.time ?? '-'}`
   );
 }
+
+/** True when the warnings include a discarded `house` value (the app then logs that it kept the default home). */
+export function hasInvalidHouse(warnings: readonly string[]): boolean {
+  return warnings.some((w) => w.startsWith('param house='));
+}

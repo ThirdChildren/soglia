@@ -5,7 +5,7 @@ import { attachStateLog } from './debug/state-log';
 import { attachStats } from './debug/stats';
 import { loadHouse } from './data/load-house';
 import { slog, swarn } from './log';
-import { formatParamsLine, mergeParams, parseParams } from './logic/params';
+import { formatParamsLine, hasInvalidHouse, mergeParams, parseParams } from './logic/params';
 import { createInitialState, createStore, setMiniature } from './logic/state';
 import { buildHouse } from './systems/house-builder';
 import { installLocalHands } from './systems/local-hands';
@@ -24,6 +24,7 @@ async function start(): Promise<void> {
   );
   slog(formatParamsLine(source, params));
   for (const warning of warnings) swarn(warning);
+  if (hasInvalidHouse(warnings)) swarn('invalid house id ignored');
 
   // In-memory only for now: nothing is saved to disk yet (persistence comes later).
   const store = createStore(createInitialState(params));
