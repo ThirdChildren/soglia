@@ -1,0 +1,126 @@
+[
+  {
+    "id": "issue-012",
+    "houseId": "apartment-a",
+    "kind": "issue",
+    "position": [
+      0.45,
+      1.0,
+      2.3
+    ],
+    "fixtureId": "kitchen-unit",
+    "category": "floors_walls",
+    "urgency": "low",
+    "text": "A tile came loose near the hob.",
+    "status": "open",
+    "history": [
+      {
+        "at": "2027-03-28T19:02:00+02:00",
+        "by": "tenant",
+        "event": "created"
+      }
+    ]
+  },
+  {
+    "id": "issue-013",
+    "houseId": "apartment-a",
+    "kind": "issue",
+    "position": [
+      6.8,
+      2.2,
+      0.1
+    ],
+    "fixtureId": "bedroom-shutter",
+    "category": "windows_doors",
+    "urgency": "medium",
+    "text": "The roller shutter gets stuck halfway.",
+    "status": "in_progress",
+    "history": [
+      {
+        "at": "2027-03-20T08:40:00+01:00",
+        "by": "tenant",
+        "event": "created"
+      },
+      {
+        "at": "2027-03-21T12:15:00+01:00",
+        "by": "landlord",
+        "event": "in_progress",
+        "note": "Technician on Thursday."
+      }
+    ]
+  },
+  {
+    "id": "issue-010",
+    "houseId": "apartment-a",
+    "kind": "issue",
+    "position": [
+      10.69,
+      1.5,
+      2.5
+    ],
+    "category": "furniture",
+    "urgency": "low",
+    "text": "The study shelf is loose.",
+    "status": "resolved",
+    "history": [
+      {
+        "at": "2027-02-10T18:00:00+01:00",
+        "by": "tenant",
+        "event": "created"
+      },
+      {
+        "at": "2027-02-11T09:00:00+01:00",
+        "by": "landlord",
+        "event": "in_progress"
+      },
+      {
+        "at": "2027-02-14T17:30:00+01:00",
+        "by": "landlord",
+        "event": "resolved",
+        "note": "Fixed back in place."
+      }
+    ]
+  },
+  {
+    "id": "baseline-001",
+    "houseId": "apartment-a",
+    "kind": "baseline",
+    "position": [
+      3.8,
+      0.0,
+      1.0
+    ],
+    "category": "floors_walls",
+    "urgency": "low",
+    "text": "Scratch on the parquet, present at move-in.",
+    "history": [
+      {
+        "at": "2026-10-01T10:00:00+02:00",
+        "by": "tenant",
+        "event": "created",
+        "note": "Agreed with the landlord."
+      }
+    ]
+  },
+  {
+    "id": "info-001",
+    "houseId": "apartment-a",
+    "kind": "info",
+    "position": [
+      2.3,
+      1.6,
+      4.8
+    ],
+    "fixtureId": "boiler",
+    "category": "plumbing",
+    "urgency": "low",
+    "text": "Condensing boiler.",
+    "history": [
+      {
+        "at": "2026-09-30T10:00:00+02:00",
+        "by": "agent",
+        "event": "created"
+      }
+    ]
+  }
+]

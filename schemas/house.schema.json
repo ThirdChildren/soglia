@@ -1,0 +1,341 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://soglia.local/schemas/house.schema.json",
+  "title": "Soglia house",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "title",
+    "areaM2",
+    "location",
+    "northAngleDeg",
+    "ceilingHeight",
+    "rooms",
+    "walls",
+    "viewpoints"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "areaM2": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "floor": {
+      "type": "integer"
+    },
+    "location": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "lat",
+        "lon"
+      ],
+      "properties": {
+        "lat": {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90
+        },
+        "lon": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180
+        }
+      }
+    },
+    "northAngleDeg": {
+      "type": "number",
+      "minimum": 0,
+      "exclusiveMaximum": 360
+    },
+    "ceilingHeight": {
+      "type": "number",
+      "minimum": 2,
+      "maximum": 5
+    },
+    "rooms": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "polygon"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "polygon": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "minItems": 3
+          },
+          "floorMaterial": {
+            "enum": [
+              "wood",
+              "tile",
+              "carpet",
+              "concrete"
+            ]
+          }
+        }
+      }
+    },
+    "walls": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "from",
+          "to",
+          "thickness",
+          "exterior",
+          "openings"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "from": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "to": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "thickness": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "maximum": 0.8
+          },
+          "exterior": {
+            "type": "boolean"
+          },
+          "openings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/opening"
+            }
+          }
+        }
+      }
+    },
+    "viewpoints": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "room",
+          "position"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "room": {
+            "type": "string"
+          },
+          "position": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "yawDeg": {
+            "type": "number",
+            "minimum": 0,
+            "exclusiveMaximum": 360
+          },
+          "eyeHeight": {
+            "type": "number",
+            "minimum": 0.8,
+            "maximum": 2.0
+          }
+        }
+      }
+    },
+    "fixtures": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "room",
+          "category",
+          "position"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "room": {
+            "type": "string"
+          },
+          "category": {
+            "enum": [
+              "plumbing",
+              "electrical",
+              "appliances",
+              "furniture",
+              "floors_walls",
+              "windows_doors",
+              "other"
+            ]
+          },
+          "position": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 3,
+            "maxItems": 3
+          }
+        }
+      }
+    },
+    "staging": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "catalogId",
+            "position"
+          ],
+          "properties": {
+            "catalogId": {
+              "type": "string"
+            },
+            "position": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "rotationDeg": {
+              "type": "number"
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "opening": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "type",
+        "offset",
+        "width",
+        "height"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "door",
+            "window"
+          ]
+        },
+        "offset": {
+          "type": "number",
+          "minimum": 0
+        },
+        "width": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "sill": {
+          "type": "number",
+          "minimum": 0
+        },
+        "connects": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "entrance": {
+          "type": "boolean"
+        }
+      },
+      "if": {
+        "properties": {
+          "type": {
+            "const": "door"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "connects"
+        ]
+      },
+      "else": {
+        "required": [
+          "sill"
+        ]
+      }
+    }
+  }
+}

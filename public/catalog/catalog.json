@@ -1,0 +1,212 @@
+{
+  "items": [
+    {
+      "id": "bed-double",
+      "name": "Double bed",
+      "kind": "furniture",
+      "size": [
+        1.6,
+        2.0,
+        0.95
+      ],
+      "disassemblable": true,
+      "model": null,
+      "credit": null
+    },
+    {
+      "id": "bed-single",
+      "name": "Single bed",
+      "kind": "furniture",
+      "size": [
+        0.9,
+        2.0,
+        0.9
+      ],
+      "disassemblable": true,
+      "model": null,
+      "credit": null
+    },
+    {
+      "id": "sofa-3seat",
+      "name": "Three-seat sofa",
+      "kind": "furniture",
+      "size": [
+        2.1,
+        0.9,
+        0.85
+      ],
+      "disassemblable": false,
+      "model": null,
+      "credit": null
+    },
+    {
+      "id": "armchair",
+      "name": "Armchair",
+      "kind": "furniture",
+      "size": [
+        0.8,
+        0.8,
+        0.85
+      ],
+      "disassemblable": false,
+      "model": null,
+      "credit": null
+    },
+    {
+      "id": "table-dining",
+      "name": "Dining table",
+      "kind": "furniture",
+      "size": [
+        1.4,
+        0.9,
+        0.75
+      ],
+      "disassemblable": true,
+      "model": null,
+      "credit": null
+    },
+    {
+      "id": "chair",
+      "name": "Chair",
+      "kind": "furniture",
+      "size": [
+        0.45,
+        0.5,
+        0.85
+      ],
+      "disassemblable": false,
+      "model": null,
+      "credit": null
+    },
+    {
+      "id": "coffee-table",
+      "name": "Coffee table",
+      "kind": "furniture",
+      "size": [
+        0.7,
+        0.6,
+        0.4
+      ],
+      "disassemblable": false,
+      "model": null,
+      "credit": null
+    },
+    {
+      "id": "desk",
+      "name": "Desk",
+      "kind": "furniture",
+      "size": [
+        1.4,
+        0.7,
+        0.75
+      ],
+      "disassemblable": false,
+      "model": null,
+      "credit": null
+    },
+    {
+      "id": "bookcase",
+      "name": "Bookcase",
+      "kind": "furniture",
+      "size": [
+        1.0,
+        0.35,
+        1.8
+      ],
+      "disassemblable": false,
+      "model": null,
+      "credit": null
+    },
+    {
+      "id": "wardrobe",
+      "name": "Wardrobe",
+      "kind": "furniture",
+      "size": [
+        1.8,
+        0.6,
+        2.1
+      ],
+      "disassemblable": true,
+      "model": null,
+      "credit": null
+    },
+    {
+      "id": "nightstand",
+      "name": "Nightstand",
+      "kind": "furniture",
+      "size": [
+        0.45,
+        0.4,
+        0.5
+      ],
+      "disassemblable": false,
+      "model": null,
+      "credit": null
+    },
+    {
+      "id": "tv-stand",
+      "name": "TV stand",
+      "kind": "furniture",
+      "size": [
+        1.6,
+        0.4,
+        0.5
+      ],
+      "disassemblable": false,
+      "model": null,
+      "credit": null
+    },
+    {
+      "id": "rug",
+      "name": "Rug",
+      "kind": "furniture",
+      "size": [
+        2.0,
+        1.4,
+        0.01
+      ],
+      "disassemblable": false,
+      "model": null,
+      "credit": null
+    },
+    {
+      "id": "plant",
+      "name": "Plant",
+      "kind": "furniture",
+      "size": [
+        0.35,
+        0.35,
+        0.9
+      ],
+      "disassemblable": false,
+      "model": null,
+      "credit": null
+    },
+    {
+      "id": "wheelchair",
+      "name": "Wheelchair",
+      "kind": "mobility",
+      "size": [
+        0.7,
+        1.1,
+        0.95
+      ],
+      "disassemblable": false,
+      "model": null,
+      "credit": null
+    },
+    {
+      "id": "stroller",
+      "name": "Stroller",
+      "kind": "mobility",
+      "size": [
+        0.6,
+        0.95,
+        1.05
+      ],
+      "disassemblable": false,
+      "model": null,
+      "credit": null
+    }
+  ]
+}

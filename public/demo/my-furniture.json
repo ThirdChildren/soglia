@@ -1,0 +1,40 @@
+{
+  "items": [
+    {
+      "id": "my-sofa",
+      "name": "My sofa",
+      "kind": "furniture",
+      "size": [
+        2.3,
+        0.95,
+        0.85
+      ],
+      "disassemblable": false,
+      "owner": "me"
+    },
+    {
+      "id": "my-desk",
+      "name": "My desk",
+      "kind": "furniture",
+      "size": [
+        1.4,
+        0.7,
+        0.75
+      ],
+      "disassemblable": false,
+      "owner": "me"
+    },
+    {
+      "id": "my-bed",
+      "name": "My bed",
+      "kind": "furniture",
+      "size": [
+        1.6,
+        2.0,
+        0.95
+      ],
+      "disassemblable": true,
+      "owner": "me"
+    }
+  ]
+}

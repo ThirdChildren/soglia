@@ -1,0 +1,56 @@
+name: Deploy to GitHub Pages (manual)
+
+# Manual only. Blocked automatically during the contest freeze:
+# from the deadline (2026-11-18 12:00 PT = 20:00 UTC) until after the winners announcement.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type DEPLOY to publish the current main branch"
+        required: true
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: ${{ github.event.inputs.confirm == 'DEPLOY' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Contest freeze guard
+        run: |
+          now=$(date -u +%s)
+          start=$(date -u -d '2026-11-18T20:00:00Z' +%s)
+          end=$(date -u -d '2026-12-12T00:00:00Z' +%s)   # adjust if the announcement moves
+          if [ "$now" -ge "$start" ] && [ "$now" -lt "$end" ]; then
+            echo "Deploy blocked: contest freeze (no changes after the deadline until winners are announced)."
+            exit 1
+          fi
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
