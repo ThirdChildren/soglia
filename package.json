@@ -10,7 +10,7 @@
     "dev:status": "iwsdk dev status",
     "reference:status": "iwsdk reference status",
     "reference:warmup": "iwsdk reference warmup",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tests/tsconfig.json",
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run"
@@ -27,6 +27,7 @@
     "@iwsdk/reference": "1.0.1",
     "@iwsdk/vite-plugin-dev": "1.0.1",
     "@meta-quest/metavr": "^1.8.1",
+    "@types/node": "^22.20.5",
     "@types/three": "^0.181.0",
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",
