@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "iwsdk dev restart --open --foreground",
     "dev:runtime": "vite",
+    "dev:agent": "iwsdk dev up --ai-mode agent",
+    "dev:collab": "iwsdk dev up --ai-mode collaborate",
     "dev:down": "iwsdk dev down",
     "dev:status": "iwsdk dev status",
     "reference:status": "iwsdk reference status",
