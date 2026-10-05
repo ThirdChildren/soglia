@@ -12,7 +12,7 @@ Legenda stato: ⬜ da fare · 🟨 in corso · ✅ PC-done · 🟩 Device-done
 
 | Milestone | Periodo | Stato |
 |---|---|---|
-| M0 Setup e strumenti | 30 set – 1 ott | 🟨 (piano: `docs/plans/M0.md`) |
+| M0 Setup e strumenti | 30 set – 1 ott | ✅ PC-done (piano: `docs/plans/M0.md`) |
 | M1 Casa e plastico | 2 – 7 ott | 🟨 (piano: `docs/plans/M1.md`) |
 | M2 Arredare con le mani | 8 – 14 ott | ⬜ |
 | M3 Dentro la casa e i miei mobili | 15 – 21 ott | ⬜ |
