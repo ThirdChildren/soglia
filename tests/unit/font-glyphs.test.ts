@@ -13,7 +13,12 @@ type Room = { id: string; name: string; polygon: [number, number][] };
 const rooms = (file: string): Room[] => loadJson<{ rooms: Room[] }>('public/houses', file).rooms;
 
 /** Typical arguments for every string function, so each one is sampled. New functions must add a row. */
+type CatalogFile = { items: { name: string; size: [number, number, number] }[] };
+const catalogItems = (): CatalogFile['items'] => loadJson<CatalogFile>('public/catalog', 'catalog.json').items;
+
 const SAMPLE_CALLS: Record<string, () => string[]> = {
+  page: () => [strings.menu.page(1, 3), strings.menu.page(3, 3)],
+  itemSize: () => catalogItems().map((item) => strings.menu.itemSize(item.size[0], item.size[1])),
   roomLabel: () =>
     ['apartment-a.json', 'apartment-b.json'].flatMap((file) =>
       rooms(file).map((room) => strings.roomLabel(room.name, polygonArea(room.polygon))),
@@ -46,6 +51,15 @@ describe('panel font atlases', () => {
     const parsed = parseFontAtlas(loadJson('public/fonts', file));
     if (!parsed.ok) throw new Error(parsed.reason);
     expect(missingGlyphs('²·×°−±→≈', parsed.info.charset)).toEqual([]);
+  });
+});
+
+describe('catalog names only use glyphs of the panel font', () => {
+  it.each(WEIGHTS)('every item name is in %s', (file) => {
+    const parsed = parseFontAtlas(loadJson('public/fonts', file));
+    if (!parsed.ok) throw new Error(parsed.reason);
+    const names = catalogItems().map((item) => item.name).join('\n');
+    expect(missingGlyphs(names, parsed.info.charset)).toEqual([]);
   });
 });
 
