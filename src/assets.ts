@@ -8,4 +8,9 @@ export default defineAssets({
     type: AssetType.UIKitML,
     priority: 'lazy',
   },
+  'room-label': {
+    url: `${import.meta.env.BASE_URL}ui/room-label.uikitml`,
+    type: AssetType.UIKitML,
+    priority: 'lazy',
+  },
 });

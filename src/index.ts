@@ -7,6 +7,7 @@ import { formatParamsLine, mergeParams, parseParams } from './logic/params';
 import { createInitialState, createStore, setMiniature } from './logic/state';
 import { buildHouse } from './systems/house-builder';
 import { createMiniature } from './systems/miniature';
+import { createRoomLabel } from './systems/room-label';
 import { ErrorPanelSystem, showErrorPanel } from './ui/error-panel';
 import { strings } from './ui/strings';
 
@@ -35,6 +36,7 @@ async function start(): Promise<void> {
       store.dispatch(setMiniature(scale, yawDeg));
     });
     buildHouse(world, result.house, miniature.root);
+    createRoomLabel(world, store, result.house);
     return;
   }
   if (result.reason === 'not-found') {
