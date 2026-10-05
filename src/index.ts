@@ -8,6 +8,7 @@ import { slog, swarn } from './log';
 import { formatParamsLine, mergeParams, parseParams } from './logic/params';
 import { createInitialState, createStore, setMiniature } from './logic/state';
 import { buildHouse } from './systems/house-builder';
+import { installLocalHands } from './systems/local-hands';
 import { createMiniature } from './systems/miniature';
 import { createMiniatureGesture } from './systems/miniature-gesture';
 import { createOnboarding } from './systems/onboarding';
@@ -32,6 +33,7 @@ async function start(): Promise<void> {
     document.getElementById('scene-container') as HTMLDivElement,
     projectOptions,
   );
+  installLocalHands(world);
   world.registerSystem(ErrorPanelSystem);
   slog('world ready');
   if (params.debug) attachStats(world);
