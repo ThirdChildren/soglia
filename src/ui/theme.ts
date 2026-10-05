@@ -1,0 +1,26 @@
+// All colours of the model in one place (decision D11 in docs/plans/M1.md). Flat tints, no
+// textures. Floors are mid-tone and walls are light, so the two read apart at a glance.
+// M5 will add a high-contrast set next to `palette`.
+//
+// Values are 0xRRGGBB numbers: this module has no imports, so it can be used from anywhere.
+
+import type { FloorMaterial } from '../logic/house';
+
+export const palette = {
+  floor: {
+    wood: 0xb5835a,
+    tile: 0x7fa3b0,
+    carpet: 0x8d7bab,
+    concrete: 0x8f9296,
+  } satisfies Record<FloorMaterial, number>,
+  /** One tint for all walls: see house-builder.ts (shared material, no corner z-fighting). */
+  wall: 0xf4f1ea,
+  /** Threshold strip of a door: stands out from every floor. */
+  door: 0xe2552f,
+  /** Table base under the model. */
+  base: 0x2f343c,
+} as const;
+
+export function floorColor(material: FloorMaterial | undefined): number {
+  return palette.floor[material ?? 'concrete'];
+}

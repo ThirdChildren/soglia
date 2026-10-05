@@ -3,8 +3,9 @@ import projectOptions from 'virtual:iwsdk-project';
 import { loadDevParams } from './data/dev-params';
 import { loadHouse } from './data/load-house';
 import { slog, swarn } from './log';
-import { countOpenings } from './logic/house';
 import { formatParamsLine, mergeParams, parseParams } from './logic/params';
+import { buildHouse } from './systems/house-builder';
+import { createMiniature } from './systems/miniature';
 import { ErrorPanelSystem, showErrorPanel } from './ui/error-panel';
 import { strings } from './ui/strings';
 
@@ -26,11 +27,8 @@ async function start(): Promise<void> {
 
   const result = await loadHouse(params.house);
   if (result.ok) {
-    const { house } = result;
-    const { doors, windows } = countOpenings(house);
-    slog(
-      `house loaded ${house.id} rooms=${house.rooms.length} walls=${house.walls.length} doors=${doors} windows=${windows}`,
-    );
+    const miniature = createMiniature(world);
+    buildHouse(world, result.house, miniature.root);
     return;
   }
   if (result.reason === 'not-found') {
