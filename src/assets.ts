@@ -2,7 +2,37 @@ import { AssetType, defineAssets } from '@iwsdk/core';
 
 // Evaluated by both the app runtime and the editor: keep it deterministic and
 // side-effect free. No remote URLs: every asset is local (see CREDITS.md).
+// The 14 furniture models of the catalog (CC0, see CREDITS.md): `furniture-<catalogId>`.
+const FURNITURE_MODELS = [
+  'armchair',
+  'bed-double',
+  'bed-single',
+  'bookcase',
+  'chair',
+  'coffee-table',
+  'desk',
+  'nightstand',
+  'plant',
+  'rug',
+  'sofa-3seat',
+  'table-dining',
+  'tv-stand',
+  'wardrobe',
+] as const;
+
+const furnitureAssets = Object.fromEntries(
+  FURNITURE_MODELS.map((id) => [
+    `furniture-${id}`,
+    {
+      url: `${import.meta.env.BASE_URL}catalog/models/${id}.glb`,
+      type: AssetType.GLTF,
+      priority: 'lazy' as const,
+    },
+  ]),
+);
+
 export default defineAssets({
+  ...furnitureAssets,
   'error-panel': {
     url: `${import.meta.env.BASE_URL}ui/error-panel.uikitml`,
     type: AssetType.UIKitML,

@@ -19,6 +19,12 @@ export const palette = {
   door: 0xe2552f,
   /** Table base under the model. */
   base: 0x2f343c,
+  /** Fallback block of a furniture piece without a model, and its dark front strip (-z side). */
+  furniture: 0xd2b48c,
+  furnitureFront: 0x3a3f47,
+  /** Outline of a piece on the floor: green = valid, red = not valid (D14). */
+  outlineValid: 0x2ecc71,
+  outlineInvalid: 0xe5322d,
 } as const;
 
 export function floorColor(material: FloorMaterial | undefined): number {

@@ -4,10 +4,13 @@ import { loadDevParams } from './data/dev-params';
 import { attachStateLog } from './debug/state-log';
 import { showGlyphTest } from './debug/glyph-test';
 import { attachStats } from './debug/stats';
+import { loadCatalog } from './data/load-catalog';
 import { loadHouse } from './data/load-house';
 import { slog, swarn } from './log';
 import { formatParamsLine, hasInvalidHouse, mergeParams, parseParams } from './logic/params';
+import { furnitureItems } from './logic/catalog';
 import { createInitialState, createStore, setMiniature } from './logic/state';
+import { applyFurnish, createFurniture } from './systems/furniture';
 import { buildHouse } from './systems/house-builder';
 import { installLocalControllers } from './systems/local-controllers';
 import { installLocalHands } from './systems/local-hands';
@@ -19,6 +22,7 @@ import { installPinchInput } from './systems/pinch-input';
 import { createRoomLabel } from './systems/room-label';
 import { ErrorPanelSystem, showErrorPanel } from './ui/error-panel';
 import { loadPanelFonts } from './ui/fonts';
+import { FurnitureVisuals } from './ui/furniture-visuals';
 import { strings } from './ui/strings';
 
 async function start(): Promise<void> {
@@ -47,17 +51,26 @@ async function start(): Promise<void> {
   if (params.debug) attachStats(world);
   if (params.glyphs) showGlyphTest(world);
 
-  const result = await loadHouse(params.house);
+  const [result, catalogResult] = await Promise.all([loadHouse(params.house), loadCatalog()]);
   if (result.ok) {
     const miniature = createMiniature(world, (scale, yawDeg) => {
       store.dispatch(setMiniature(scale, yawDeg));
     });
-    buildHouse(world, result.house, miniature.root);
+    const built = buildHouse(world, result.house, miniature.root);
     installPinchInput(world);
     createMiniatureGesture(world, store);
     createRoomLabel(world, store, result.house);
     createOnboarding(world, store);
     createPalmMenu(world);
+    // Without a catalog the house is still usable: no furniture (the menu will say so, T2.12).
+    if (catalogResult.ok) {
+      const visuals = new FurnitureVisuals(furnitureItems(catalogResult.items));
+      await visuals.preload();
+      createFurniture(world, store, result.house, catalogResult.items, visuals, built.entity);
+      if (params.furnish !== 'none') {
+        applyFurnish(store, result.house, catalogResult.items, params.furnish);
+      }
+    }
     return;
   }
   if (result.reason === 'not-found') {
