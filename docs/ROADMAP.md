@@ -14,7 +14,7 @@ Legenda stato: ⬜ da fare · 🟨 in corso · ✅ PC-done · 🟩 Device-done
 |---|---|---|
 | M0 Setup e strumenti | 30 set – 1 ott | ✅ PC-done (piano: `docs/plans/M0.md`) |
 | M1 Casa e plastico | 2 – 7 ott | ✅ PC-done 2026-10-05 (piano: `docs/plans/M1.md`; report: `qa/reports/M1-2026-10-05-rerun.md`; gate visore in debito) |
-| M2 Arredare con le mani | 8 – 14 ott | ⬜ |
+| M2 Arredare con le mani | 8 – 14 ott | 🟨 piano consegnato 2026-10-05 (`docs/plans/M2.md`; scenari `qa/scenarios/M2-*.md`) |
 | M3 Dentro la casa e i miei mobili | 15 – 21 ott | ⬜ |
 | M4 Segnalazioni e persistenza | 22 – 28 ott | ⬜ |
 | M5 Luce, agente, accessibilità, realtà mista | 29 ott – 4 nov | ⬜ |
@@ -79,16 +79,25 @@ etichette, pizzico a due mani affidabile, fps ≥ 60.
 - Presa (IWSDK), aggancio al pavimento e alle pareti, rotazione a scatti di 90° col polso,
   contorno rosso se collide o blocca una porta, verde se valido.
 - Annulla dal menu; un mobile lasciato fuori dal plastico torna nel catalogo.
+- **T2.1 (primo task)**: verifica dei glifi del font dei pannelli (`² · × ° − ± → ≈`; controllo statico: solo `°` c'è) e scelta di come averli (atlante MSDF esteso da Inter OFL oppure ASCII definitivo); l'opzione A richiede l'ok dell'utente (seconda eccezione di licenza). Dopo T2.2 l'etichetta della stanza (S1.3) torna a `<name> · <area> m²`.
+- **T2.17 (condizionale, decisione dell'utente)**: trascinare il plastico con le due mani (punto medio come perno, limiti 0,30 m, quota bloccata, "Recenter"); oggi il plastico non si sposta mai. Valutazione costo/beneficio nel piano.
+- Il catalogo di M2 mostra solo i 14 `furniture`; i `mobility` (sedia a rotelle, passeggino) entrano in M3.
 
 | Scenario PC | Verifica |
 |---|---|
-| S2.1 Menu del palmo | mano sinistra con palmo in su → `ui:palm-menu` visibile; stesso con la destra |
+| S2.0 Glifi del font | `glyphs=1` → audit a schermo dei caratteri (parte A); dopo T2.2 nessun `Missing glyph info` e l'etichetta `Living room & kitchen · 23.9 m²` (parte B) (aggiunto dal piano M2) |
+| S2.1 Menu del palmo | mano sinistra con palmo in su → `ui:palm-menu` visibile; stesso con la destra; 6 voci per pagina, 3 pagine |
 | S2.2 Posa il letto | pizzico su `bed-double`, trascina in camera, rilascia → entità dentro `bedroom`, appoggiata a una parete |
 | S2.3 Collisione | spingi il letto contro l'armadio → stato `invalid`, contorno rosso; spostalo → `valid` |
 | S2.4 Annulla | "Undo" → l'ultima azione sparisce dallo store |
+| S2.5 Rotazione a scatti | polso o tocco con l'altra mano → 0 → 90 → 180 → 270, impronta e aggancio ricalcolati (aggiunto dal piano M2) |
+| S2.6 Porta bloccata | poltrona davanti a `door:d-bedroom` → `invalid` con motivo `blocks-door`, valida accanto alla porta (aggiunto dal piano M2) |
+| S2.7 Rientro nel catalogo | rilascio fuori dalla casa → `furniture returned`, nessuna entità; annulla ripristina lo stesso id (aggiunto dal piano M2) |
+| S2.8 Budget con arredi | `furnish=scandinavian&debug=1` → 14 pezzi, `callsPerView` ≤ 100, triangoli ≤ 150.000, texture dell'app ≤ 4 (aggiunto dal piano M2) |
+| S2.9 Trascina il plastico | **condizionale (T2.17)**: traslazione a due mani con limite 0,30 m, quota invariata, "Recenter" (aggiunto dal piano M2) |
 
-**Unit test**: snap alle pareti, collisioni tra rettangoli ruotati, porta bloccata.
-**Gate visore**: presa naturale, niente tremolii, rotazione col polso affidabile.
+**Unit test**: snap alle pareti, collisioni tra rettangoli ruotati, porta bloccata, rotazione a scatti, store con annulla, catalogo, arbitraggio dei pizzichi, rilevamento del palmo, guardia dei glifi.
+**Gate visore**: presa naturale, niente tremolii, rotazione col polso affidabile, palmo in su affidabile.
 
 ## M3 · Dentro la casa e i miei mobili
 
