@@ -23,7 +23,7 @@ import {
   type TwoHandResult,
   type TwoHandSession,
 } from '../logic/two-hand';
-import { isPinching, onPinchEnd, onPinchStart, pinchPoint } from './pinch-input';
+import { isPinching, onPinchEnd, onPinchStart, pinchClaims, pinchPoint } from './pinch-input';
 
 interface GestureContext {
   store: Store;
@@ -91,7 +91,8 @@ export class MiniatureGestureSystem extends createSystem({
     const bothPinching = shared.bothPinching;
 
     if (this.session) {
-      if (!bothPinching) {
+      // The gesture also ends when a higher priority owner (menu, a held piece) takes one of the hands.
+      if (!bothPinching || pinchClaims.ownerOf('left') !== 'two-hands' || pinchClaims.ownerOf('right') !== 'two-hands') {
         this.endGesture(ctx, object);
         return;
       }
@@ -105,6 +106,8 @@ export class MiniatureGestureSystem extends createSystem({
     this.readHands();
     object.getWorldPosition(this.center);
     if (!withinReach(this.leftPos, this.center) || !withinReach(this.rightPos, this.center)) return;
+    // A held piece or a menu item owns its hand: the second pinch is then a tap, not a gesture.
+    if (!pinchClaims.claimBoth('two-hands')) return;
     // Three.js stores the scale as a 32-bit float: round away the noise (0.0500000007...) before it reaches the store.
     const baseScale = Math.round(object.scale.x * 1e6) / 1e6;
     this.session = startTwoHand(this.leftPos, this.rightPos, {
@@ -132,6 +135,8 @@ export class MiniatureGestureSystem extends createSystem({
   private endGesture(ctx: GestureContext, object: Object3D): void {
     this.session = null;
     shared.active = false;
+    pinchClaims.release('left', 'two-hands');
+    pinchClaims.release('right', 'two-hands');
     // Make sure the last frame's values are on the model, then read the tilt from its world pose.
     this.apply(object);
     object.updateMatrixWorld(true);

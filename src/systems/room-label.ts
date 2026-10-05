@@ -1,7 +1,8 @@
 // Room selection and its label (T1.10). A pinch on a room floor (`room:<id>`, `Pressed` through its
 // `RayInteractable`) dispatches `selectRoom` on the application store; a store listener then logs
 // and shows or hides the `ui:room-label` panel. The press is ignored while a two-hand gesture runs
-// or both hands pinch (a two-hand gesture must not select a room). The text is `strings.roomLabel`;
+// or both hands pinch (a two-hand gesture must not select a room), and while a menu item, a piece or
+// a one-hand drag owns a pinch (see the arbitration in src/logic/pinch-claims.ts). The text is `strings.roomLabel`;
 // the area comes from the room polygon (`polygonArea`), because rooms have no area field in the data.
 
 import {
@@ -22,6 +23,7 @@ import { panelFontSupports } from '../ui/fonts';
 import { RoomLabelPanel } from '../ui/room-label-panel';
 import { strings } from '../ui/strings';
 import { isMiniatureGestureActive } from './miniature-gesture';
+import { isFurnitureInteractionActive, isPanActive } from './pinch-input';
 
 const ROOM_PREFIX = 'room:';
 
@@ -56,7 +58,8 @@ export class RoomLabelSystem extends createSystem({
       this.queries.pressed.subscribe('qualify', (entity) => {
         const name = entity.object3D?.name ?? '';
         if (!name.startsWith(ROOM_PREFIX)) return;
-        if (isMiniatureGestureActive()) return;
+        // The room has the lowest priority among the pinch owners (menu > furniture > two-hands > pan > room).
+        if (isMiniatureGestureActive() || isFurnitureInteractionActive() || isPanActive()) return;
         const roomId = name.slice(ROOM_PREFIX.length);
         if (!house.rooms.some((room) => room.id === roomId)) return;
         store.dispatch(selectRoom(roomId));

@@ -9,6 +9,7 @@
 
 import { createSystem, type Vector3, type World } from '@iwsdk/core';
 import { slog } from '../log';
+import { createClaims, type Claims } from '../logic/pinch-claims';
 
 export type Hand = 'left' | 'right';
 export type PinchListener = (hand: Hand) => void;
@@ -21,6 +22,22 @@ let context: PinchContext | null = null;
 const pinching = { left: false, right: false };
 const startListeners = new Set<PinchListener>();
 const endListeners = new Set<PinchListener>();
+
+/**
+ * Who uses the pinch of each hand (arbitration, task T2.10b): menu > furniture > two-hands > pan > room.
+ * One shared instance: every system that reacts to a pinch claims the hand here before acting.
+ */
+export const pinchClaims: Claims = createClaims();
+
+/** True while a piece is held or a menu item is being used: such a pinch never selects a room or starts a gesture. */
+export function isFurnitureInteractionActive(): boolean {
+  return pinchClaims.anyClaimed('furniture') || pinchClaims.anyClaimed('menu');
+}
+
+/** True while a one-hand drag of the model (`pan`) is running. */
+export function isPanActive(): boolean {
+  return pinchClaims.anyClaimed('pan');
+}
 
 /** True while `hand` is pinching (between its `selectstart` and `selectend`). */
 export function isPinching(hand: Hand): boolean {
@@ -56,6 +73,11 @@ function setPinch(hand: Hand, value: boolean): void {
   // The state is set before the listeners run (they may read `isPinching` for the other hand).
   const listeners = value ? startListeners : endListeners;
   for (const listener of listeners) listener(hand);
+  // Every claim lives as long as its pinch: whoever held the hand has had its release callback above.
+  if (!value) {
+    const owner = pinchClaims.ownerOf(hand);
+    if (owner) pinchClaims.release(hand, owner);
+  }
 }
 
 function handOf(event: XRInputSourceEvent): Hand | null {
@@ -94,6 +116,7 @@ export class PinchInputSystem extends createSystem({}) {
     // The session ended or changed: no hand is pinching any more.
     setPinch('left', false);
     setPinch('right', false);
+    pinchClaims.endSession();
     this.xrSession = current;
     if (current) {
       if (typeof current.addEventListener === 'function') {
