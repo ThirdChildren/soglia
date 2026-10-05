@@ -32,3 +32,9 @@ The panel text uses the Inter font (SIL Open Font License 1.1). The local atlase
 (`font-inter-msdf`) are used first; if they cannot be loaded, the app falls back to the same Inter in
 MSDF form embedded in the `@pmndrs/msdfonts` npm package and bundled into the app. Neither is
 downloaded from a CDN at runtime.
+
+Menu icons: `@pmndrs/uikit-lucide` 1.0.76 (MIT, Bela Bohlender and Coconut Capital), included in the
+bundle one icon at a time (`Undo2`, `ChevronLeft`, `ChevronRight`, `LocateFixed`); nothing is loaded from a
+host at runtime. The drawings are Lucide icons (https://lucide.dev/license): ISC, Copyright (c) 2026
+Lucide Icons and Contributors; the icons derived from Feather, such as the chevrons, are MIT,
+Copyright (c) 2013-present Cole Bemis. Every icon has a text label next to it.

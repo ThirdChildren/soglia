@@ -1,5 +1,6 @@
 // Every user-visible string of the app lives here (plain, short English).
 
+import { formatSize } from '../logic/furniture-label';
 import { formatRoomLabel } from '../logic/room-label';
 
 export const strings = {
@@ -10,6 +11,15 @@ export const strings = {
   },
   menu: {
     title: 'Furniture',
+    undo: 'Undo',
+    previous: 'Back',
+    next: 'Next',
+    recenter: 'Recenter',
+    catalogUnavailable: 'The catalog could not be loaded.',
+    /** "1 / 3" */
+    page: (page: number, total: number): string => `${page} / ${total}`,
+    /** "1.6 × 2.0 m" (plain x when the local panel font is missing). */
+    itemSize: (width: number, depth: number, ascii = false): string => formatSize(width, depth, ascii),
   },
   /**
    * Label of a selected room, for example "Study · 12.0 m²". With `ascii` ("Study: 12.0 m2") for

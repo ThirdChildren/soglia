@@ -24,9 +24,15 @@ export function isPalmMenuOpen(): boolean {
   return context?.panel.isOpen ?? false;
 }
 
+/** The menu panel while it is open and placed (it has a frame: bottom centre and orientation), else null. */
+export function getPalmMenuPanel(): PalmMenuPanel | null {
+  const panel = context?.panel;
+  return panel && panel.hasFrame ? panel : null;
+}
+
 /** Registers the palm menu system. */
-export function createPalmMenu(world: World): void {
-  context = { panel: new PalmMenuPanel(world) };
+export function createPalmMenu(world: World, title: string): void {
+  context = { panel: new PalmMenuPanel(world, title) };
   world.registerSystem(PalmMenuSystem);
 }
 

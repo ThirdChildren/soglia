@@ -2,7 +2,8 @@
 // (created on open, disposed on close). It floats MENU_LIFT above the hand, never farther than
 // MENU_MAX_DISTANCE from the head, and turns toward the head. The layout is
 // public/ui/palm-menu.uikitml; the text comes from src/ui/strings.ts. The items of the catalogue
-// are separate entities (task T2.12), not children of this panel.
+// are separate entities (task T2.12), not children of this panel: they follow `framePosition` and
+// `frameOrientation`, the bottom centre of the menu (the title panel sits above it).
 //
 // Modes (D18): only `palm` exists now (anchored above the hand). M5 adds `pinned`, which anchors
 // the same panel in space for one-hand use: the mode only changes where `update` gets the anchor.
@@ -10,6 +11,7 @@
 import {
   PanelDocument,
   PanelUI,
+  Quaternion,
   Vector3,
   type Entity,
   type Object3D,
@@ -18,9 +20,9 @@ import {
 } from '@iwsdk/core';
 import { tagEntity } from '../components/tag-entity';
 import { stableId } from '../logic/ids';
+import { TITLE_OFFSET } from '../logic/menu';
 import { menuAnchor, type Vec3Like } from '../logic/palm';
 import { applyPanelFont } from './fonts';
-import { strings } from './strings';
 
 export type PalmMenuMode = 'palm';
 
@@ -39,15 +41,27 @@ export class PalmMenuPanel {
   private textApplied = false;
   private readonly anchor: Vec3Like = { x: 0, y: 0, z: 0 };
   private readonly headPosition = new Vector3();
+  private frameReady = false;
+  private readonly titleOffset = new Vector3();
+  /** Bottom centre of the menu (above the palm) and its orientation, for the item panels. */
+  readonly framePosition = new Vector3();
+  readonly frameOrientation = new Quaternion();
 
   constructor(
     private readonly world: World,
+    /** The heading of the menu ("Furniture", or the message when the catalog could not be loaded). */
+    private readonly title: string,
     readonly mode: PalmMenuMode = 'palm',
   ) {}
 
   /** True while the panel entity exists. */
   get isOpen(): boolean {
     return this.entity !== null;
+  }
+
+  /** True once the menu has a position and orientation (the item panels follow it). */
+  get hasFrame(): boolean {
+    return this.entity !== null && this.frameReady;
   }
 
   /** Creates the panel (hidden until its text is in). */
@@ -59,6 +73,7 @@ export class PalmMenuPanel {
     if (entity.object3D) entity.object3D.visible = false;
     this.entity = entity;
     this.textApplied = false;
+    this.frameReady = false;
   }
 
   /** Disposes the panel entity. */
@@ -66,6 +81,7 @@ export class PalmMenuPanel {
     this.entity?.dispose();
     this.entity = null;
     this.textApplied = false;
+    this.frameReady = false;
   }
 
   /** Once per frame while open: fills the text when the document is ready, then follows the hand. */
@@ -84,7 +100,7 @@ export class PalmMenuPanel {
           depthTest: false,
           renderOrder: MENU_RENDER_ORDER,
         });
-        title.setProperties({ text: strings.menu.title });
+        title.setProperties({ text: this.title });
         this.textApplied = true;
       }
     }
@@ -96,6 +112,12 @@ export class PalmMenuPanel {
     object.updateMatrixWorld(true);
     // Panels face +Z, which is what Object3D.lookAt aims at the point for non-cameras.
     object.lookAt(this.headPosition);
+    // The frame is the bottom centre of the menu with this orientation; the title sits above it.
+    this.framePosition.copy(object.position);
+    this.frameOrientation.copy(object.quaternion);
+    this.titleOffset.set(0, TITLE_OFFSET.dy, 0).applyQuaternion(this.frameOrientation);
+    object.position.add(this.titleOffset);
     object.visible = true;
+    this.frameReady = true;
   }
 }

@@ -14,6 +14,7 @@ import { applyFurnish, createFurniture } from './systems/furniture';
 import { buildHouse } from './systems/house-builder';
 import { installLocalControllers } from './systems/local-controllers';
 import { installLocalHands } from './systems/local-hands';
+import { createMenuItems } from './systems/menu-items';
 import { createMiniature } from './systems/miniature';
 import { createMiniatureGesture } from './systems/miniature-gesture';
 import { createOnboarding } from './systems/onboarding';
@@ -61,9 +62,17 @@ async function start(): Promise<void> {
     createMiniatureGesture(world, store);
     createRoomLabel(world, store, result.house);
     createOnboarding(world, store);
-    createPalmMenu(world);
+    createPalmMenu(world, catalogResult.ok ? strings.menu.title : strings.menu.catalogUnavailable);
+    // Recenter (and later the pan) change the scale in the store: keep the model in step with it.
+    store.subscribe((state) => {
+      const object = miniature.root.object3D;
+      if (object && Math.abs(object.scale.x - state.miniature.scale) > 1e-6) {
+        object.scale.setScalar(state.miniature.scale);
+      }
+    });
     // Without a catalog the house is still usable: no furniture (the menu will say so, T2.12).
     if (catalogResult.ok) {
+      createMenuItems(world, store, furnitureItems(catalogResult.items));
       const visuals = new FurnitureVisuals(furnitureItems(catalogResult.items));
       await visuals.preload();
       createFurniture(world, store, result.house, catalogResult.items, visuals, built.entity);
