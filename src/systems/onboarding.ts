@@ -7,6 +7,8 @@
 // gesture uses. The two-hand gesture start comes from `onMiniatureGestureStart`.
 // The ghost hands exist only while they are visible (`ui:ghost-hand-*`) and only inside an XR
 // session; the hint timer restarts every time a session starts. The step lives in the store.
+// One-hand use: selecting a room (store `selectedRoomId` set) or three step-2 hint repeats without
+// the two-hand gesture ends the onboarding, so nobody is stuck on step 2.
 
 import { createSystem, Vector3, type Entity, type World } from '@iwsdk/core';
 import { StableId } from '../components/stable-id';
@@ -14,6 +16,7 @@ import { slog } from '../log';
 import { MINIATURE_ROOT_ID } from '../logic/ids';
 import {
   ghostHandsFor,
+  hintExpired,
   hintProgress,
   nextStep,
   pinchHintPose,
@@ -60,6 +63,7 @@ export class OnboardingSystem extends createSystem({
   private started = false;
   private now = 0;
   private idleSince = 0;
+  private stepSince = 0;
   private left: GhostHand | null = null;
   private right: GhostHand | null = null;
   private forwardX = 0;
@@ -75,6 +79,18 @@ export class OnboardingSystem extends createSystem({
 
   init(): void {
     this.cleanupFuncs.push(onMiniatureGestureStart(() => this.handle({ type: 'two-hand-gesture' })));
+    const ctx = context;
+    if (ctx) {
+      // A room pinch with one hand proves the user can pinch, so step 2 (two hands) is skipped.
+      let selected = ctx.store.get().selectedRoomId;
+      this.cleanupFuncs.push(
+        ctx.store.subscribe((state) => {
+          const previous = selected;
+          selected = state.selectedRoomId;
+          if (selected !== null && selected !== previous) this.handle({ type: 'room-selected' });
+        }),
+      );
+    }
   }
 
   update(_delta: number, time: number): void {
@@ -98,9 +114,16 @@ export class OnboardingSystem extends createSystem({
       if (this.world.player.head.position.lengthSq() === 0) return;
       this.started = true;
       this.idleSince = time;
+      this.stepSince = time;
     }
 
     const step = ctx.store.get().prefs.onboardingStep;
+    if (step === 'two-hands' && hintExpired(this.stepSince, time)) {
+      // Nobody is stuck on step 2: after a few hint repeats the onboarding ends by itself.
+      this.handle({ type: 'hint-expired' });
+      this.hideAll();
+      return;
+    }
     if (!shouldShowHint(step, this.idleSince, time)) {
       this.hideAll();
       return;
@@ -140,6 +163,7 @@ export class OnboardingSystem extends createSystem({
     ctx.store.dispatch(setOnboardingStep(next));
     slog(`onboarding step=${next}`);
     this.idleSince = revealedIdleSince(this.now);
+    this.stepSince = this.now;
   }
 
   /** Direction from the head to the model, flat on the floor: the hands point that way. */

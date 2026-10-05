@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   ANIMATION_S,
+  HINT_REPEATS,
   REPEAT_PERIOD_S,
   SHOW_DELAY_S,
   ghostHandsFor,
+  hintExpired,
   hintProgress,
   isOnboardingDone,
   nextStep,
@@ -19,7 +21,9 @@ import { ONBOARDING_STEPS, createInitialState, reduce, setOnboardingStep, type O
 
 const PINCH: OnboardingEvent = { type: 'pinch' };
 const TWO_HAND: OnboardingEvent = { type: 'two-hand-gesture' };
-const EVENTS: readonly OnboardingEvent[] = [PINCH, TWO_HAND];
+const ROOM_SELECTED: OnboardingEvent = { type: 'room-selected' };
+const HINT_EXPIRED: OnboardingEvent = { type: 'hint-expired' };
+const EVENTS: readonly OnboardingEvent[] = [PINCH, TWO_HAND, ROOM_SELECTED, HINT_EXPIRED];
 
 /** Fake clock: a plain number the test moves by hand, so nothing depends on real time. */
 class FakeClock {
@@ -42,6 +46,10 @@ describe('onboarding constants', () => {
   it('keeps the animation shorter than the repeat period so the hands rest between cycles', () => {
     expect(ANIMATION_S).toBeLessThan(REPEAT_PERIOD_S);
   });
+
+  it('plays the step-2 hint 3 times before giving up', () => {
+    expect(HINT_REPEATS).toBe(3);
+  });
 });
 
 describe('nextStep valid transitions', () => {
@@ -51,6 +59,14 @@ describe('nextStep valid transitions', () => {
 
   it('moves from two-hands to done on a two-hand-gesture event', () => {
     expect(nextStep('two-hands', TWO_HAND)).toBe('done');
+  });
+
+  it('moves from two-hands to done on a room-selected event', () => {
+    expect(nextStep('two-hands', ROOM_SELECTED)).toBe('done');
+  });
+
+  it('moves from two-hands to done on a hint-expired event', () => {
+    expect(nextStep('two-hands', HINT_EXPIRED)).toBe('done');
   });
 
   it('goes pinch to two-hands to done through the full sequence of events', () => {
@@ -79,19 +95,57 @@ describe('nextStep out-of-order and final states', () => {
     expect(nextStep('done', TWO_HAND)).toBe('done');
   });
 
-  it('changes the step only for the two valid combinations out of the 3 steps x 2 events', () => {
+  it('ignores a room-selected event while the step is pinch', () => {
+    expect(nextStep('pinch', ROOM_SELECTED)).toBe('pinch');
+  });
+
+  it('ignores a hint-expired event while the step is pinch', () => {
+    expect(nextStep('pinch', HINT_EXPIRED)).toBe('pinch');
+  });
+
+  it('keeps done unchanged on a room-selected event', () => {
+    expect(nextStep('done', ROOM_SELECTED)).toBe('done');
+  });
+
+  it('keeps done unchanged on a hint-expired event', () => {
+    expect(nextStep('done', HINT_EXPIRED)).toBe('done');
+  });
+
+  it('changes the step only for the 4 valid combinations out of the 3 steps x 4 events, with exact results', () => {
     const changed: string[] = [];
     for (const step of ONBOARDING_STEPS) {
       for (const event of EVENTS) {
-        if (nextStep(step, event) !== step) changed.push(`${step}+${event.type}`);
+        const next = nextStep(step, event);
+        if (next !== step) changed.push(`${step}+${event.type}->${next}`);
       }
     }
-    expect(changed).toEqual(['pinch+pinch', 'two-hands+two-hand-gesture']);
+    expect(changed).toEqual([
+      'pinch+pinch->two-hands',
+      'two-hands+two-hand-gesture->done',
+      'two-hands+room-selected->done',
+      'two-hands+hint-expired->done',
+    ]);
+  });
+
+  it('leaves the pinch step unchanged for every event except pinch', () => {
+    for (const event of EVENTS) {
+      expect(nextStep('pinch', event)).toBe(event.type === 'pinch' ? 'two-hands' : 'pinch');
+    }
+  });
+
+  it('leaves the two-hands step unchanged only for the pinch event', () => {
+    for (const event of EVENTS) {
+      expect(nextStep('two-hands', event)).toBe(event.type === 'pinch' ? 'two-hands' : 'done');
+    }
+  });
+
+  it('keeps the done step unchanged for every event', () => {
+    for (const event of EVENTS) expect(nextStep('done', event)).toBe('done');
   });
 
   it('stays on done after a long mixed stream of events', () => {
     let step: OnboardingStep = 'done';
-    for (let i = 0; i < 20; i++) step = nextStep(step, EVENTS[i % 2]);
+    for (let i = 0; i < 20; i++) step = nextStep(step, EVENTS[i % EVENTS.length]);
     expect(step).toBe('done');
   });
 
@@ -107,6 +161,45 @@ describe('nextStep out-of-order and final states', () => {
         const first = nextStep(step, event);
         for (let i = 0; i < 5; i++) expect(nextStep(step, event)).toBe(first);
       }
+    }
+  });
+});
+
+describe('one-hand user sequences', () => {
+  it('goes pinch, pinch, two-hands, room-selected, done for a user who selects a room with one hand', () => {
+    let step: OnboardingStep = 'pinch';
+    step = nextStep(step, PINCH);
+    expect(step).toBe('two-hands');
+    step = nextStep(step, PINCH); // a second pinch is not the two-hand gesture
+    expect(step).toBe('two-hands');
+    step = nextStep(step, ROOM_SELECTED);
+    expect(step).toBe('done');
+  });
+
+  it('goes pinch, two-hands, hint-expired, done for a user who never uses two hands', () => {
+    let step: OnboardingStep = 'pinch';
+    step = nextStep(step, PINCH);
+    expect(step).toBe('two-hands');
+    step = nextStep(step, HINT_EXPIRED);
+    expect(step).toBe('done');
+  });
+
+  it('does not let a room-selected or hint-expired event reach done before the first pinch', () => {
+    let step: OnboardingStep = 'pinch';
+    step = nextStep(step, ROOM_SELECTED);
+    step = nextStep(step, HINT_EXPIRED);
+    expect(step).toBe('pinch');
+  });
+
+  it('ends on done and stays there after a late two-hand-gesture following a room-selected', () => {
+    let step: OnboardingStep = nextStep(nextStep('pinch', PINCH), ROOM_SELECTED);
+    step = nextStep(step, TWO_HAND);
+    expect(step).toBe('done');
+  });
+
+  it('reaches done at the first of room-selected, two-hand-gesture and hint-expired from two-hands', () => {
+    for (const event of [TWO_HAND, ROOM_SELECTED, HINT_EXPIRED]) {
+      expect(nextStep(nextStep('pinch', PINCH), event)).toBe('done');
     }
   });
 });
@@ -212,6 +305,82 @@ describe('shouldShowHint time boundaries', () => {
       expect(shouldShowHint('pinch', 2, 3.5)).toBe(true);
       expect(shouldShowHint('pinch', 2, 2.5)).toBe(false);
     }
+  });
+});
+
+describe('hintExpired', () => {
+  const EXPIRY_S = REPEAT_PERIOD_S * HINT_REPEATS;
+
+  it('expires after exactly HINT_REPEATS periods, which is 9 s', () => {
+    expect(EXPIRY_S).toBe(9);
+  });
+
+  it('is false at 8.999 s since the step started', () => {
+    expect(hintExpired(0, 8.999)).toBe(false);
+  });
+
+  it('is true at exactly 9.0 s since the step started', () => {
+    expect(hintExpired(0, 9.0)).toBe(true);
+  });
+
+  it('is true just after 9.0 s since the step started', () => {
+    expect(hintExpired(0, 9.001)).toBe(true);
+  });
+
+  it('is false at zero elapsed time', () => {
+    expect(hintExpired(5, 5)).toBe(false);
+  });
+
+  it('is false when now is before the step start (negative elapsed time)', () => {
+    expect(hintExpired(20, 5)).toBe(false);
+    expect(hintExpired(0, -100)).toBe(false);
+  });
+
+  it('is true for any later time', () => {
+    for (const now of [9, 9.5, 12, 100, 1e6]) expect(hintExpired(0, now)).toBe(true);
+  });
+
+  it('is false for NaN times', () => {
+    expect(hintExpired(NaN, 100)).toBe(false);
+    expect(hintExpired(0, NaN)).toBe(false);
+    expect(hintExpired(NaN, NaN)).toBe(false);
+  });
+
+  it('is false for infinite times, even when the difference would be huge', () => {
+    expect(hintExpired(0, Infinity)).toBe(false);
+    expect(hintExpired(-Infinity, 0)).toBe(false);
+    expect(hintExpired(Infinity, 100)).toBe(false);
+    expect(hintExpired(-Infinity, Infinity)).toBe(false);
+  });
+
+  it('depends only on the difference between now and stepSince', () => {
+    for (const base of [-1000, -3, 0, 7.25, 1e5]) {
+      expect(hintExpired(base, base + 8.999)).toBe(false);
+      expect(hintExpired(base, base + 9.0)).toBe(true);
+      expect(hintExpired(base, base + 9.001)).toBe(true);
+    }
+  });
+
+  it('follows a fake clock: false at first, true once 3 animation periods have passed', () => {
+    const clock = new FakeClock(50);
+    const stepSince = clock.nowS;
+    for (let i = 0; i < 8; i++) expect(hintExpired(stepSince, clock.advance(REPEAT_PERIOD_S / 3))).toBe(false); // 8 s
+    expect(hintExpired(stepSince, clock.advance(REPEAT_PERIOD_S / 3))).toBe(true); // 9 s
+  });
+
+  it('is deterministic: the same inputs always give the same result', () => {
+    for (let i = 0; i < 5; i++) {
+      expect(hintExpired(2, 10.5)).toBe(false);
+      expect(hintExpired(2, 11.5)).toBe(true);
+    }
+  });
+
+  it('turns into a hint-expired event that moves two-hands to done', () => {
+    const stepSince = 10;
+    expect(hintExpired(stepSince, 18)).toBe(false);
+    const event: OnboardingEvent | null = hintExpired(stepSince, 19) ? HINT_EXPIRED : null;
+    expect(event).not.toBeNull();
+    expect(nextStep('two-hands', event as OnboardingEvent)).toBe('done');
   });
 });
 
@@ -525,6 +694,27 @@ describe('integration with state.ts', () => {
       state = reduce(state, setOnboardingStep(step));
       expect(state.prefs.onboardingStep).toBe(expected[i]);
     });
+  });
+
+  it('is accepted by the reducer for the one-hand sequences ending on room-selected or hint-expired', () => {
+    for (const ending of [ROOM_SELECTED, HINT_EXPIRED]) {
+      let state = createInitialState(DEFAULT_PARAMS);
+      for (const event of [PINCH, ending]) {
+        state = reduce(state, setOnboardingStep(nextStep(state.prefs.onboardingStep, event)));
+      }
+      expect(state.prefs.onboardingStep).toBe('done');
+    }
+  });
+
+  it('accepts every step produced for each of the 3 steps x 4 events in the reducer', () => {
+    for (const step of ONBOARDING_STEPS) {
+      for (const event of EVENTS) {
+        const next = nextStep(step, event);
+        let state = reduce(createInitialState(DEFAULT_PARAMS), setOnboardingStep(step));
+        state = reduce(state, setOnboardingStep(next));
+        expect(state.prefs.onboardingStep).toBe(next);
+      }
+    }
   });
 
   it('treats an unchanged step from nextStep as a no-op in the reducer (same state object)', () => {

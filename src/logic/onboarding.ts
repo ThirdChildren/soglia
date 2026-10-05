@@ -4,6 +4,8 @@
 //
 // Steps: `pinch` (pinch with one hand) -> `two-hands` (pinch with both hands and move them apart or
 // closer) -> `done`. Events that do not belong to the current step are ignored, and `done` is final.
+// Step 2 can also end without two hands (one-hand use): selecting a room, or `HINT_REPEATS` hint
+// animations without success.
 // Time is in seconds on any monotonic clock.
 
 import type { OnboardingStep } from './state';
@@ -12,7 +14,11 @@ export type OnboardingEvent =
   /** Any pinch of one hand started. */
   | { readonly type: 'pinch' }
   /** The two-hand gesture on the model started. */
-  | { readonly type: 'two-hand-gesture' };
+  | { readonly type: 'two-hand-gesture' }
+  /** A room was selected with a pinch: proves the user can pinch with one hand, so step 2 is skipped. */
+  | { readonly type: 'room-selected' }
+  /** The step-2 hint played `HINT_REPEATS` times without success: do not keep the user stuck. */
+  | { readonly type: 'hint-expired' };
 
 /** The hint appears after this long without activity. */
 export const SHOW_DELAY_S = 1.0;
@@ -24,8 +30,25 @@ export const ANIMATION_S = 1.8;
 /** Next step after `event`. Returns `step` itself when the event does not apply. */
 export function nextStep(step: OnboardingStep, event: OnboardingEvent): OnboardingStep {
   if (step === 'pinch' && event.type === 'pinch') return 'two-hands';
-  if (step === 'two-hands' && event.type === 'two-hand-gesture') return 'done';
+  if (step === 'two-hands') {
+    // Step 2 ends with the gesture, or without it for a user with one hand (room pinch) or on timeout.
+    if (event.type === 'two-hand-gesture' || event.type === 'room-selected' || event.type === 'hint-expired') {
+      return 'done';
+    }
+  }
   return step;
+}
+
+/** How many times the step-2 hint animation plays before the onboarding gives up. */
+export const HINT_REPEATS = 3;
+
+/**
+ * True when `HINT_REPEATS` animation periods have passed since `stepSinceS` (the time the step
+ * started). Non-finite times never expire.
+ */
+export function hintExpired(stepSinceS: number, nowS: number): boolean {
+  if (!Number.isFinite(stepSinceS) || !Number.isFinite(nowS)) return false;
+  return nowS - stepSinceS >= REPEAT_PERIOD_S * HINT_REPEATS;
 }
 
 export function isOnboardingDone(step: OnboardingStep): boolean {
