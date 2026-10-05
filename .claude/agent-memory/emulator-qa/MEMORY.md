@@ -1,0 +1,1 @@
+- [Emulator workflow](reference_emulator_workflow.md) — verified start/stop, session, hand mode, console and stats gotchas for the IWER gate
