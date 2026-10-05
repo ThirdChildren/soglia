@@ -50,6 +50,7 @@ sedia a rotelle 70 cm → bloccata su `d-bathroom` (75 cm) in A.
 `items[]`: `id`, `name`, `kind` (`furniture` | `mobility`), `size` `[w, d, h]` in metri,
 `disassemblable` (letti, armadi, tavoli: il FitCheck risponde "Fits when disassembled" invece di
 bloccarli), `model` (percorso glb, `null` finché l'`asset-curator` non lo assegna), `credit` (id in `CREDITS.md`).
+Schema: `schemas/catalog.schema.json` (vale anche per `my-furniture.json`: senza `model` serve `owner`; con `model` serve `credit`).
 
 ## my furniture (`public/demo/my-furniture.json`)
 

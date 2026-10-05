@@ -1,0 +1,42 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://soglia.local/schemas/catalog.schema.json",
+  "title": "Soglia furniture catalog",
+  "description": "Used for both public/catalog/catalog.json (model and credit present, owner absent) and public/demo/my-furniture.json (owner is 'me', model and credit absent).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["items"],
+  "properties": {
+    "items": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/definitions/item" }
+    }
+  },
+  "definitions": {
+    "item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "kind", "size", "disassemblable"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+        "name": { "type": "string", "minLength": 1 },
+        "kind": { "enum": ["furniture", "mobility"] },
+        "size": {
+          "description": "[width, depth, height] in metres",
+          "type": "array",
+          "items": { "type": "number", "exclusiveMinimum": 0 },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "disassemblable": { "type": "boolean" },
+        "model": { "type": ["string", "null"] },
+        "credit": { "type": ["string", "null"] },
+        "owner": { "const": "me" }
+      },
+      "if": { "required": ["model"] },
+      "then": { "required": ["credit"] },
+      "else": { "required": ["owner"] }
+    }
+  }
+}
