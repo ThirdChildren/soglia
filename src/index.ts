@@ -2,6 +2,7 @@ import { World } from '@iwsdk/core';
 import projectOptions from 'virtual:iwsdk-project';
 import { loadDevParams } from './data/dev-params';
 import { attachStateLog } from './debug/state-log';
+import { showGlyphTest } from './debug/glyph-test';
 import { attachStats } from './debug/stats';
 import { loadHouse } from './data/load-house';
 import { slog, swarn } from './log';
@@ -15,6 +16,7 @@ import { createMiniatureGesture } from './systems/miniature-gesture';
 import { createOnboarding } from './systems/onboarding';
 import { createRoomLabel } from './systems/room-label';
 import { ErrorPanelSystem, showErrorPanel } from './ui/error-panel';
+import { loadPanelFonts } from './ui/fonts';
 import { strings } from './ui/strings';
 
 async function start(): Promise<void> {
@@ -38,8 +40,10 @@ async function start(): Promise<void> {
   installLocalHands(world);
   installLocalControllers(world);
   world.registerSystem(ErrorPanelSystem);
+  await loadPanelFonts();
   slog('world ready');
   if (params.debug) attachStats(world);
+  if (params.glyphs) showGlyphTest(world);
 
   const result = await loadHouse(params.house);
   if (result.ok) {

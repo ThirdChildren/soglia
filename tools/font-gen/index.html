@@ -1,0 +1,39 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>soglia font atlas generator (dev tool, not part of the build)</title>
+<body>
+  <pre id="log">starting...</pre>
+  <script type="module">
+    // Dev-only page served by the Vite dev server at /tools/font-gen/index.html.
+    // It runs the same MSDF generator UIKit uses (TTFLoader) on a static Inter TTF with an extended
+    // charset and exposes the result on window.__fontResult. tools/font-gen/generate.mjs drives it.
+    import { TTFLoader } from '@pmndrs/uikit';
+
+    const log = document.getElementById('log');
+    const params = new URLSearchParams(location.search);
+    const ttf = params.get('ttf') ?? '/assets-src/fonts/Inter-Bold.ttf';
+    // Same charset as the framework's Inter (printable ASCII + a few Latin-1 letters) plus the extras.
+    let charset = '';
+    for (let code = 32; code <= 126; code++) charset += String.fromCharCode(code);
+    charset += 'ÄÖÜäöüß§°';
+    charset += '²·×−±→≈';
+    window.__charset = charset;
+    try {
+      const t0 = performance.now();
+      const result = await new TTFLoader().loadAsync({
+        url: ttf,
+        charset,
+        fontSize: 44,
+        textureSize: [512, 512],
+        fieldRange: 4,
+        padding: 4,
+        fixOverlaps: true,
+      });
+      window.__fontResult = result;
+      log.textContent = 'done in ' + Math.round(performance.now() - t0) + ' ms';
+    } catch (error) {
+      window.__fontError = String(error && error.stack ? error.stack : error);
+      log.textContent = 'ERROR ' + window.__fontError;
+    }
+  </script>
+</body>

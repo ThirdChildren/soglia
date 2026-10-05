@@ -1,12 +1,12 @@
 // Pure URL / dev-file parameter parsing: no imports from @iwsdk/core or three.
-// Recognised keys: house, role, reset, seed, time, debug, mr.
+// Recognised keys: house, role, reset, seed, time, debug, mr, glyphs.
 // Unknown values fall back to the default and produce a warning returned as data;
 // the caller decides how to log it.
 
 export const ROLES = ['visitor', 'agent', 'tenant', 'landlord'] as const;
 export type Role = (typeof ROLES)[number];
 
-export type ParamKey = 'house' | 'role' | 'reset' | 'seed' | 'time' | 'debug' | 'mr';
+export type ParamKey = 'house' | 'role' | 'reset' | 'seed' | 'time' | 'debug' | 'mr' | 'glyphs';
 
 export type ParamsSource = 'url' | 'dev-file' | 'default';
 
@@ -24,6 +24,8 @@ export interface Params {
   debug: boolean;
   /** `mr=1`: request mixed reality (passthrough) instead of VR. */
   mr: boolean;
+  /** `glyphs=1`: show the glyph test panel (`ui:glyph-test`), a development aid. */
+  glyphs: boolean;
 }
 
 export interface ParsedParams {
@@ -50,6 +52,7 @@ export const DEFAULT_PARAMS: Readonly<Params> = Object.freeze({
   time: null,
   debug: false,
   mr: false,
+  glyphs: false,
 });
 
 /** Letters, digits, `_` and `-` only: no dots, slashes, spaces or markup. */
@@ -89,6 +92,7 @@ const FIELD_PARSERS: { [K in ParamKey]: (raw: string) => FieldResult<Params[K]> 
   reset: parseFlag,
   debug: parseFlag,
   mr: parseFlag,
+  glyphs: parseFlag,
   seed: (raw) => {
     if (!INT_PATTERN.test(raw)) return { ok: false, reason: 'expected an integer' };
     return { ok: true, value: Number(raw) + 0 }; // + 0 turns -0 into 0
