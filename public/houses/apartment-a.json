@@ -514,7 +514,7 @@
         "catalogId": "sofa-3seat",
         "position": [
           4.62,
-          3.42
+          3.1
         ],
         "rotationDeg": 270
       },
@@ -609,7 +609,7 @@
       {
         "catalogId": "bookcase",
         "position": [
-          10.8,
+          10.69,
           2.5
         ],
         "rotationDeg": 90
