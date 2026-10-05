@@ -105,6 +105,22 @@ export class FurnitureVisuals {
     if (kind !== 'none') frame.material = kind === 'green' ? this.greenMaterial : this.redMaterial;
   }
 
+  /**
+   * The preview frame of a held piece (D14): a flat frame on the floor of the model, in its own object (not part
+   * of the piece, which follows the hand). Hidden until `setPreview` shows it.
+   */
+  createPreviewFrame(item: Pick<CatalogItem, 'size'>): Mesh {
+    const mesh = new Mesh(this.frame(item.size[0], item.size[1]), this.greenMaterial);
+    mesh.visible = false;
+    return mesh;
+  }
+
+  /** Shows the preview frame in the colour of `kind`, or hides it (`none`). */
+  setPreview(mesh: Mesh, kind: OutlineKind): void {
+    mesh.visible = kind !== 'none';
+    if (kind !== 'none') mesh.material = kind === 'green' ? this.greenMaterial : this.redMaterial;
+  }
+
   /** Frees the shared geometries and materials (when the whole furniture system goes away). */
   dispose(): void {
     for (const geometry of [...this.blockGeometry.values(), ...this.stripGeometry.values(), ...this.frameGeometry.values()]) {

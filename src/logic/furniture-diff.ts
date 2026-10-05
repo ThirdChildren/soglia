@@ -68,17 +68,22 @@ export function evaluatePiece(
   return evaluatePlacement(house, item, piece, others, catalog);
 }
 
-/** Status of every piece, by id. Pieces with an unknown catalog id are left out. */
+/**
+ * Status of every piece, by id. Pieces with an unknown catalog id are left out. A piece is only judged
+ * against the pieces that come BEFORE it in the list (the list is in placement order): when two pieces
+ * collide, the one that was there first stays valid and the later one is the one marked (scenario S2.3:
+ * "the wardrobe stays valid"). Walls and doors do not depend on the other pieces.
+ */
 export function evaluateAll(
   house: House,
   pieces: readonly PlacedPiece[],
   catalog: readonly Pick<CatalogItem, 'id' | 'size'>[],
 ): Map<string, PlacementResult> {
   const results = new Map<string, PlacementResult>();
-  for (const piece of pieces) {
-    const result = evaluatePiece(house, piece, pieces, catalog);
+  pieces.forEach((piece, index) => {
+    const result = evaluatePiece(house, piece, pieces.slice(0, index + 1), catalog);
     if (result) results.set(piece.id, result);
-  }
+  });
   return results;
 }
 
@@ -89,7 +94,9 @@ export function evaluateAll(
  */
 export function formatStatusLine(id: string, result: PlacementResult): string {
   const reasons = result.reasons.length > 0 ? result.reasons.join(',') : '-';
-  let line = `furniture status ${id} status=${result.status} reasons=${reasons}`;
+  // A piece outside the house is `invalid` in the log, like in the `Furniture` component (D21).
+  const status = result.status === 'valid' ? 'valid' : 'invalid';
+  let line = `furniture status ${id} status=${status} reasons=${reasons}`;
   if (result.details.with) line += ` with=${result.details.with}`;
   if (result.details.door) line += ` door=${result.details.door}`;
   if (result.details.wall) line += ` wall=${result.details.wall}`;

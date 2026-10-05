@@ -77,13 +77,23 @@ describe('evaluateAll and evaluatePiece', () => {
     expect(invalid).toEqual([]);
   });
 
-  it('flags two beds on top of each other, each one against the other', () => {
+  it('flags only the LATER of two beds on top of each other: the first one stays valid', () => {
     const a = piece('furniture:bed-double#1', 6.8, 1.5, 0, 'bedroom');
     const b = piece('furniture:bed-double#2', 6.9, 1.6, 0, 'bedroom');
     const results = evaluateAll(houseA, [a, b], catalog);
-    expect(results.get(a.id)?.reasons).toContain('overlaps-furniture');
-    expect(results.get(a.id)?.details.with).toBe(b.id);
+    expect(results.get(a.id)?.status).toBe('valid');
+    expect(results.get(b.id)?.reasons).toContain('overlaps-furniture');
     expect(results.get(b.id)?.details.with).toBe(a.id);
+    // The order of the list is the order of placement: swapped, the other one is flagged.
+    const swapped = evaluateAll(houseA, [b, a], catalog);
+    expect(swapped.get(b.id)?.status).toBe('valid');
+    expect(swapped.get(a.id)?.details.with).toBe(b.id);
+  });
+
+  it('still judges a single piece against every other one with evaluatePiece (the held piece)', () => {
+    const a = piece('furniture:bed-double#1', 6.8, 1.5, 0, 'bedroom');
+    const b = piece('furniture:bed-double#2', 6.9, 1.6, 0, 'bedroom');
+    expect(evaluatePiece(houseA, a, [a, b], catalog)?.details.with).toBe(b.id);
   });
 
   it('skips a piece whose catalog id is unknown', () => {
@@ -131,7 +141,7 @@ describe('outline and status line', () => {
   it('reports a piece outside the house', () => {
     const a = piece('furniture:chair#1', -5, -5, 0, '');
     const result = evaluatePiece(houseA, a, [a], catalog)!;
-    expect(formatStatusLine(a.id, result)).toBe('furniture status furniture:chair#1 status=outside reasons=outside-house');
+    expect(formatStatusLine(a.id, result)).toBe('furniture status furniture:chair#1 status=invalid reasons=outside-house');
   });
 
   it('gives the same key for the same status and a new key when it changes', () => {

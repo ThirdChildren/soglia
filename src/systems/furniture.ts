@@ -38,10 +38,28 @@ interface FurnitureContext {
 // Shared with the system, which has no constructor arguments: set by `createFurniture`.
 let context: FurnitureContext | null = null;
 const entities = new Map<string, Entity>();
+/** Last logged status key per piece, so `furniture status` is written only when it changes (shared with the grab). */
+const lastStatus = new Map<string, string>();
 
 /** The entity of a placed piece, by its stable id, or undefined. */
 export function getFurnitureEntity(id: string): Entity | undefined {
   return entities.get(id);
+}
+
+/**
+ * Writes the `furniture status` line for `id` when its status changed since the last line (the grab uses
+ * it for the piece in the hand, this system for the placed ones: one dedupe for both).
+ */
+export function logPieceStatus(id: string, result: PlacementResult): void {
+  const key = statusKey(result);
+  if (lastStatus.get(id) === key) return;
+  lastStatus.set(id, key);
+  slog(formatStatusLine(id, result));
+}
+
+/** Forgets the last status of a piece that is gone (a new piece with the same id logs again). */
+export function forgetPieceStatus(id: string): void {
+  lastStatus.delete(id);
 }
 
 /** Registers the furniture system. */
@@ -82,8 +100,6 @@ const DEG_TO_RAD = Math.PI / 180;
 
 export class FurnitureSystem extends createSystem({}) {
   private pieces: readonly PlacedPiece[] = [];
-  /** Last logged status key per piece, so `furniture status` is written only when it changes. */
-  private readonly lastStatus = new Map<string, string>();
 
   init(): void {
     const ctx = context;
@@ -104,12 +120,13 @@ export class FurnitureSystem extends createSystem({}) {
     for (const piece of diff.remove) {
       entities.get(piece.id)?.dispose({ disposeResources: false });
       entities.delete(piece.id);
-      this.lastStatus.delete(piece.id);
+      lastStatus.delete(piece.id);
     }
     for (const piece of diff.create) this.createPiece(ctx, piece);
     for (const piece of diff.update) {
       const entity = entities.get(piece.id);
-      if (entity) this.writePose(entity, piece);
+      // A piece in a hand follows the hand: the grab writes its pose when it lets go.
+      if (entity && entity.getValue(Furniture, 'phase') !== 'held') this.writePose(entity, piece);
     }
     this.refreshStatus(ctx, next);
   }
@@ -147,6 +164,7 @@ export class FurnitureSystem extends createSystem({}) {
       const result = results.get(piece.id);
       const entity = entities.get(piece.id);
       if (!result || !entity) continue;
+      if (entity.getValue(Furniture, 'phase') === 'held') continue; // the grab shows the preview status
       this.applyStatus(ctx, entity, piece.id, result);
     }
   }
@@ -161,17 +179,13 @@ export class FurnitureSystem extends createSystem({}) {
       entity.setValue(Furniture, 'outline', outline);
       if (entity.object3D) ctx.visuals.setOutline(entity.object3D, outline);
     }
-    const key = statusKey(result);
-    if (this.lastStatus.get(id) !== key) {
-      this.lastStatus.set(id, key);
-      slog(formatStatusLine(id, result));
-    }
+    logPieceStatus(id, result);
   }
 
   private clear(): void {
     for (const entity of entities.values()) entity.dispose({ disposeResources: false });
     entities.clear();
-    this.lastStatus.clear();
+    lastStatus.clear();
     this.pieces = [];
   }
 }

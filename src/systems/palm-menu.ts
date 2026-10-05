@@ -15,7 +15,7 @@ import {
   type PalmHand,
 } from '../logic/palm';
 import { PalmMenuPanel } from '../ui/palm-menu';
-import { isPinching } from './pinch-input';
+import { isPinching, pinchClaims } from './pinch-input';
 
 let context: { panel: PalmMenuPanel } | null = null;
 
@@ -65,7 +65,10 @@ export class PalmMenuSystem extends createSystem({}) {
     const rightY = palmNormalY(this.quat.x, this.quat.y, this.quat.z, this.quat.w);
     const rightOpen = updatePalmDetector(this.right, rightY, isPinching('right')) === 'open';
 
-    const next = chooseMenuHand(this.owner, leftOpen, rightOpen);
+    // A held piece keeps the menu from opening (D18); a menu that is already open stays until the palm turns
+    // away, and closing it never drops the piece (the grab does not depend on the menu).
+    const blocked = this.owner === null && pinchClaims.anyClaimed('furniture');
+    const next = blocked ? null : chooseMenuHand(this.owner, leftOpen, rightOpen);
     if (next !== this.owner) this.setOwner(ctx.panel, next);
     if (this.owner === null) return;
 
