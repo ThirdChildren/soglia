@@ -230,3 +230,46 @@ describe('glTF models avoid compressed formats', () => {
     expect(found).toEqual([]);
   });
 });
+
+const ASSET_EXTS = [
+  '.glb', '.gltf', '.bin', '.png', '.jpg', '.jpeg', '.webp', '.gif', '.svg', '.ktx2',
+  '.mp3', '.ogg', '.wav', '.m4a', '.ttf', '.otf', '.woff', '.woff2',
+];
+
+/**
+ * True when some table row of CREDITS.md names the asset: its repo path, its path under
+ * public/, its file name, or a directory that contains it (as in `public/models/hands/`).
+ */
+function isCredited(file: string, creditsRows: string[]): boolean {
+  const underPublic = file.replace(/^public\//, '');
+  const base = file.slice(file.lastIndexOf('/') + 1);
+  const dirs: string[] = [];
+  for (let i = file.indexOf('/'); i !== -1; i = file.indexOf('/', i + 1)) dirs.push(file.slice(0, i + 1));
+  return creditsRows.some(
+    (row) => row.includes(file) || row.includes(underPublic) || row.includes(`\`${base}\``) || dirs.some((d) => d !== 'public/' && row.includes(d)),
+  );
+}
+
+describe('CREDITS.md covers every asset in public/', () => {
+  const rows = readText('CREDITS.md')
+    .split('\n')
+    .filter((line) => line.startsWith('|'));
+  // Font atlases are JSON files under public/fonts (the PNG pages are matched by extension).
+  const assets = [...filesUnder('public', ASSET_EXTS), ...filesUnder('public/fonts', ['.json'])];
+
+  it('finds the known hand models (the check is not vacuous)', () => {
+    expect(assets).toContain('public/models/hands/left.glb');
+  });
+
+  it('has a CREDITS.md row for every model, image, audio file and font', () => {
+    expect(assets.filter((f) => !isCredited(f, rows))).toEqual([]);
+  });
+
+  it('matches by path, file name or containing directory, and rejects unknown files', () => {
+    const synthetic = ['| x | `public/catalog/models/bed.glb` | a |', '| y | `rug.glb` | b |', '| z | `public/fonts/` | c |'];
+    expect(isCredited('public/catalog/models/bed.glb', synthetic)).toBe(true);
+    expect(isCredited('public/catalog/models/rug.glb', synthetic)).toBe(true);
+    expect(isCredited('public/fonts/inter.png', synthetic)).toBe(true);
+    expect(isCredited('public/catalog/models/sofa.glb', synthetic)).toBe(false);
+  });
+});
