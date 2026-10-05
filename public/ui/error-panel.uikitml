@@ -1,0 +1,5 @@
+<div id="error-panel-root" style="display: flex; flex-direction: column; width: 56; background-color: #ffffff; border-radius: 4; border-width: 0.5; border-color: #b3261e; padding-top: 3; padding-bottom: 3; padding-left: 4; padding-right: 4; gap: 2;">
+  <div id="error-bar" style="height: 1.5; background-color: #b3261e; border-radius: 1;"></div>
+  <span id="error-message" style="font-size: 3.4; font-weight: bold; color: #1a1a1a; line-height: 1.25;">-</span>
+  <span id="error-hint" style="font-size: 2.6; color: #3d3d3d; line-height: 1.25;">-</span>
+</div>
