@@ -1,12 +1,14 @@
 import { World } from '@iwsdk/core';
 import projectOptions from 'virtual:iwsdk-project';
 import { loadDevParams } from './data/dev-params';
+import { attachStateLog } from './debug/state-log';
 import { loadHouse } from './data/load-house';
 import { slog, swarn } from './log';
 import { formatParamsLine, mergeParams, parseParams } from './logic/params';
 import { createInitialState, createStore, setMiniature } from './logic/state';
 import { buildHouse } from './systems/house-builder';
 import { createMiniature } from './systems/miniature';
+import { createMiniatureGesture } from './systems/miniature-gesture';
 import { createRoomLabel } from './systems/room-label';
 import { ErrorPanelSystem, showErrorPanel } from './ui/error-panel';
 import { strings } from './ui/strings';
@@ -22,6 +24,7 @@ async function start(): Promise<void> {
 
   // In-memory only for now: nothing is saved to disk yet (persistence comes later).
   const store = createStore(createInitialState(params));
+  if (params.debug) attachStateLog(store);
 
   const world = await World.create(
     document.getElementById('scene-container') as HTMLDivElement,
@@ -36,6 +39,7 @@ async function start(): Promise<void> {
       store.dispatch(setMiniature(scale, yawDeg));
     });
     buildHouse(world, result.house, miniature.root);
+    createMiniatureGesture(world, store);
     createRoomLabel(world, store, result.house);
     return;
   }

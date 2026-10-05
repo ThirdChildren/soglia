@@ -1,12 +1,11 @@
 // Room selection and its label (T1.10). A pinch on a room floor (`room:<id>`, `Pressed` through its
 // `RayInteractable`) dispatches `selectRoom` on the application store; a store listener then logs
-// and shows or hides the `ui:room-label` panel. The press is ignored while `miniature:root` is
-// held (a two-hand gesture must not select a room). The text is `strings.roomLabel`; the area comes
-// from the room polygon (`polygonArea`), because rooms have no area field in the data.
+// and shows or hides the `ui:room-label` panel. The press is ignored while a two-hand gesture runs
+// or both hands pinch (a two-hand gesture must not select a room). The text is `strings.roomLabel`;
+// the area comes from the room polygon (`polygonArea`), because rooms have no area field in the data.
 
 import {
   createSystem,
-  Grabbed,
   Pressed,
   RayInteractable,
   type Entity,
@@ -17,10 +16,11 @@ import { StableId } from '../components/stable-id';
 import { slog } from '../log';
 import { formatArea, polygonArea } from '../logic/geometry';
 import type { House } from '../logic/house';
-import { MINIATURE_ROOT_ID, stableId } from '../logic/ids';
+import { stableId } from '../logic/ids';
 import { selectRoom, type Store } from '../logic/state';
 import { RoomLabelPanel } from '../ui/room-label-panel';
 import { strings } from '../ui/strings';
+import { isMiniatureGestureActive } from './miniature-gesture';
 
 const ROOM_PREFIX = 'room:';
 
@@ -41,7 +41,6 @@ export function createRoomLabel(world: World, store: Store, house: House): void 
 
 export class RoomLabelSystem extends createSystem({
   pressed: { required: [StableId, RayInteractable, Pressed] },
-  grabbed: { required: [StableId, Grabbed] },
   rooms: { required: [StableId, RayInteractable] },
 }) {
   private shownRoomId: string | null = null;
@@ -56,7 +55,7 @@ export class RoomLabelSystem extends createSystem({
       this.queries.pressed.subscribe('qualify', (entity) => {
         const name = entity.object3D?.name ?? '';
         if (!name.startsWith(ROOM_PREFIX)) return;
-        if (this.isMiniatureHeld()) return;
+        if (isMiniatureGestureActive()) return;
         const roomId = name.slice(ROOM_PREFIX.length);
         if (!house.rooms.some((room) => room.id === roomId)) return;
         store.dispatch(selectRoom(roomId));
@@ -92,13 +91,6 @@ export class RoomLabelSystem extends createSystem({
     // In session the XR camera only gets the viewer pose after the systems run, so use the head group.
     const head = this.world.renderer.xr.isPresenting ? this.world.player.head : this.world.camera;
     ctx.panel.update(head);
-  }
-
-  private isMiniatureHeld(): boolean {
-    for (const entity of this.queries.grabbed.entities) {
-      if (entity.object3D?.name === MINIATURE_ROOT_ID) return true;
-    }
-    return false;
   }
 
   private findRoomObject(roomId: string): Object3D | null {

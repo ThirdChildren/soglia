@@ -64,10 +64,12 @@ function placeInFrontOf(source: Object3D, root: Entity): void {
   object.rotation.set(0, yawRad, 0);
   object.updateMatrixWorld(true);
 
+  // The scale is a 32-bit float in Three.js: round away the noise before it reaches the store.
+  const scale = Math.round(object.scale.x * 1e6) / 1e6;
   slog(
-    `miniature placed x=${anchor.position[0].toFixed(3)} y=${anchor.position[1].toFixed(3)} z=${anchor.position[2].toFixed(3)} yawDeg=${anchor.yawDeg.toFixed(1)} scale=${object.scale.x.toFixed(4)}`,
+    `miniature placed x=${anchor.position[0].toFixed(3)} y=${anchor.position[1].toFixed(3)} z=${anchor.position[2].toFixed(3)} yawDeg=${anchor.yawDeg.toFixed(1)} scale=${scale.toFixed(4)}`,
   );
-  placedListener?.(object.scale.x, anchor.yawDeg);
+  placedListener?.(scale, anchor.yawDeg);
 }
 
 /** Re-places the model once at the start of each XR session, on the first frame with a head pose. */
