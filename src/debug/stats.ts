@@ -9,14 +9,17 @@
 //   views             : `renderer.xr.getCamera().cameras.length` while presenting (2 on a stereo headset),
 //                       else 1. callsPerView = calls / views is what the budget limits.
 //   fps               : moving average of the last 120 frame deltas (seconds).
-//   maxTextureSize    : largest side of the standard material texture slots found in the scene (UIKit
-//                       font atlases are not material maps and are not included).
+//   maxTextureSize    : largest side of the standard material texture slots found in the app's part of the
+//                       scene (UIKit font atlases are not material maps and are not included). Everything
+//                       under `world.player` (input visuals: controller/hand glTF models, ray cursor) belongs
+//                       to the framework and is excluded; if it has a texture above the budget it is reported
+//                       on a separate `[soglia] framework: ...` line instead (it never fails the app budget).
 // No allocation per frame: the delta window and the Stats object are reused; the scene walk and the log
 // strings happen once every 2 seconds.
 
 import { createSystem, type Material, type Object3D, type World } from '@iwsdk/core';
-import { swarn } from '../log';
-import { evaluateBudget, formatStatsLine, type Stats } from '../logic/stats';
+import { slog, swarn } from '../log';
+import { BUDGET, evaluateBudget, formatStatsLine, type Stats } from '../logic/stats';
 
 const INTERVAL_SECONDS = 2;
 const WINDOW = 120;
@@ -46,14 +49,22 @@ export class StatsSystem extends createSystem({}) {
     textures: 0,
   };
   private maxTexture = 0;
+  private maxFrameworkTexture = 0;
+  private lastFrameworkTexture = 0;
+  // Scan state: the side counter being filled (app or framework). `visit` skips the world.player subtree.
+  private scanningFramework = false;
   private readonly visit = (object: Object3D): void => {
+    if (!this.scanningFramework && object === this.world.player) return;
     const material = (object as unknown as { material?: Material | Material[] }).material;
-    if (!material) return;
-    if (Array.isArray(material)) {
-      for (const m of material) this.scanMaterial(m);
-    } else {
-      this.scanMaterial(material);
+    if (material) {
+      if (Array.isArray(material)) {
+        for (const m of material) this.scanMaterial(m);
+      } else {
+        this.scanMaterial(material);
+      }
     }
+    const children = object.children;
+    for (let i = 0; i < children.length; i++) this.visit(children[i]);
   };
 
   update(delta: number): void {
@@ -75,7 +86,11 @@ export class StatsSystem extends createSystem({}) {
       const image = record[slot]?.image;
       if (!image) continue;
       const side = Math.max(image.width ?? 0, image.height ?? 0);
-      if (side > this.maxTexture) this.maxTexture = side;
+      if (this.scanningFramework) {
+        if (side > this.maxFrameworkTexture) this.maxFrameworkTexture = side;
+      } else if (side > this.maxTexture) {
+        this.maxTexture = side;
+      }
     }
   }
 
@@ -90,11 +105,24 @@ export class StatsSystem extends createSystem({}) {
     stats.textures = info.memory.textures;
     stats.views = renderer.xr.isPresenting ? Math.max(1, renderer.xr.getCamera().cameras.length) : 1;
     this.maxTexture = 0;
-    this.world.scene.traverse(this.visit);
+    this.maxFrameworkTexture = 0;
+    this.scanningFramework = false;
+    this.visit(this.world.scene);
+    this.scanningFramework = true;
+    this.visit(this.world.player);
+    this.scanningFramework = false;
     stats.maxTextureSize = this.maxTexture > 0 ? this.maxTexture : undefined;
 
     console.log('[soglia:stats] ' + formatStatsLine(stats));
     const budget = evaluateBudget(stats);
     if (!budget.ok) swarn('budget exceeded: ' + budget.violations.join('; '));
+    // Framework-owned textures (e.g. the 2048 px controller glTF that IWSDK loads from its CDN while a
+    // controller is connected) are reported once per change, as information, not as an app violation.
+    if (this.maxFrameworkTexture !== this.lastFrameworkTexture) {
+      this.lastFrameworkTexture = this.maxFrameworkTexture;
+      if (this.maxFrameworkTexture > BUDGET.textureSize) {
+        slog(`framework: texture ${this.maxFrameworkTexture} px > ${BUDGET.textureSize} px (input model under world.player, not ours)`);
+      }
+    }
   }
 }
