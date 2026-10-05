@@ -32,11 +32,21 @@ export function isOnboardingDone(step: OnboardingStep): boolean {
   return step === 'done';
 }
 
-/** Which ghost hands the hint shows at `step`. */
-export function ghostHandsFor(step: OnboardingStep): { readonly left: boolean; readonly right: boolean } {
-  if (step === 'pinch') return { left: false, right: true };
-  if (step === 'two-hands') return { left: true, right: true };
-  return { left: false, right: false };
+export interface GhostHands {
+  readonly left: boolean;
+  readonly right: boolean;
+}
+
+// Shared constants: `ghostHandsFor` runs every frame, so it must not allocate.
+const HANDS_RIGHT: GhostHands = Object.freeze({ left: false, right: true });
+const HANDS_BOTH: GhostHands = Object.freeze({ left: true, right: true });
+const HANDS_NONE: GhostHands = Object.freeze({ left: false, right: false });
+
+/** Which ghost hands the hint shows at `step`. Returns shared frozen objects. */
+export function ghostHandsFor(step: OnboardingStep): GhostHands {
+  if (step === 'pinch') return HANDS_RIGHT;
+  if (step === 'two-hands') return HANDS_BOTH;
+  return HANDS_NONE;
 }
 
 /**

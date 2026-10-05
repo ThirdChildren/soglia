@@ -554,3 +554,13 @@ describe('hint poses with a non-finite progress', () => {
     }
   });
 });
+
+describe('ghostHandsFor does not allocate', () => {
+  it('returns the same frozen object on every call for a step', () => {
+    for (const step of ['pinch', 'two-hands', 'done'] as const) {
+      const first = ghostHandsFor(step);
+      expect(ghostHandsFor(step)).toBe(first);
+      expect(Object.isFrozen(first)).toBe(true);
+    }
+  });
+});
