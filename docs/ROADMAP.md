@@ -144,6 +144,12 @@ microfono nel Quest Browser (se c'è), ripresa dopo aver tolto il visore.
   etichetta "Sample data", domande ricevute.
 - Confronto di due disposizioni e di due case.
 - Accessibilità: modalità una mano, alto contrasto, testo grande.
+- **T1.15 · Zoom e rotazione del plastico con una mano** (alternativa ai gesti a due mani di M1,
+  che oggi sono l'unico modo per ruotare e ingrandire; regola 9). Proposta del piano M1: pizzico
+  trascinato con una mano sul plastico = rotazione attorno a Y; due pulsanti piccoli sul bordo
+  della base per zoom ± (pannello a 0,5–0,8 m); soglia tra "tocco" (etichetta stanza) e
+  "trascinamento" 1,5 cm. Lo scenario S5.4 va esteso a S1.2 (oltre a S2–S4) quando si pianifica M5.
+  In M1 l'onboarding si sblocca già con una mano (selezione di una stanza o timeout).
 - **Realtà mista (dietro flag `?mr=1`)**: misura dei mobili veri con il pizzico sugli spigoli e
   plastico appoggiato su una superficie rilevata. Sul PC si prova con l'ambiente sintetico
   dell'emulatore; entra nella demo solo se supera il gate visore in **due stanze diverse**.
