@@ -1,12 +1,24 @@
 // Pure URL / dev-file parameter parsing: no imports from @iwsdk/core or three.
-// Recognised keys: house, role, reset, seed, time, debug, mr, glyphs.
+// Recognised keys: house, role, reset, seed, time, debug, mr, glyphs, furnish.
 // Unknown values fall back to the default and produce a warning returned as data;
 // the caller decides how to log it.
 
 export const ROLES = ['visitor', 'agent', 'tenant', 'landlord'] as const;
 export type Role = (typeof ROLES)[number];
 
-export type ParamKey = 'house' | 'role' | 'reset' | 'seed' | 'time' | 'debug' | 'mr' | 'glyphs';
+export const FURNISH_STYLES = ['none', 'scandinavian'] as const;
+export type FurnishStyle = (typeof FURNISH_STYLES)[number];
+
+export type ParamKey =
+  | 'house'
+  | 'role'
+  | 'reset'
+  | 'seed'
+  | 'time'
+  | 'debug'
+  | 'mr'
+  | 'glyphs'
+  | 'furnish';
 
 export type ParamsSource = 'url' | 'dev-file' | 'default';
 
@@ -26,6 +38,8 @@ export interface Params {
   mr: boolean;
   /** `glyphs=1`: show the glyph test panel (`ui:glyph-test`), a development aid. */
   glyphs: boolean;
+  /** `furnish=scandinavian`: start with the staging preset of the house (development aid, D23). */
+  furnish: FurnishStyle;
 }
 
 export interface ParsedParams {
@@ -53,6 +67,7 @@ export const DEFAULT_PARAMS: Readonly<Params> = Object.freeze({
   debug: false,
   mr: false,
   glyphs: false,
+  furnish: 'none',
 });
 
 /** Letters, digits, `_` and `-` only: no dots, slashes, spaces or markup. */
@@ -93,6 +108,10 @@ const FIELD_PARSERS: { [K in ParamKey]: (raw: string) => FieldResult<Params[K]> 
   debug: parseFlag,
   mr: parseFlag,
   glyphs: parseFlag,
+  furnish: (raw) =>
+    (FURNISH_STYLES as readonly string[]).includes(raw)
+      ? { ok: true, value: raw as FurnishStyle }
+      : { ok: false, reason: `expected one of ${FURNISH_STYLES.join(', ')}` },
   seed: (raw) => {
     if (!INT_PATTERN.test(raw)) return { ok: false, reason: 'expected an integer' };
     return { ok: true, value: Number(raw) + 0 }; // + 0 turns -0 into 0

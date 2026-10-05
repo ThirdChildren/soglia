@@ -34,6 +34,7 @@ describe('parseParams defaults', () => {
       debug: false,
       mr: false,
       glyphs: false,
+      furnish: 'none',
     });
   });
 
@@ -243,7 +244,7 @@ describe('parseParams time', () => {
 
 describe('parseParams multiple keys', () => {
   it('parses every key in one query string', () => {
-    const r = parseParams('house=apartment-b&role=landlord&reset=1&seed=7&time=2026-12-21T10:00&debug=1&mr=1&glyphs=1');
+    const r = parseParams('house=apartment-b&role=landlord&reset=1&seed=7&time=2026-12-21T10:00&debug=1&mr=1&glyphs=1&furnish=scandinavian');
     expect(r.params).toEqual({
       house: 'apartment-b',
       role: 'landlord',
@@ -253,8 +254,9 @@ describe('parseParams multiple keys', () => {
       debug: true,
       mr: true,
       glyphs: true,
+      furnish: 'scandinavian',
     });
-    expect([...r.present].sort()).toEqual(['debug', 'glyphs', 'house', 'mr', 'reset', 'role', 'seed', 'time']);
+    expect([...r.present].sort()).toEqual(['debug', 'furnish', 'glyphs', 'house', 'mr', 'reset', 'role', 'seed', 'time']);
     expect(r.warnings).toEqual([]);
   });
 
@@ -283,7 +285,7 @@ describe('parseParams multiple keys', () => {
     expect(r.params.house).toBe('apartment-b');
     expect(r.present).toEqual(['house']);
     expect(r.warnings).toEqual([]);
-    expect(Object.keys(r.params).sort()).toEqual(['debug', 'glyphs', 'house', 'mr', 'reset', 'role', 'seed', 'time']);
+    expect(Object.keys(r.params).sort()).toEqual(['debug', 'furnish', 'glyphs', 'house', 'mr', 'reset', 'role', 'seed', 'time']);
   });
 
   it('ignores key names that differ only by case', () => {
@@ -294,9 +296,9 @@ describe('parseParams multiple keys', () => {
   });
 
   it('emits one warning per rejected key, in the fixed key order and not in URL order', () => {
-    const r = parseParams('time=bad&seed=x&glyphs=2&mr=2&debug=2&reset=2&role=boss&house=../x');
+    const r = parseParams('time=bad&seed=x&furnish=x&glyphs=2&mr=2&debug=2&reset=2&role=boss&house=../x');
     const keys = r.warnings.map((w) => /^param (\w+)=/u.exec(w)?.[1]);
-    expect(keys).toEqual(['house', 'role', 'reset', 'debug', 'mr', 'glyphs', 'seed', 'time']);
+    expect(keys).toEqual(['house', 'role', 'reset', 'debug', 'mr', 'glyphs', 'furnish', 'seed', 'time']);
   });
 
   it('formats a warning as: param key="value" ignored: reason', () => {
@@ -442,6 +444,7 @@ describe('mergeParams', () => {
     ['debug', 'debug=1'],
     ['mr', 'mr=1'],
     ['glyphs', 'glyphs=1'],
+    ['furnish', 'furnish=scandinavian'],
   ])('takes %s from the dev file', (key, query) => {
     const m = mergeParams(none, parseParams(query));
     expect(m.params[key]).toEqual(parseParams(query).params[key]);
@@ -460,6 +463,7 @@ describe('formatParamsLine', () => {
       debug: true,
       mr: false,
       glyphs: false,
+      furnish: 'none',
     });
     expect(line).toBe('params source=dev-file house=apartment-b role=visitor reset=false seed=1 debug=true time=-');
   });
@@ -543,5 +547,20 @@ describe('hasInvalidHouse', () => {
   it('works on the merged warnings of the dev file too', () => {
     const merged = mergeParams(parseParams(''), parseParams('house=..%2Fx'));
     expect(hasInvalidHouse(merged.warnings)).toBe(true);
+  });
+});
+
+describe('furnish parameter', () => {
+  it('accepts none and scandinavian and defaults to none', () => {
+    expect(parseParams('furnish=scandinavian').params.furnish).toBe('scandinavian');
+    expect(parseParams('furnish=none').params.furnish).toBe('none');
+    expect(parseParams('').params.furnish).toBe('none');
+  });
+
+  it('warns about any other value and keeps the default', () => {
+    const r = parseParams('furnish=modern');
+    expect(r.params.furnish).toBe('none');
+    expect(r.present).toEqual([]);
+    expect(r.warnings).toEqual(['param furnish="modern" ignored: expected one of none, scandinavian']);
   });
 });
