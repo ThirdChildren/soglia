@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { loadJson, readText, repoPath, walkFiles } from '../helpers/load-json';
 
@@ -162,5 +162,71 @@ describe('credits', () => {
       expect(item.credit, `${item.id} has a model but no credit`).toBeTruthy();
       expect(creditIds.has(item.credit!), `${item.id}: credit "${item.credit}" is not in CREDITS.md`).toBe(true);
     }
+  });
+});
+
+describe('glTF models avoid compressed formats', () => {
+  // The runtime loads models through plain GLTFLoader: no Draco, KTX2/Basis or meshopt decoders are bundled.
+  const FORBIDDEN = new Set([
+    'KHR_draco_mesh_compression',
+    'KHR_texture_basisu',
+    'EXT_meshopt_compression',
+    'KHR_meshopt_compression',
+  ]);
+
+  /** Parses the JSON chunk of a binary glTF (.glb) container. */
+  function glbJson(buffer: Buffer): { extensionsUsed?: string[]; extensionsRequired?: string[] } {
+    if (buffer.length < 20 || buffer.readUInt32LE(0) !== 0x46546c67) throw new Error('not a GLB file (bad magic)');
+    const jsonLength = buffer.readUInt32LE(12);
+    if (buffer.readUInt32LE(16) !== 0x4e4f534a) throw new Error('first GLB chunk is not JSON');
+    return JSON.parse(buffer.subarray(20, 20 + jsonLength).toString('utf8'));
+  }
+
+  /** Forbidden extensions a GLB declares, in either the used or the required list. */
+  function forbiddenIn(buffer: Buffer): string[] {
+    const json = glbJson(buffer);
+    return [...(json.extensionsUsed ?? []), ...(json.extensionsRequired ?? [])].filter((e) => FORBIDDEN.has(e));
+  }
+
+  function makeGlb(json: object): Buffer {
+    const raw = Buffer.from(JSON.stringify(json), 'utf8');
+    const padded = Buffer.concat([raw, Buffer.alloc((4 - (raw.length % 4)) % 4, 0x20)]);
+    const header = Buffer.alloc(20);
+    header.writeUInt32LE(0x46546c67, 0);
+    header.writeUInt32LE(2, 4);
+    header.writeUInt32LE(20 + padded.length, 8);
+    header.writeUInt32LE(padded.length, 12);
+    header.writeUInt32LE(0x4e4f534a, 16);
+    return Buffer.concat([header, padded]);
+  }
+
+  it('detects every forbidden extension in a synthetic GLB', () => {
+    for (const ext of FORBIDDEN) {
+      expect(forbiddenIn(makeGlb({ asset: { version: '2.0' }, extensionsUsed: [ext] }))).toEqual([ext]);
+      expect(forbiddenIn(makeGlb({ asset: { version: '2.0' }, extensionsRequired: [ext] }))).toEqual([ext]);
+    }
+  });
+
+  it('accepts a GLB that uses only harmless extensions', () => {
+    expect(forbiddenIn(makeGlb({ asset: { version: '2.0' }, extensionsUsed: ['KHR_materials_unlit'] }))).toEqual([]);
+  });
+
+  it('has no .glb in public/ that uses Draco, KTX2 or meshopt', () => {
+    const found: string[] = [];
+    for (const file of filesUnder('public', ['.glb'])) {
+      for (const ext of forbiddenIn(readFileSync(repoPath(file)))) found.push(`${file}: ${ext}`);
+    }
+    expect(found).toEqual([]);
+  });
+
+  it('has no .gltf in public/ that uses Draco, KTX2 or meshopt', () => {
+    const found: string[] = [];
+    for (const file of filesUnder('public', ['.gltf'])) {
+      const json = JSON.parse(readText(file)) as { extensionsUsed?: string[]; extensionsRequired?: string[] };
+      for (const ext of [...(json.extensionsUsed ?? []), ...(json.extensionsRequired ?? [])]) {
+        if (FORBIDDEN.has(ext)) found.push(`${file}: ${ext}`);
+      }
+    }
+    expect(found).toEqual([]);
   });
 });
