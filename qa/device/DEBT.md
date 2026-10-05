@@ -12,3 +12,12 @@ Voci che l'emulatore non può dimostrare. Le aggiungono `emulator-qa`, `xr-engin
 | M0 | Nessuna richiesta verso `unpkg.com`, `api.dicebear.com` durante una sessione sul Quest (e verso `cdn.jsdelivr.net` solo se compaiono controller) | media | 2026-10-05 | — |
 | M0 | Avvio a freddo sul Quest sotto 10 s (bundle 6,57 MB, 1,68 MB gzip) | media | 2026-10-05 | — |
 | M0 | Precisione reale delle mani, comfort, fps, passthrough | bassa | 2026-10-05 | — |
+| M1 | Altezza e distanza del plastico (0,45 m davanti, 0,25 m sotto gli occhi) comode da seduti; spazio di riferimento effettivo (`local` vs `local-floor`); l'emulatore parte con la testa a 1,6 m | alta | 2026-10-05 | — |
+| M1 | Pizzico a due mani affidabile senza scatti: soglie di presa (0,35 m / 0,25 m), zona morta di 5 mm, limiti di zoom 0,03–0,12 (a 0,12 la casa A misura 1,32 m, oltre i 60 cm di portata); posa `gripSpace` delle mani vere (se imprecisa, passare alla punta dell'indice) | alta | 2026-10-05 | — |
+| M1 | Pizzico reale su una stanza: sceglie quella giusta e non una vicina; il primo pizzico a due mani non seleziona una stanza prima che parta il gesto | alta | 2026-10-05 | — |
+| M1 | Leggibilità e dimensione dell'etichetta della stanza e del pannello d'errore a 0,5–0,8 m e nel campo visivo stretto dei Meta VR Glasses; forma ASCII `m2` sul font reale; glifi `·` e `²` (voce aperta in M2) | alta | 2026-10-05 | — |
+| M1 | Onboarding: la mano fantasma si capisce senza spiegazioni; dimensione, distanza e velocità; 1,0 s di quiete prima della comparsa; il timeout di 9 s e la selezione di una stanza come uscita per chi usa una sola mano | media | 2026-10-05 | — |
+| M1 | fps ≥ 60 sul Quest con A e con B; draw call e triangoli reali (`[soglia:stats]` via debug remoto; sul PC 21,3–21,7k triangoli su due viste contro l'obiettivo interno di 20k); costo GPU dei pannelli UIKit | alta | 2026-10-05 | — |
+| M1 | Tutta l'esperienza di M1 completabile senza controller; `renderer.xr.getCamera().cameras.length` è 2 sul Quest? | alta | 2026-10-05 | — |
+| M1 | Pausa/ripresa: togliere e rimettere il visore non rompe il plastico (nessuna persistenza prima di M4; il plastico viene riposizionato a ogni avvio di sessione) | media | 2026-10-05 | — |
+| M1 | Parametri URL (`?house=…&debug=1`) letti nel Quest Browser (il file `dev-params.local.txt` esiste solo in sviluppo) | media | 2026-10-05 | — |

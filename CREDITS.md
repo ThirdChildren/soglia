@@ -1,7 +1,9 @@
 # Credits
 
 Every third-party asset used in Soglia is listed here. Only CC0 / public-domain assets,
-assets provided by Meta for the contest, or assets created by the author are allowed.
+assets provided by Meta for the contest, or assets created by the author are allowed, with one
+narrow exception: the IWSDK framework's runtime hand models listed below (MIT, cited), see
+`docs/RULES.md`.
 
 | Id | Asset | Author | Source (URL) | License | Changes |
 |---|---|---|---|---|---|

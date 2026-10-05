@@ -13,7 +13,7 @@ Legenda stato: ⬜ da fare · 🟨 in corso · ✅ PC-done · 🟩 Device-done
 | Milestone | Periodo | Stato |
 |---|---|---|
 | M0 Setup e strumenti | 30 set – 1 ott | ✅ PC-done (piano: `docs/plans/M0.md`) |
-| M1 Casa e plastico | 2 – 7 ott | 🟨 (piano: `docs/plans/M1.md`) |
+| M1 Casa e plastico | 2 – 7 ott | ✅ PC-done 2026-10-05 (piano: `docs/plans/M1.md`; report: `qa/reports/M1-2026-10-05-rerun.md`; gate visore in debito) |
 | M2 Arredare con le mani | 8 – 14 ott | ⬜ |
 | M3 Dentro la casa e i miei mobili | 15 – 21 ott | ⬜ |
 | M4 Segnalazioni e persistenza | 22 – 28 ott | ⬜ |
