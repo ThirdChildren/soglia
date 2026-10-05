@@ -58,9 +58,12 @@ describe('createInitialState', () => {
       version: 1,
       houseId: 'apartment-b',
       role: 'tenant',
-      miniature: { scale: 0.05, yawDeg: 0 },
+      miniature: { scale: 0.05, yawDeg: 0, offset: [0, 0] },
       selectedRoomId: null,
-      prefs: { onboardingStep: 'pinch' },
+      prefs: { onboardingStep: 'pinch', menuOpened: false },
+      furniture: [],
+      nextInstance: {},
+      history: [],
     });
   });
 
@@ -92,6 +95,9 @@ describe('createInitialState', () => {
       'miniature',
       'selectedRoomId',
       'prefs',
+      'furniture',
+      'nextInstance',
+      'history',
     ]);
   });
 });
@@ -113,7 +119,7 @@ describe('action creators', () => {
 describe('reduce setMiniature', () => {
   it('stores a scale and yaw inside the range', () => {
     const next = reduce(initial(), setMiniature(0.08, 45));
-    expect(next.miniature).toEqual({ scale: 0.08, yawDeg: 45 });
+    expect(next.miniature).toEqual({ scale: 0.08, yawDeg: 45, offset: [0, 0] });
   });
 
   it('clamps a scale below the minimum to 0.03', () => {
@@ -187,7 +193,7 @@ describe('reduce setMiniature', () => {
     const s = initial();
     const next = reduce(s, setMiniature(SCALE, 15));
     expect(next).not.toBe(s);
-    expect(next.miniature).toEqual({ scale: SCALE, yawDeg: 15 });
+    expect(next.miniature).toEqual({ scale: SCALE, yawDeg: 15, offset: [0, 0] });
   });
 
   it('keeps the other fields untouched', () => {
@@ -540,16 +546,20 @@ describe('serialize', () => {
       'miniature',
       'selectedRoomId',
       'prefs',
+      'furniture',
+      'nextInstance',
+      'history',
     ]);
-    expect(Object.keys(parsed.miniature)).toEqual(['scale', 'yawDeg']);
-    expect(Object.keys(parsed.prefs)).toEqual(['onboardingStep']);
+    expect(Object.keys(parsed.miniature)).toEqual(['scale', 'yawDeg', 'offset']);
+    expect(Object.keys(parsed.prefs)).toEqual(['onboardingStep', 'menuOpened']);
   });
 
   it('produces the exact expected string for the initial state', () => {
     expect(serialize(initial())).toBe(
       '{"version":1,"houseId":"apartment-a","role":"visitor",' +
-        '"miniature":{"scale":0.05,"yawDeg":0},"selectedRoomId":null,' +
-        '"prefs":{"onboardingStep":"pinch"}}',
+        '"miniature":{"scale":0.05,"yawDeg":0,"offset":[0,0]},"selectedRoomId":null,' +
+        '"prefs":{"onboardingStep":"pinch","menuOpened":false},' +
+        '"furniture":[],"nextInstance":{},"history":[]}',
     );
   });
 
@@ -577,6 +587,9 @@ describe('serialize', () => {
       'miniature',
       'selectedRoomId',
       'prefs',
+      'furniture',
+      'nextInstance',
+      'history',
     ]);
   });
 
@@ -850,14 +863,14 @@ describe('deserialize normalisation', () => {
 
   it('drops unknown keys inside miniature', () => {
     const restored = load(savedState({ miniature: { scale: 0.05, yawDeg: 0, skew: 3 } }));
-    expect(restored?.miniature).toEqual({ scale: 0.05, yawDeg: 0 });
-    expect(Object.keys(restored?.miniature ?? {})).toEqual(['scale', 'yawDeg']);
+    expect(restored?.miniature).toEqual({ scale: 0.05, yawDeg: 0, offset: [0, 0] });
+    expect(Object.keys(restored?.miniature ?? {})).toEqual(['scale', 'yawDeg', 'offset']);
   });
 
   it('drops unknown keys inside prefs', () => {
     const restored = load(savedState({ prefs: { onboardingStep: 'done', theme: 'dark' } }));
-    expect(restored?.prefs).toEqual({ onboardingStep: 'done' });
-    expect(Object.keys(restored?.prefs ?? {})).toEqual(['onboardingStep']);
+    expect(restored?.prefs).toEqual({ onboardingStep: 'done', menuOpened: false });
+    expect(Object.keys(restored?.prefs ?? {})).toEqual(['onboardingStep', 'menuOpened']);
   });
 
   it('re-serializes to the canonical key order even if the saved keys were shuffled', () => {
