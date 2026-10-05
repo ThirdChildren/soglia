@@ -2,6 +2,7 @@ import { World } from '@iwsdk/core';
 import projectOptions from 'virtual:iwsdk-project';
 import { loadDevParams } from './data/dev-params';
 import { attachStateLog } from './debug/state-log';
+import { attachStats } from './debug/stats';
 import { loadHouse } from './data/load-house';
 import { slog, swarn } from './log';
 import { formatParamsLine, mergeParams, parseParams } from './logic/params';
@@ -33,6 +34,7 @@ async function start(): Promise<void> {
   );
   world.registerSystem(ErrorPanelSystem);
   slog('world ready');
+  if (params.debug) attachStats(world);
 
   const result = await loadHouse(params.house);
   if (result.ok) {
