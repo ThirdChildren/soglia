@@ -1,7 +1,15 @@
 // Every user-visible string of the app lives here (plain, short English).
 
-import { formatSize } from '../logic/furniture-label';
+import { formatSize, lowerName, type ReasonKind } from '../logic/furniture-label';
 import { formatRoomLabel } from '../logic/room-label';
+
+/** Why a piece is not valid (D27): short texts shown next to it. */
+const reason = {
+  blocksDoor: 'Blocks the door',
+  overlapsWall: 'Overlaps a wall',
+  overlapsFurniture: (name: string): string => `Overlaps the ${lowerName(name)}`,
+  outside: 'Outside the house',
+} as const;
 
 export const strings = {
   errors: {
@@ -20,6 +28,20 @@ export const strings = {
     page: (page: number, total: number): string => `${page} / ${total}`,
     /** "1.6 × 2.0 m" (plain x when the local panel font is missing). */
     itemSize: (width: number, depth: number, ascii = false): string => formatSize(width, depth, ascii),
+  },
+  reason,
+  /** The text of a reason; `withName` is the catalog name of the piece it overlaps (for `overlaps-furniture`). */
+  reasonText: (kind: ReasonKind, withName?: string): string => {
+    switch (kind) {
+      case 'blocks-door':
+        return reason.blocksDoor;
+      case 'overlaps-wall':
+        return reason.overlapsWall;
+      case 'overlaps-furniture':
+        return withName ? reason.overlapsFurniture(withName) : 'Overlaps another piece';
+      case 'outside-house':
+        return reason.outside;
+    }
   },
   /**
    * Label of a selected room, for example "Study · 12.0 m²". With `ascii` ("Study: 12.0 m2") for

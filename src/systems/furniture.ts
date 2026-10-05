@@ -20,11 +20,13 @@ import {
   outlineFor,
   statusKey,
 } from '../logic/furniture-diff';
+import { catalogIdOf, reasonKind } from '../logic/furniture-label';
 import type { House } from '../logic/house';
 import type { PlacedPiece, PlacementResult } from '../logic/placement-rules';
 import { setFurniture, type Store } from '../logic/state';
 import { stagingToPieces } from '../logic/staging';
 import type { FurnitureVisuals } from '../ui/furniture-visuals';
+import { setPieceReason } from './piece-reasons';
 
 interface FurnitureContext {
   store: Store;
@@ -57,9 +59,22 @@ export function logPieceStatus(id: string, result: PlacementResult): void {
   slog(formatStatusLine(id, result));
 }
 
+/** Tells the reason labels why piece `id` is not valid (or that it is valid). */
+export function publishReason(id: string, result: PlacementResult, held: boolean): void {
+  const kind = result.status === 'valid' ? null : reasonKind(result.reasons);
+  const catalogId = catalogIdOf(id);
+  const instance = Number(id.slice(id.lastIndexOf('#') + 1));
+  if (kind === null || catalogId === null || !Number.isInteger(instance)) {
+    setPieceReason(id, null);
+    return;
+  }
+  setPieceReason(id, { id, catalogId, instance, kind, withId: result.details.with ?? null, held });
+}
+
 /** Forgets the last status of a piece that is gone (a new piece with the same id logs again). */
 export function forgetPieceStatus(id: string): void {
   lastStatus.delete(id);
+  setPieceReason(id, null);
 }
 
 /** Registers the furniture system. */
@@ -120,7 +135,7 @@ export class FurnitureSystem extends createSystem({}) {
     for (const piece of diff.remove) {
       entities.get(piece.id)?.dispose({ disposeResources: false });
       entities.delete(piece.id);
-      lastStatus.delete(piece.id);
+      forgetPieceStatus(piece.id);
     }
     for (const piece of diff.create) this.createPiece(ctx, piece);
     for (const piece of diff.update) {
@@ -180,10 +195,12 @@ export class FurnitureSystem extends createSystem({}) {
       if (entity.object3D) ctx.visuals.setOutline(entity.object3D, outline);
     }
     logPieceStatus(id, result);
+    publishReason(id, result, false);
   }
 
   private clear(): void {
     for (const entity of entities.values()) entity.dispose({ disposeResources: false });
+    for (const id of entities.keys()) setPieceReason(id, null);
     entities.clear();
     lastStatus.clear();
     this.pieces = [];

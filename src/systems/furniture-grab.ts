@@ -50,7 +50,7 @@ import { stableId } from '../logic/ids';
 import { MAX_PIECES, type PlacedPiece, type PlacementResult } from '../logic/placement-rules';
 import { moveFurniture, placeFurniture, removeFurniture, type Store } from '../logic/state';
 import type { FurnitureVisuals } from '../ui/furniture-visuals';
-import { forgetPieceStatus, getFurnitureEntity, logPieceStatus } from './furniture';
+import { forgetPieceStatus, getFurnitureEntity, logPieceStatus, publishReason } from './furniture';
 import { onMenuItemPick, releaseMenuHand } from './menu-items';
 import { isMiniatureGestureActive } from './miniature-gesture';
 import { onPinchEnd, onPinchStart, pinchClaims, pinchPoint } from './pinch-input';
@@ -266,6 +266,7 @@ export class FurnitureGrabSystem extends createSystem({}) {
   private flushStatus(held: Held): void {
     if (!held.pending) return;
     logPieceStatus(held.id, held.pending);
+    publishReason(held.id, held.pending, true);
     held.pending = null;
   }
 
@@ -445,6 +446,7 @@ export class FurnitureGrabSystem extends createSystem({}) {
       case 'move': {
         this.writeFinalPose(ctx, held, action.pose.x, action.pose.z, action.pose.rotationDeg, action.status);
         ctx.store.dispatch(moveFurniture(held.id, action.pose.x, action.pose.z, action.pose.rotationDeg, action.roomId));
+        publishReason(held.id, ev.result, false); // the piece is placed now, even if the store did not change
         slog(formatPlacedLine(held.id, action.roomId, action.pose, action.status));
         break;
       }
@@ -480,7 +482,10 @@ export class FurnitureGrabSystem extends createSystem({}) {
     const stored = evaluatePiece(ctx.house, piece, ctx.store.get().furniture, ctx.catalog);
     const status = stored && stored.status === 'valid' ? 'valid' : 'invalid';
     this.writeFinalPose(ctx, held, piece.x, piece.z, piece.rotationDeg, status);
-    if (stored) logPieceStatus(piece.id, stored);
+    if (stored) {
+      logPieceStatus(piece.id, stored);
+      publishReason(piece.id, stored, false);
+    }
   }
 
   /** Writes the pose a released model piece ends in (the furniture system writes it too when the store changes). */

@@ -18,3 +18,64 @@ export function formatMeters(meters: number): string {
 export function formatSize(width: number, depth: number, ascii = false): string {
   return `${formatMeters(width)} ${ascii ? 'x' : '×'} ${formatMeters(depth)} m`;
 }
+
+/** What a not valid piece is told, in priority order (D27): the first one that applies is shown. */
+export type ReasonKind = 'blocks-door' | 'overlaps-wall' | 'overlaps-furniture' | 'outside-house';
+
+const REASON_PRIORITY: readonly ReasonKind[] = ['blocks-door', 'overlaps-wall', 'overlaps-furniture', 'outside-house'];
+
+/** The reason to show for a list of placement reasons: `blocks-door` > `overlaps-wall` > `overlaps-furniture` > outside. Null when none applies. */
+export function reasonKind(reasons: readonly string[]): ReasonKind | null {
+  for (const kind of REASON_PRIORITY) if (reasons.includes(kind)) return kind;
+  return null;
+}
+
+const PIECE_ID = /^furniture:([a-z0-9][a-z0-9-]*)#[1-9][0-9]*$/;
+
+/** The catalog id inside a piece id (`furniture:wardrobe#1` -> `wardrobe`), or null. */
+export function catalogIdOf(pieceId: string): string | null {
+  const match = PIECE_ID.exec(pieceId);
+  return match ? match[1] : null;
+}
+
+/** A piece name as written in a sentence: "Wardrobe" -> "wardrobe", "Three-seat sofa" -> "three-seat sofa". */
+export function lowerName(name: string): string {
+  return name.toLowerCase();
+}
+
+/** A not valid piece that may get a reason label. */
+export interface ReasonCandidate {
+  readonly id: string;
+  /** Instance number: a higher one was placed later. */
+  readonly instance: number;
+}
+
+/**
+ * Which pieces get a reason label, at most `max` (D27: the draw calls stay bounded): the piece in the hand
+ * first, then the most recent ones (higher instance number, and the later one in the list on a tie). `pieces`
+ * are the not valid ones only.
+ */
+export function pickReasonLabels(
+  pieces: readonly ReasonCandidate[],
+  heldId: string | null,
+  max = 3,
+): string[] {
+  if (!Number.isFinite(max) || max <= 0) return [];
+  const indexed = pieces.map((piece, index) => ({ piece, index }));
+  indexed.sort((a, b) => {
+    const aHeld = a.piece.id === heldId ? 1 : 0;
+    const bHeld = b.piece.id === heldId ? 1 : 0;
+    if (aHeld !== bHeld) return bHeld - aHeld;
+    if (a.piece.instance !== b.piece.instance) return b.piece.instance - a.piece.instance;
+    return b.index - a.index;
+  });
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const { piece } of indexed) {
+    if (seen.has(piece.id)) continue;
+    seen.add(piece.id);
+    out.push(piece.id);
+    if (out.length >= max) break;
+  }
+  return out;
+}

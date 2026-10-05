@@ -15,6 +15,7 @@ import { buildHouse } from './systems/house-builder';
 import { installLocalControllers } from './systems/local-controllers';
 import { installLocalHands } from './systems/local-hands';
 import { createFurnitureGrab } from './systems/furniture-grab';
+import { createFurnitureReasons } from './systems/furniture-reasons';
 import { createMenuItems } from './systems/menu-items';
 import { createMiniature } from './systems/miniature';
 import { createMiniatureGesture } from './systems/miniature-gesture';
@@ -77,6 +78,7 @@ async function start(): Promise<void> {
       const visuals = new FurnitureVisuals(furnitureItems(catalogResult.items));
       await visuals.preload();
       createFurniture(world, store, result.house, catalogResult.items, visuals, built.entity);
+      createFurnitureReasons(world, catalogResult.items);
       createFurnitureGrab(world, store, result.house, catalogResult.items, visuals, built.entity, miniature.root);
       if (params.furnish !== 'none') {
         applyFurnish(store, result.house, catalogResult.items, params.furnish);
