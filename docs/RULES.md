@@ -32,6 +32,20 @@ Il `contest-reviewer` lo ricontrolla a ogni gate.
 | Policy | Termini Start, Community Standards, Conduct in VR, Developer App Policies e Content Guidelines; fascia 10+, 13+ o 18+ | rileggere prima di registrare voce/dati |
 | Accesso | Gratuito e accessibile ai giudici fino all'annuncio dei vincitori | link pubblico, senza login |
 
+## Regole interne derivate (non dal regolamento)
+
+- **glTF senza compressione Draco e senza texture KTX2.** I decoder di `@iwsdk/core` vengono da
+  `unpkg.com/three@0.<rev>.0` e non esiste un'opzione supportata per percorsi locali. Il nucleo
+  non deve dipendere da servizi esterni (regola 10 di `CLAUDE.md`). Vale per `asset-curator`.
+- **Host esterni noti nel bundle di produzione** (default di `@iwsdk/core` / `@iwsdk/xr-input`,
+  verificato su `@iwsdk/core` 1.0.1, nessuna opzione per cambiarli):
+  `unpkg.com` (decoder Draco/KTX2, scatta solo caricando un glTF compresso, vietato sopra) e
+  `cdn.jsdelivr.net` (profili e modelli dei controller, scatta solo se il visore ha controller
+  collegati; l'app è hands-first e funziona senza) e `api.dicebear.com` (immagine casuale di
+  default del componente Avatar di `@pmndrs/uikit-horizon`: **non usare mai Avatar senza `src`**).
+  Da ricontrollare a ogni aggiornamento di IWSDK;
+  sul visore va verificato che non partano richieste (`qa/device/DEBT.md`).
+
 ## Consegna
 
 - Link alla pagina ospitata (GitHub Pages o simili).

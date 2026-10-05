@@ -25,8 +25,12 @@ Sei il curatore degli asset di Soglia. Rispondi in italiano; nomi di file e meta
 3. Ispeziona e ottimizza con glTF Transform:
    `npx @gltf-transform/cli inspect <file>.glb`
    poi riduci texture (≤ 1024 px, meglio 512 per i mobili), unisci mesh e materiali, rimuovi dati
-   inutili. Usa compressioni (meshopt, KTX2, Draco) **solo** se il caricatore di IWSDK del progetto
-   le supporta: verifica prima nel codice o nella documentazione; nel dubbio non comprimere.
+   inutili. **Regola: glTF senza compressione Draco e senza texture KTX2.** Il caricatore di IWSDK
+   scarica i decoder da `unpkg.com` e il framework non espone un'opzione per cambiare percorso
+   (`AssetManager.init` è chiamato senza parametri): un modello Draco/KTX2 farebbe una richiesta
+   a un servizio esterno (regola 10). Usa texture PNG/JPEG ≤ 1024 px; meshopt solo se verificato
+   che non richiede decoder esterni; nel dubbio non comprimere. Dopo `gltf-transform` controlla
+   che `extensionsUsed` non contenga `KHR_draco_mesh_compression` né `KHR_texture_basisu`.
 4. **Scala e orientamento**: il modello deve avere le dimensioni reali della voce di catalogo
    (`size` in metri, tolleranza 2 cm), origine a terra al centro, fronte verso −z. Se non coincide,
    correggi il modello o aggiorna `size` spiegando perché.
