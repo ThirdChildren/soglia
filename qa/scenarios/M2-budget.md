@@ -1,7 +1,7 @@
 # S2.8 · Budget grafico con 14 arredi (preset di prova)
 
 **Milestone**: M2 · **Tipo**: PC (emulatore IWER via MCP `iwsdk-runtime`); gli fps sono **solo informativi**
-Prerequisiti di implementazione: T2.5 (preset valido), T2.9, T2.14/T2.15 per il caso peggiore, T2.18 (vedi `docs/plans/M2.md`, D16, D20, D23). Estende `qa/scenarios/M1-budget.md`: valgono le stesse regole di lettura (`callsPerView = calls / views`, `triangles` = totale delle due viste).
+Prerequisiti di implementazione: T2.5 (preset valido **dopo la correzione dei dati approvata dall'utente**, D26), T2.9, T2.9b e T2.14/T2.15 per il caso peggiore, T2.18 (vedi `docs/plans/M2.md`, D16, D20, D23, D26, D27). Estende `qa/scenarios/M1-budget.md`: valgono le stesse regole di lettura (`callsPerView = calls / views`, `triangles` = totale delle due viste).
 
 ## Precondizioni
 - Esecuzioni consecutive, cambiando `dev-params.local.txt` e facendo `browser_reload_page` tra l'una e l'altra:
@@ -9,20 +9,20 @@ Prerequisiti di implementazione: T2.5 (preset valido), T2.9, T2.14/T2.15 per il 
   - **Esecuzione 2**: `house=apartment-b&role=visitor&reset=1&seed=1&debug=1&furnish=scandinavian`
   - **Esecuzione 3** (riferimento senza arredi): `house=apartment-a&role=visitor&reset=1&seed=1&debug=1`
 - Per ciascuna: `xr_accept_session`, `xr_set_input_mode` con `mode: "hand"`, attesa 7 s; testa a (0; 1,6; 0).
-- Il preset `staging.scandinavian` di `apartment-a.json` ha 14 pezzi: `sofa-3seat` ×1, `coffee-table` ×1, `table-dining` ×1, `chair` ×4, `bed-double` ×1, `nightstand` ×2, `wardrobe` ×1, `desk` ×1, `bookcase` ×1, `plant` ×1. `apartment-b.json` non ha `staging`.
+- Il preset `staging.scandinavian` di `apartment-a.json` ha 14 pezzi, **tutti validi con le regole di D16** dopo la correzione di T2.5 (libreria `bookcase` a x = 10,69 e divano `sofa-3seat` a z = 3,10, o i valori minimi scelti dal test; il report cita i valori reali trovati nel file): `sofa-3seat` ×1, `coffee-table` ×1, `table-dining` ×1, `chair` ×4, `bed-double` ×1, `nightstand` ×2, `wardrobe` ×1, `desk` ×1, `bookcase` ×1, `plant` ×1. `apartment-b.json` non ha `staging`.
 
 ## Passi
 1. Esecuzione 1: `browser_get_console_logs` con `pattern: "furnish|catalog|soglia:stats"`, `count: 30`; `ecs_find_entities` con `namePattern: "^furniture:"`.
 2. `scene_get_render_stats` (annotare `calls`, `triangles`, `geometries`, `textures`, `programs`, `meshCount`, `shadowCasters`).
 3. `browser_profile` con `action: "start"`, `mode: "rendering"`, `maxDurationMs: 5000`; attesa 5 s; `action: "stop"` (informativo).
-4. **Caso peggiore**: zoom massimo (fase C di `qa/scenarios/M1-two-hands.md`, passo 10, scala 0,12), poi menu aperto (`hand-left` a `L_MENU` con `Q_UP`) e un pezzo in mano in posa non valida (presa di `ui:menu-item-armchair`, `xr_animate_to` sopra `furniture:bed-double#1`, **senza rilasciare**), attesa 3 s; `browser_get_console_logs` con `pattern: "soglia:stats"`, `count: 10`; `scene_get_render_stats`. Poi rilascio fuori dal plastico (il pezzo rientra).
+4. **Caso peggiore**: zoom massimo (fase C di `qa/scenarios/M1-two-hands.md`, passo 10, scala 0,12), poi menu aperto (`hand-left` a `L_MENU` con `Q_UP`) e un pezzo in mano in posa non valida (presa di `ui:menu-item-armchair`, `xr_animate_to` sopra `furniture:bed-double#1`, **senza rilasciare**; compare l'etichetta del motivo `ui:reason-armchair#1`, D27), attesa 3 s; `browser_get_console_logs` con `pattern: "soglia:stats"`, `count: 10`; `scene_get_render_stats`. Poi rilascio fuori dal plastico (il pezzo rientra).
 5. Esecuzione 2: attesa 7 s, `browser_get_console_logs` con `pattern: "furnish|soglia:stats"`; `ecs_find_entities` con `^furniture:`.
 6. Esecuzione 3: attesa 7 s, `browser_get_console_logs` con `pattern: "soglia:stats"`, `count: 10` (riferimento).
 7. Per ogni esecuzione: `browser_get_console_logs` con `pattern: "budget exceeded|framework:|Missing glyph|uncaught|unhandled"` e senza filtro (cercare `error`). Annotare la riga `[soglia] font ready …` se esiste.
 8. Dopo l'esecuzione 1: `browser_screenshot` (casa arredata, testa puntata sul plastico con `xr_look_at` verso O).
 
 ## Verifiche (tutte obbligatorie)
-1. Esecuzione 1: riga `[soglia] furnish applied style=scandinavian pieces=14 invalid=0`; esattamente **14** entità `furniture:*` con id `furniture:sofa-3seat#1`, `coffee-table#1`, `table-dining#1`, `chair#1`–`#4`, `bed-double#1`, `nightstand#1`–`#2`, `wardrobe#1`, `desk#1`, `bookcase#1`, `plant#1`.
+1. Esecuzione 1: riga `[soglia] furnish applied style=scandinavian pieces=14 invalid=0`; esattamente **14** entità `furniture:*` con id `furniture:sofa-3seat#1`, `coffee-table#1`, `table-dining#1`, `chair#1`–`#4`, `bed-double#1`, `nightstand#1`–`#2`, `wardrobe#1`, `desk#1`, `bookcase#1`, `plant#1`; tutti con `Furniture.status` = `valid` e `reasons` = `-` (`ecs_query_entity` su ciascuno, o l'assenza di righe `furniture status … invalid` nel log) e **nessuna** entità `ui:reason-*`; il divano ha `z` ≈ 3,10 (≤ 3,19) e la libreria `x` ≈ 10,69 (≤ 10,70), letti da `ecs_query_entity` su `furniture:sofa-3seat#1` e `furniture:bookcase#1` con `["Furniture"]` (con i dati originali 3,42 e 10,8 la riga `furnish applied` avrebbe `invalid=2`).
 2. Esecuzione 2 (casa B): `[soglia] furnish: no staging in apartment-b` (livello `warn`), **0** entità `furniture:*`, nessun `error`, nessun pannello d'errore.
 3. **Budget (decide l'esito)**, sull'ultima riga `[soglia:stats]` di ogni esecuzione e del caso peggiore: `callsPerView` ≤ 100 e `triangles` ≤ 150.000.
 4. **Obiettivo interno di M2** (AVVISO se superato, non decide): `callsPerView` ≤ 70 e `triangles` ≤ 60.000 con i 14 pezzi; nel report anche la differenza rispetto all'esecuzione 3 (baseline M1: `callsPerView` ≈ 35, `triangles` ≈ 21,6k).
@@ -36,4 +36,7 @@ Prerequisiti di implementazione: T2.5 (preset valido), T2.9, T2.14/T2.15 per il 
 PASS se le verifiche 1, 2, 3, 5, 6 sono soddisfatte per le esecuzioni 1 e 2 · FAIL altrimenti. Gli avvisi della verifica 4 non fanno fallire ma vanno in `qa/device/DEBT.md` come "misurare sul Quest".
 
 ## Da rimandare al visore
-fps reali ≥ 60 sul Quest con 14 pezzi, il menu aperto e un pezzo in mano; draw call e triangoli reali (debug remoto); costo dei pannelli del menu (voci M2 in `qa/device/DEBT.md`).
+fps reali ≥ 60 sul Quest con 14 pezzi, il menu aperto e un pezzo in mano; draw call e triangoli reali (debug remoto); costo dei pannelli del menu e dell'etichetta del motivo (voci M2 in `qa/device/DEBT.md`).
+
+## Changelog
+- 2026-10-05: (1) la verifica 1 controlla anche che i 14 pezzi siano tutti `valid` e che divano e libreria abbiano le posizioni **corrette** (z ≤ 3,19 e x ≤ 10,70; dati originali 3,42 e 10,8) — motivo: decisione dell'utente 5 (correzione dello staging approvata, il test del preset deve fallire per pezzi fuori dalla stanza, nei muri o nei vani delle porte); (2) il caso peggiore include l'etichetta del motivo (D27, un pannello UIKit in più) — motivo: decisione dell'utente 7.

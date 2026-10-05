@@ -14,7 +14,7 @@ Legenda stato: ⬜ da fare · 🟨 in corso · ✅ PC-done · 🟩 Device-done
 |---|---|---|
 | M0 Setup e strumenti | 30 set – 1 ott | ✅ PC-done (piano: `docs/plans/M0.md`) |
 | M1 Casa e plastico | 2 – 7 ott | ✅ PC-done 2026-10-05 (piano: `docs/plans/M1.md`; report: `qa/reports/M1-2026-10-05-rerun.md`; gate visore in debito) |
-| M2 Arredare con le mani | 8 – 14 ott | 🟨 piano consegnato 2026-10-05 (`docs/plans/M2.md`; scenari `qa/scenarios/M2-*.md`) |
+| M2 Arredare con le mani | 8 – 14 ott | 🟨 piano consegnato e aggiornato con le decisioni dell'utente 2026-10-05 (`docs/plans/M2.md`; scenari `qa/scenarios/M2-*.md`); **PC-done previsto entro l'11 ott** |
 | M3 Dentro la casa e i miei mobili | 15 – 21 ott | ⬜ |
 | M4 Segnalazioni e persistenza | 22 – 28 ott | ⬜ |
 | M5 Luce, agente, accessibilità, realtà mista | 29 ott – 4 nov | ⬜ |
@@ -78,25 +78,30 @@ etichette, pizzico a due mani affidabile, fps ≥ 60.
 - Catalogo da `public/catalog/catalog.json`; modelli CC0 dall'`asset-curator`.
 - Presa (IWSDK), aggancio al pavimento e alle pareti, rotazione a scatti di 90° col polso,
   contorno rosso se collide o blocca una porta, verde se valido.
-- Annulla dal menu; un mobile lasciato fuori dal plastico torna nel catalogo.
-- **T2.1 (primo task)**: verifica dei glifi del font dei pannelli (`² · × ° − ± → ≈`; controllo statico: solo `°` c'è) e scelta di come averli (atlante MSDF esteso da Inter OFL oppure ASCII definitivo); l'opzione A richiede l'ok dell'utente (seconda eccezione di licenza). Dopo T2.2 l'etichetta della stanza (S1.3) torna a `<name> · <area> m²`.
-- **T2.17 (condizionale, decisione dell'utente)**: trascinare il plastico con le due mani (punto medio come perno, limiti 0,30 m, quota bloccata, "Recenter"); oggi il plastico non si sposta mai. Valutazione costo/beneficio nel piano.
-- Il catalogo di M2 mostra solo i 14 `furniture`; i `mobility` (sedia a rotelle, passeggino) entrano in M3.
+- Annulla dal menu; un mobile lasciato fuori dal plastico torna nel catalogo. Un pezzo non valido **resta nel plastico** con la cornice rossa e un'etichetta breve (in inglese) che ne spiega il motivo (T2.9b).
+- **T2.0b (spike, 30 min)**: modelli dei controller sostituiti da una forma locale col metodo `AnimatedHand`, senza toccare `node_modules`; se non fattibile, voce in `qa/device/DEBT.md`.
+- **T2.1 (primo task di interfaccia)**: verifica dei glifi del font dei pannelli (`² · × ° − ± → ≈`; controllo statico: solo `°` c'è) e spike di 45 min sull'**opzione A** (atlante MSDF esteso da Inter OFL: l'ok dell'utente e la seconda eccezione di licenza in `docs/RULES.md` sono già dati); se lo spike non riesce, **opzione D** (ASCII definitivo) senza altre domande. Dopo T2.2 (opzione A) l'etichetta della stanza (S1.3) torna a `<name> · <area> m²`.
+- **T2.17a/b (obbligatorio, decisione dell'utente)**: spostare il plastico con le **due mani** (punto medio come perno) e con **una mano** (pizzico sulla base libera, mai su una stanza o un pezzo), limite 0,30 m dall'ancora, quota bloccata, "Recenter" (`ui:menu-recenter`) nel menu; priorità dei pizzichi menu > mobile > due mani > traslazione > stanza. Oggi il plastico non si sposta mai.
+- **T2.16 (suggerimento, non onboarding)**: un piccolo indizio ("Palm up for the menu") resta visibile finché il menu del palmo non è stato aperto la prima volta; l'**onboarding completo del menu passa a M5**; l'onboarding di M1 (S1.6) non cambia.
+- Icone `@pmndrs/uikit-lucide` ammesse come libreria nel bundle, sempre con etichetta di testo, citate in `CREDITS.md` (Libraries).
+- Il catalogo di M2 mostra solo i 14 `furniture` (tetto `MAX_PIECES = 40`); i `mobility` (sedia a rotelle, passeggino) entrano in M3.
+- Correzione dello staging di `apartment-a.json` approvata (libreria x 10,8 → 10,69; divano z 3,42 → 3,10): il test del preset deve fallire se un pezzo esce dalla stanza, entra in un muro o occupa il vano di una porta.
 
 | Scenario PC | Verifica |
 |---|---|
 | S2.0 Glifi del font | `glyphs=1` → audit a schermo dei caratteri (parte A); dopo T2.2 nessun `Missing glyph info` e l'etichetta `Living room & kitchen · 23.9 m²` (parte B) (aggiunto dal piano M2) |
 | S2.1 Menu del palmo | mano sinistra con palmo in su → `ui:palm-menu` visibile; stesso con la destra; 6 voci per pagina, 3 pagine |
 | S2.2 Posa il letto | pizzico su `bed-double`, trascina in camera, rilascia → entità dentro `bedroom`, appoggiata a una parete |
-| S2.3 Collisione | spingi il letto contro l'armadio → stato `invalid`, contorno rosso; spostalo → `valid` |
+| S2.3 Collisione | spingi il letto contro l'armadio → stato `invalid`, contorno rosso **e etichetta "Overlaps the wardrobe"**; spostalo → `valid`, etichetta sparita |
 | S2.4 Annulla | "Undo" → l'ultima azione sparisce dallo store |
 | S2.5 Rotazione a scatti | polso o tocco con l'altra mano → 0 → 90 → 180 → 270, impronta e aggancio ricalcolati (aggiunto dal piano M2) |
 | S2.6 Porta bloccata | poltrona davanti a `door:d-bedroom` → `invalid` con motivo `blocks-door`, valida accanto alla porta (aggiunto dal piano M2) |
 | S2.7 Rientro nel catalogo | rilascio fuori dalla casa → `furniture returned`, nessuna entità; annulla ripristina lo stesso id (aggiunto dal piano M2) |
 | S2.8 Budget con arredi | `furnish=scandinavian&debug=1` → 14 pezzi, `callsPerView` ≤ 100, triangoli ≤ 150.000, texture dell'app ≤ 4 (aggiunto dal piano M2) |
-| S2.9 Trascina il plastico | **condizionale (T2.17)**: traslazione a due mani con limite 0,30 m, quota invariata, "Recenter" (aggiunto dal piano M2) |
+| S2.9 Sposta il plastico | **obbligatorio (T2.17a/b)**: traslazione a due mani **e a una mano** (pizzico sulla base), limite 0,30 m, quota invariata, "Recenter", nessun conflitto con presa dei pezzi e selezione delle stanze (aggiunto dal piano M2) |
 
-**Unit test**: snap alle pareti, collisioni tra rettangoli ruotati, porta bloccata, rotazione a scatti, store con annulla, catalogo, arbitraggio dei pizzichi, rilevamento del palmo, guardia dei glifi.
+**Unit test**: snap alle pareti, collisioni tra rettangoli ruotati, porta bloccata, rotazione a scatti, store con annulla, catalogo, arbitraggio dei pizzichi, rilevamento del palmo, guardia dei glifi, traslazione del plastico (clamp, zone di pizzico disgiunte), preset di arredo valido, etichette dei motivi.
+**Calendario**: PC-done entro l'**11 ottobre 2026** (cuscinetto 12–14 ott). Ordine di esecuzione e stime in `docs/plans/M2.md`.
 **Gate visore**: presa naturale, niente tremolii, rotazione col polso affidabile, palmo in su affidabile.
 
 ## M3 · Dentro la casa e i miei mobili
@@ -153,12 +158,17 @@ microfono nel Quest Browser (se c'è), ripresa dopo aver tolto il visore.
   etichetta "Sample data", domande ricevute.
 - Confronto di due disposizioni e di due case.
 - Accessibilità: modalità una mano, alto contrasto, testo grande.
+- **Onboarding completo del menu del palmo** (rimandato da M2/T2.16, dove resta solo un suggerimento): insegnare il palmo in su e la presa dal catalogo, con testo minimo in inglese; qui si sceglie anche il menu **ancorato** per la modalità a una mano (inclusi Undo e Recenter a una mano).
 - **T1.15 · Zoom e rotazione del plastico con una mano** (alternativa ai gesti a due mani di M1,
   che oggi sono l'unico modo per ruotare e ingrandire; regola 9). Proposta del piano M1: pizzico
   trascinato con una mano sul plastico = rotazione attorno a Y; due pulsanti piccoli sul bordo
   della base per zoom ± (pannello a 0,5–0,8 m); soglia tra "tocco" (etichetta stanza) e
   "trascinamento" 1,5 cm. Lo scenario S5.4 va esteso a S1.2 (oltre a S2–S4) quando si pianifica M5.
   In M1 l'onboarding si sblocca già con una mano (selezione di una stanza o timeout).
+  **Nota (decisione M2 del 2026-10-05)**: la *traslazione* a una mano esiste già dall'M2 e usa il
+  pizzico sulla **base libera** del plastico; la rotazione e lo zoom a una mano non devono usare
+  quella zona (usare i pulsanti sul bordo e/o il pizzico trascinato su una stanza, con
+  l'arbitraggio dei pizzichi dell'M2).
 - **Realtà mista (dietro flag `?mr=1`)**: misura dei mobili veri con il pizzico sugli spigoli e
   plastico appoggiato su una superficie rilevata. Sul PC si prova con l'ambiente sintetico
   dell'emulatore; entra nella demo solo se supera il gate visore in **due stanze diverse**.

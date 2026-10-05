@@ -26,7 +26,7 @@ Prerequisiti di implementazione: T2.3, T2.5, T2.6, T2.7, T2.9, T2.10 – T2.13 (
 3. Passo 4 (in volo, mano sopra il plastico): `Furniture.status` = `valid`, `outline` = `green`, `phase` = `held`; **non** esiste nessuna riga `miniature gesture start` (un solo pizzico, e il suo proprietario è il mobile) né `room selected`.
 4. Passo 5: riga `[soglia] furniture placed furniture:bed-double#1 room=bedroom x=6.80 z=1.13 rot=0 status=valid` (x = 6,80 ± 0,01; **z = 1,125 ± 0,01**: il lato nord del letto è a filo con la faccia interna del muro nord, 0,125 m); `Furniture.phase` = `placed`, `status` = `valid`, `outline` = `none`, `roomId` = `bedroom`; `Transform` locale (se riportato come locale) ≈ (6,8; 0; 1,125).
 5. Passo 5, store (`[soglia:state]`): `furniture` ha **1** elemento con `id` `furniture:bed-double#1`, `catalogId` `bed-double`, `x` 6,8 ± 0,01, `z` 1,125 ± 0,01, `rotationDeg` 0, `roomId` `bedroom`; `nextInstance` `{"bed-double":2}`; `historyLength` 1; `miniature.scale` 0,05 e `yawDeg` 0 (non toccati).
-6. Nessuna riga `room selected` / `room deselected` in tutto lo scenario (il pizzico che ha preso il pezzo non ha selezionato la stanza).
+6. Nessuna riga `room selected` / `room deselected` in tutto lo scenario (il pizzico che ha preso il pezzo non ha selezionato la stanza) e **nessuna** riga `pan start` né `miniature translated` (il pizzico che ha preso il pezzo non ha mosso il plastico: priorità mobile > `pan`, D15/D28); `miniature.offset` resta `[0,0]` nello stato.
 7. Nessuna voce `error`; nessun `Missing glyph info`.
 8. Screenshot dei passi 4 e 6 allegati; il report descrive a parole: letto in mano con cornice verde (passo 4) e letto appoggiato al muro nord senza cornice (passo 6).
 
@@ -35,3 +35,6 @@ PASS se le verifiche 1–7 sono soddisfatte · FAIL altrimenti. Se la presa non 
 
 ## Da rimandare al visore
 Presa naturale con la mano vera, tremolii nel trasporto, comodità dell'aggancio al muro (0,30 m) a scala 1:20, visibilità della cornice verde a 0,5–0,8 m (voci M2 in `qa/device/DEBT.md`).
+
+## Changelog
+- 2026-10-05: verifica 6 estesa: nessuna riga `pan start` né `miniature translated` e `miniature.offset` invariato — motivo: decisione dell'utente 2 (la traslazione del plastico, anche a una mano, non deve entrare in conflitto con la presa dei mobili; arbitraggio D15/D28).
