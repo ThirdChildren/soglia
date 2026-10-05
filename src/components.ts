@@ -1,11 +1,5 @@
-/**
- * Copyright (c) Meta Platforms, Inc. and affiliates.
- *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
- */
-
 import { defineComponents } from '@iwsdk/core';
-import { Robot } from './robot-component.js';
 
-export default defineComponents([Robot]);
+// Component declarations live in system-free modules and are listed here so
+// the editor can author them.
+export default defineComponents([]);

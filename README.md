@@ -1,26 +1,39 @@
-# IWSDK App
+# Soglia
 
-This project uses `iwsdk.config.json` for declarative scene, asset, component,
-XR, and emulator configuration. Application systems remain explicit in
-`src/index.ts`.
+A hands-first WebXR app built with the Immersive Web SDK (IWSDK). A listed home becomes a
+1:20 tabletop model you use with your hands only: choose, present and live in the home.
+
+Status: early development (milestone M0, clean base).
+
+## Requirements
+
+- Node 22.12+ (see `.nvmrc`)
+- A Chromium browser for the managed dev session
+
+## Commands
 
 ```sh
-npm install
-npm run dev
+npm ci
+npm run dev          # managed dev server with a visible browser window
+npm run dev:agent    # managed runtime, headless (for AI agents / MCP)
+npm run dev:collab   # managed runtime, visible window shared with the user
+npm run dev:down     # stop the managed runtime
+npm run typecheck    # app and tests
+npm test             # Vitest, pure logic and data files
+npm run build        # production build in dist/
 ```
 
-Use the Runtime and Editor controls in the managed browser to switch between
-the running experience and its authored scene.
+`iwsdk.config.json` is the project authority for the scene, assets, components and XR
+features. `vite.config.ts` only wires the IWSDK plugin. Vitest uses its own
+`vitest.config.ts` and never starts the dev server.
 
-## Starter content
+## Project layout
 
-The robot and welcome panel are small examples of authored scene content plus
-runtime systems. The robot turns toward the player's head and plays a sound
-when pressed. To remove the robot, delete its scene node, its `RobotSystem`
-registration from `src/index.ts` or `src/index.js`, and its `Robot` registration
-from `src/components.ts` or `src/components.js`; you can then delete the unused
-robot component and system files. To remove the welcome panel, delete its scene
-node and its `PanelSystem` registration from the application entry point.
+- `src/` app code (`logic/` is pure and testable, no `@iwsdk/core` or `three` imports)
+- `public/houses/`, `public/catalog/`, `public/demo/` data files described in `docs/DATA_FORMATS.md`
+- `schemas/` JSON Schemas for the data files
+- `tests/unit/` Vitest tests
 
-- Minimal scene walkthrough: https://iwsdk.dev/guides/01b-minimal-scene.html
-- XR-enabled projects — IWER emulator controls: https://iwsdk.dev/guides/02-testing-experience.html#iwer-controls
+## Credits
+
+See `CREDITS.md`. Only CC0 / public-domain assets and assets created by the project are used.
