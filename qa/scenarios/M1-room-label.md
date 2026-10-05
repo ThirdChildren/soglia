@@ -10,11 +10,13 @@ Prerequisiti di implementazione: T1.4, T1.8, T1.9, T1.10 (vedi `docs/plans/M1.md
 
   | Stanza | `dx` | `dz` | Etichetta attesa (esatta) | Riga di log attesa |
   |---|---|---|---|---|
-  | `living` | −0,145 | −0,065 | `Living room & kitchen · 23.9 m²` | `room selected living area=23.9` |
-  | `bedroom` | +0,065 | −0,065 | `Bedroom · 14.7 m²` | `room selected bedroom area=14.7` |
-  | `study` | +0,210 | −0,065 | `Study · 12.0 m²` | `room selected study area=12.0` |
-  | `bathroom` | −0,210 | +0,115 | `Bathroom · 6.8 m²` | `room selected bathroom area=6.8` |
-  | `hall` | +0,065 | +0,090 | `Hallway · 13.4 m²` | `room selected hall area=13.4` |
+  | `living` | −0,145 | −0,065 | `Living room & kitchen: 23.9 m2` | `room selected living area=23.9` |
+  | `bedroom` | +0,065 | −0,065 | `Bedroom: 14.7 m2` | `room selected bedroom area=14.7` |
+  | `study` | +0,210 | −0,065 | `Study: 12.0 m2` | `room selected study area=12.0` |
+  | `bathroom` | −0,210 | +0,115 | `Bathroom: 6.8 m2` | `room selected bathroom area=6.8` |
+  | `hall` | +0,065 | +0,090 | `Hallway: 13.4 m2` | `room selected hall area=13.4` |
+
+  (Forma ASCII `<name>: <area> m2`: il font Inter MSDF del pannello non ha i glifi `·` e `²`. Per la casa B, con lo stesso formato, il soggiorno è `Living room & kitchen: 20.2 m2`.)
 
   (calcolo: `d = (centro_stanza − (5,5; 3,6)) × 0,05`; le aree sono 23,92 / 14,72 / 11,96 / 6,76 / 13,44 m².)
 - Mano usata: destra. Per ogni stanza: `hand-right` a **(Cx; Oy + 0,25; Cz + 0,02)** (quasi sopra il centro, il raggio scende quasi verticale e non attraversa muri), poi `xr_look_at` con `device: "hand-right"` e `target: C`.
@@ -30,7 +32,7 @@ Prerequisiti di implementazione: T1.4, T1.8, T1.9, T1.10 (vedi `docs/plans/M1.md
 8. `browser_get_console_logs` senza filtro (cercare `error`).
 
 ## Verifiche (tutte obbligatorie)
-1. Passo 2: la riga `[soglia] room selected living area=23.9` e **dopo** di essa `[soglia] label shown "Living room & kitchen · 23.9 m²"` (testo esattamente uguale, compresi `·` e `²`).
+1. Passo 2: la riga `[soglia] room selected living area=23.9` e **dopo** di essa `[soglia] label shown "Living room & kitchen: 23.9 m2"` (testo esattamente uguale, in ASCII: `: ` e `m2`).
 2. Passo 3: esattamente **1** entità `ui:room-label`.
 3. Passo 5: per ogni stanza la riga `room selected <id> area=<x>` e la riga `label shown "<testo>"` della tabella; al cambio di stanza l'entità `ui:room-label` resta **una sola** (il pannello è riutilizzato).
 4. Passo 6: compare `[soglia] room deselected hall` e nessuna nuova `label shown`.
@@ -45,3 +47,6 @@ PASS se le verifiche 1–8 sono soddisfatte · FAIL altrimenti. Se `xr_select` n
 
 ## Da rimandare al visore
 Dimensione e leggibilità del testo a 0,5–0,8 m, presenza dei glifi `·` e `²` nel font su schermo reale, pizzico che seleziona la stanza giusta con la mano reale e non con una vicina (voci M1 in `qa/device/DEBT.md`).
+
+## Changelog
+- 2026-10-05: testo atteso dell'etichetta portato alla forma ASCII attuale `<name>: <area> m2` (tabella, verifica 1; aggiunta la nota per la casa B `Living room & kitchen: 20.2 m2`) — motivo: il font Inter MSDF del pannello non ha i glifi `·` (U+00B7) né `²` (U+00B2) (F1 del report `qa/reports/M1-2026-10-05.md`). Obiettivo futuro invariato: il testo Unicode `<name> · <area> m²` resta quello desiderato; un task del piano M2 verificherà quali glifi sono disponibili e come ottenerli, e a quel punto lo scenario tornerà alla forma Unicode.

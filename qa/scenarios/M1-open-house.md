@@ -25,6 +25,10 @@ Prerequisiti di implementazione: T1.1, T1.2, T1.5, T1.6, T1.8, T1.9 (vedi `docs/
 6. `scene_get_runtime_hierarchy` con `maxDepth: 8`: ricavare gli UUID di `house:apartment-a` e `room:living`; poi `scene_get_object_transform` per ciascuno (posizione e scala globali).
 7. `browser_screenshot` (sessione attiva) → allegare.
 8. `browser_get_console_logs` senza filtro, `count: 200` (cercare `error`).
+9. Mani locali (verifica 7). Dopo `xr_set_input_mode` `mode: "hand"` e almeno 3 s di sessione, eseguire nel browser una sonda **temporanea** (non va committata; usare lo strumento `browser_*` che valuta uno script, nome da verificare tra quelli disponibili) che restituisce:
+   - tutte le richieste di risorse **esterne**: `performance.getEntriesByType('resource').filter(e => !e.name.startsWith(location.origin)).map(e => e.name)`. **Non** filtrare i nomi con `/@` o simili: in una prova precedente ha nascosto l'URL;
+   - le richieste locali dei modelli delle mani: le voci con `name` che contiene `/models/hands/` (attese `https://localhost:8081/models/hands/left.glb` e `.../right.glb`, sorgente `src/systems/local-hands.ts`, file in `public/models/hands/`), con `responseStatus` (200) o, se non disponibile, `transferSize`/`decodedBodySize` > 0.
+10. `browser_screenshot` in sessione con `hand-left` e `hand-right` portate davanti alla testa (es. a (∓0,15; Oy + 0,05; Oz + 0,30)): gli **outline bianchi delle mani** sono visibili (dopo `xr_set_input_mode` `hand` appaiono negli screenshot). `browser_get_console_logs` con `pattern: "xr-input|Failed to load"`.
 
 ## Verifiche (tutte obbligatorie)
 1. Passo 1 contiene, in quest'ordine:
@@ -45,8 +49,18 @@ Prerequisiti di implementazione: T1.1, T1.2, T1.5, T1.6, T1.8, T1.9 (vedi `docs/
 5. Passo 8: nessuna voce di livello `error`; nessun `[soglia] house invalid`; nessun `[soglia] house not found`.
 6. Screenshot allegato; il report descrive a parole: plastico visibile davanti alla testa, pavimenti di due colori distinti (legno e piastrelle), muri bassi con varchi per le porte.
 
+7. **Mani locali, nessuna richiesta CDN per le mani** (passi 9–10), in sessione XR a sole mani:
+   a. Le mani sono visibili: lo screenshot del passo 10 mostra gli outline bianchi di entrambe le mani (descrizione a parole nel report).
+   b. I modelli delle mani sono serviti dal progetto: la sonda trova le richieste `https://localhost:8081/models/hands/left.glb` e `https://localhost:8081/models/hands/right.glb` con esito 200 (o corpo non vuoto).
+   c. **Nessuna** richiesta esterna (`!startsWith(location.origin)`) contiene `generic-hand` né riguarda le mani; nessuna richiesta a `cdn.jsdelivr.net` per le mani. Se compaiono altre richieste esterne, elencarle nel report con il loro URL (non decidono l'esito).
+   d. Nessuna riga `[xr-input] Failed to load visual asset` in console (nessuna voce `error`/`warn` con `Failed to load` legata ai modelli delle mani).
+   **Limite noto (da riportare nel report):** nell'emulatore IWER la sessione parte con i **controller connessi** e la richiesta ai modelli dei controller (`meta-quest-touch-plus/left.glb` e `.../right.glb` da `cdn.jsdelivr.net`) parte comunque all'avvio della sessione: `xr_set_connected` richiede una sessione già attiva, quindi i controller non si possono disconnettere prima. Quelle due richieste sono **ATTESE**: vanno solo registrate nel report (URL ed esito), **non** sono un fallimento. Il criterio riguarda `generic-hand` / le mani. Se il passo 9 o 10 non si può eseguire sul PC, il report lo indica come debito per il visore invece di dare un esito.
+
 ## Esito
-PASS se le verifiche 1–5 sono tutte soddisfatte e lo screenshot è allegato · FAIL altrimenti, con atteso vs ottenuto e le righe di log rilevanti.
+PASS se le verifiche 1–5 e 7 sono tutte soddisfatte e lo screenshot è allegato · FAIL altrimenti, con atteso vs ottenuto e le righe di log rilevanti.
 
 ## Da rimandare al visore
-Altezza e distanza del plastico comode da seduti; spazio di riferimento reale del Quest; leggibilità dei colori; fps reali (voci M1 in `qa/device/DEBT.md`).
+Altezza e distanza del plastico comode da seduti; spazio di riferimento reale del Quest; leggibilità dei colori; fps reali (voci M1 in `qa/device/DEBT.md`). Mani locali (verifica 7): sul Quest reale, senza controller connessi, **nessuna** richiesta a `cdn.jsdelivr.net` (nemmeno per i controller) e mani visibili e tracciate; sul PC non è provabile per il limite noto di IWER (da segnalare come debito, senza modificare `qa/device/DEBT.md` da qui).
+
+## Changelog
+- 2026-10-05: aggiunta la verifica 7 (passi 9–10) in questo scenario: in sessione XR a sole mani le mani sono visibili e nessuna richiesta di rete va a `cdn.jsdelivr.net` per le mani (glb locali `https://localhost:8081/models/hands/left.glb` e `right.glb`; `src/systems/local-hands.ts`, `public/models/hands/`); sonda temporanea con `performance.getEntriesByType('resource')` filtrando solo `!startsWith(location.origin)` (mai con `/@`), nessun `[xr-input] Failed to load visual asset`, limite noto IWER sulle richieste ai modelli dei controller da CDN (attese, solo registrate); l'Esito include ora la 7 — motivo: scelto S1.1 perché è lo scenario che già apre la sessione con `xr_accept_session` + `xr_set_input_mode hand` sulla casa A e controlla l'avvio dell'app; nasce dalla nuova funzione `local-hands` (mani offline, regola CLAUDE.md "demo senza backend" e prestazioni/avvio rapido).
