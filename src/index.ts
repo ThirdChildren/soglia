@@ -9,6 +9,7 @@ import { createInitialState, createStore, setMiniature } from './logic/state';
 import { buildHouse } from './systems/house-builder';
 import { createMiniature } from './systems/miniature';
 import { createMiniatureGesture } from './systems/miniature-gesture';
+import { createOnboarding } from './systems/onboarding';
 import { createRoomLabel } from './systems/room-label';
 import { ErrorPanelSystem, showErrorPanel } from './ui/error-panel';
 import { strings } from './ui/strings';
@@ -41,6 +42,7 @@ async function start(): Promise<void> {
     buildHouse(world, result.house, miniature.root);
     createMiniatureGesture(world, store);
     createRoomLabel(world, store, result.house);
+    createOnboarding(world, store);
     return;
   }
   if (result.reason === 'not-found') {

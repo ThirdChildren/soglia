@@ -42,6 +42,16 @@ export function isMiniatureGestureActive(): boolean {
   return shared.active || shared.bothPinching;
 }
 
+const startListeners = new Set<() => void>();
+
+/** Calls `listener` each time a two-hand gesture starts (onboarding uses it). Returns the unsubscribe function. */
+export function onMiniatureGestureStart(listener: () => void): () => void {
+  startListeners.add(listener);
+  return () => {
+    startListeners.delete(listener);
+  };
+}
+
 /** Registers the gesture system; the store receives the final scale and yaw on release. */
 export function createMiniatureGesture(world: World, store: Store): void {
   context = { store };
@@ -108,6 +118,7 @@ export class MiniatureGestureSystem extends createSystem({
     this.result.yawDeg = object.rotation.y * RAD_TO_DEG;
     shared.active = true;
     slog('miniature gesture start');
+    for (const listener of startListeners) listener();
   }
 
   /** Follows the current XR session: attaches the pinch listeners, drops everything when it ends. */
