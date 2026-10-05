@@ -53,7 +53,7 @@ export const DEFAULT_PARAMS: Readonly<Params> = Object.freeze({
 });
 
 /** Letters, digits, `_` and `-` only: no dots, slashes, spaces or markup. */
-const HOUSE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
+export const HOUSE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
 const INT_PATTERN = /^-?[0-9]{1,15}$/;
 const TIME_PATTERN = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/;
 /** A single `key=value` pair of a plain query string; no whitespace, no markup. */
