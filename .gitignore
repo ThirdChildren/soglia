@@ -43,3 +43,6 @@ pids/
 .cursor/mcp.json
 .vscode/mcp.json
 .codex/config.toml
+
+# Dev-only parameter override read by the app in development (see src/data/dev-params.ts)
+dev-params.local.txt
