@@ -21,7 +21,8 @@
        `jcgt.org`, `iwsdk.dev`, `iwsdk.local`;
      - default di `@iwsdk/core` 1.0.1, senza opzione per cambiarli (vedi `docs/RULES.md`):
        `unpkg.com` (decoder Draco/KTX2: scatta solo caricando un glTF compresso, vietato),
-       `cdn.jsdelivr.net` (profili e modelli dei controller: scatta solo con controller collegati),
+       `cdn.jsdelivr.net` (profili e modelli dei controller: i glb delle mani sono locali dal
+       2026-10-05, restano i controller; l'host resta nel bundle come default di `@iwsdk/xr-input`),
        `api.dicebear.com` (immagine di default del componente Avatar di uikit-horizon: scatta solo
        se si usa un Avatar senza `src`, vietato).
      Qualsiasi altro host è un fallimento.
@@ -51,3 +52,7 @@ PASS se le verifiche 1–9 sono tutte soddisfatte · FAIL altrimenti, con comand
 
 ## Da rimandare al visore
 Niente per questo scenario. Il verde della CI su GitHub si conferma dopo il primo push (indicarlo come "da confermare dall'utente").
+
+## Changelog
+
+- 2026-10-05: lista degli host al passo 6 corretta. Prima diceva che `cdn.jsdelivr.net` scatta solo con controller collegati; in realtà serviva anche il modello delle mani (`generic-hand`). Le mani ora sono locali (`public/models/hands/`), i controller restano su CDN. Motivo: decisione di gate M1 (B1).

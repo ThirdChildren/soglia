@@ -46,10 +46,15 @@ Il `contest-reviewer` lo ricontrolla a ogni gate.
   qui; sono generici e non raffigurano marchi.
 - **Host esterni noti nel bundle di produzione** (default di `@iwsdk/core` / `@iwsdk/xr-input`,
   verificato su `@iwsdk/core` 1.0.1, nessuna opzione per cambiarli):
-  `unpkg.com` (decoder Draco/KTX2, scatta solo caricando un glTF compresso, vietato sopra) e
-  `cdn.jsdelivr.net` (profili e modelli dei controller, scatta solo se il visore ha controller
-  collegati; l'app è hands-first e funziona senza) e `api.dicebear.com` (immagine casuale di
-  default del componente Avatar di `@pmndrs/uikit-horizon`: **non usare mai Avatar senza `src`**).
+  `unpkg.com` (decoder Draco/KTX2, scatta solo caricando un glTF compresso, vietato sopra),
+  `cdn.jsdelivr.net` (profili e modelli di **mani e controller**: di default IWSDK scarica da qui
+  il modello `generic-hand` a ogni sessione con mani tracciate, quindi senza rete le mani sono
+  invisibili; dal 2026-10-05 i due glb delle mani sono locali in `public/models/hands/`
+  (`src/systems/local-hands.ts`) e non partono più richieste per le mani; **restano i modelli dei
+  controller**: nell'emulatore IWER la sessione parte con i controller connessi e la richiesta a
+  `meta-quest-touch-plus` parte comunque; sul Quest, a sole mani, probabilmente no, da provare) e
+  `api.dicebear.com` (immagine casuale di default del componente Avatar di `@pmndrs/uikit-horizon`:
+  **non usare mai Avatar senza `src`**).
   Da ricontrollare a ogni aggiornamento di IWSDK;
   sul visore va verificato che non partano richieste (`qa/device/DEBT.md`).
 
