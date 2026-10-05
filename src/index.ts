@@ -4,6 +4,7 @@ import { loadDevParams } from './data/dev-params';
 import { loadHouse } from './data/load-house';
 import { slog, swarn } from './log';
 import { formatParamsLine, mergeParams, parseParams } from './logic/params';
+import { createInitialState, createStore, setMiniature } from './logic/state';
 import { buildHouse } from './systems/house-builder';
 import { createMiniature } from './systems/miniature';
 import { ErrorPanelSystem, showErrorPanel } from './ui/error-panel';
@@ -18,6 +19,9 @@ async function start(): Promise<void> {
   slog(formatParamsLine(source, params));
   for (const warning of warnings) swarn(warning);
 
+  // In-memory only for now: nothing is saved to disk yet (persistence comes later).
+  const store = createStore(createInitialState(params));
+
   const world = await World.create(
     document.getElementById('scene-container') as HTMLDivElement,
     projectOptions,
@@ -27,7 +31,9 @@ async function start(): Promise<void> {
 
   const result = await loadHouse(params.house);
   if (result.ok) {
-    const miniature = createMiniature(world);
+    const miniature = createMiniature(world, (scale, yawDeg) => {
+      store.dispatch(setMiniature(scale, yawDeg));
+    });
     buildHouse(world, result.house, miniature.root);
     return;
   }
