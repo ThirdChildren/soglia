@@ -246,7 +246,7 @@ function isCredited(file: string, creditsRows: string[]): boolean {
   const dirs: string[] = [];
   for (let i = file.indexOf('/'); i !== -1; i = file.indexOf('/', i + 1)) dirs.push(file.slice(0, i + 1));
   return creditsRows.some(
-    (row) => row.includes(file) || row.includes(underPublic) || row.includes(`\`${base}\``) || dirs.some((d) => d !== 'public/' && row.includes(d)),
+    (row) => row.includes(file) || row.includes(underPublic) || row.includes(`\`${base}\``) || dirs.some((d) => d !== 'public/' && row.includes(`${d}\``)),
   );
 }
 
