@@ -10,8 +10,8 @@
         0.95
       ],
       "disassemblable": true,
-      "model": null,
-      "credit": null
+      "model": "catalog/models/bed-double.glb",
+      "credit": "kenney-bed-double"
     },
     {
       "id": "bed-single",
@@ -23,8 +23,8 @@
         0.9
       ],
       "disassemblable": true,
-      "model": null,
-      "credit": null
+      "model": "catalog/models/bed-single.glb",
+      "credit": "kenney-bed-single"
     },
     {
       "id": "sofa-3seat",
@@ -36,8 +36,8 @@
         0.85
       ],
       "disassemblable": false,
-      "model": null,
-      "credit": null
+      "model": "catalog/models/sofa-3seat.glb",
+      "credit": "kenney-sofa-3seat"
     },
     {
       "id": "armchair",
@@ -49,8 +49,8 @@
         0.85
       ],
       "disassemblable": false,
-      "model": null,
-      "credit": null
+      "model": "catalog/models/armchair.glb",
+      "credit": "kenney-armchair"
     },
     {
       "id": "table-dining",
@@ -62,8 +62,8 @@
         0.75
       ],
       "disassemblable": true,
-      "model": null,
-      "credit": null
+      "model": "catalog/models/table-dining.glb",
+      "credit": "kenney-table-dining"
     },
     {
       "id": "chair",
@@ -75,8 +75,8 @@
         0.85
       ],
       "disassemblable": false,
-      "model": null,
-      "credit": null
+      "model": "catalog/models/chair.glb",
+      "credit": "kenney-chair"
     },
     {
       "id": "coffee-table",
@@ -88,8 +88,8 @@
         0.4
       ],
       "disassemblable": false,
-      "model": null,
-      "credit": null
+      "model": "catalog/models/coffee-table.glb",
+      "credit": "kenney-coffee-table"
     },
     {
       "id": "desk",
@@ -101,8 +101,8 @@
         0.75
       ],
       "disassemblable": false,
-      "model": null,
-      "credit": null
+      "model": "catalog/models/desk.glb",
+      "credit": "kenney-desk"
     },
     {
       "id": "bookcase",
@@ -114,8 +114,8 @@
         1.8
       ],
       "disassemblable": false,
-      "model": null,
-      "credit": null
+      "model": "catalog/models/bookcase.glb",
+      "credit": "kenney-bookcase"
     },
     {
       "id": "wardrobe",
@@ -127,8 +127,8 @@
         2.1
       ],
       "disassemblable": true,
-      "model": null,
-      "credit": null
+      "model": "catalog/models/wardrobe.glb",
+      "credit": "kenney-wardrobe"
     },
     {
       "id": "nightstand",
@@ -140,8 +140,8 @@
         0.5
       ],
       "disassemblable": false,
-      "model": null,
-      "credit": null
+      "model": "catalog/models/nightstand.glb",
+      "credit": "kenney-nightstand"
     },
     {
       "id": "tv-stand",
@@ -153,8 +153,8 @@
         0.5
       ],
       "disassemblable": false,
-      "model": null,
-      "credit": null
+      "model": "catalog/models/tv-stand.glb",
+      "credit": "kenney-tv-stand"
     },
     {
       "id": "rug",
@@ -166,8 +166,8 @@
         0.01
       ],
       "disassemblable": false,
-      "model": null,
-      "credit": null
+      "model": "catalog/models/rug.glb",
+      "credit": "kenney-rug"
     },
     {
       "id": "plant",
@@ -179,8 +179,8 @@
         0.9
       ],
       "disassemblable": false,
-      "model": null,
-      "credit": null
+      "model": "catalog/models/plant.glb",
+      "credit": "kenney-plant"
     },
     {
       "id": "wheelchair",
