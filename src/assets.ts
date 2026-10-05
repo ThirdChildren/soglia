@@ -13,6 +13,11 @@ export default defineAssets({
     type: AssetType.UIKitML,
     priority: 'lazy',
   },
+  'palm-menu': {
+    url: `${import.meta.env.BASE_URL}ui/palm-menu.uikitml`,
+    type: AssetType.UIKitML,
+    priority: 'lazy',
+  },
   'room-label': {
     url: `${import.meta.env.BASE_URL}ui/room-label.uikitml`,
     type: AssetType.UIKitML,

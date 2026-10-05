@@ -14,6 +14,7 @@ import { installLocalHands } from './systems/local-hands';
 import { createMiniature } from './systems/miniature';
 import { createMiniatureGesture } from './systems/miniature-gesture';
 import { createOnboarding } from './systems/onboarding';
+import { createPalmMenu } from './systems/palm-menu';
 import { installPinchInput } from './systems/pinch-input';
 import { createRoomLabel } from './systems/room-label';
 import { ErrorPanelSystem, showErrorPanel } from './ui/error-panel';
@@ -56,6 +57,7 @@ async function start(): Promise<void> {
     createMiniatureGesture(world, store);
     createRoomLabel(world, store, result.house);
     createOnboarding(world, store);
+    createPalmMenu(world);
     return;
   }
   if (result.reason === 'not-found') {
