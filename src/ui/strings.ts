@@ -9,8 +9,9 @@ export const strings = {
     hint: 'Reload the page or choose another home.',
   },
   /**
-   * Label of a selected room, for example "Study: 12.0 m2". ASCII only: the panel font has no
-   * glyphs for the middle dot or the superscript two (see formatRoomLabel).
+   * Label of a selected room, for example "Study · 12.0 m²". With `ascii` ("Study: 12.0 m2") for
+   * when the local panel font is missing and the bundled font has no middle dot or superscript two.
    */
-  roomLabel: (name: string, areaM2: number): string => formatRoomLabel(name, areaM2, true),
+  roomLabel: (name: string, areaM2: number, ascii = false): string =>
+    formatRoomLabel(name, areaM2, ascii),
 } as const;

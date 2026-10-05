@@ -16,10 +16,12 @@ import {
 } from '@iwsdk/core';
 import { tagEntity } from '../components/tag-entity';
 import { stableId } from '../logic/ids';
+import { applyPanelFont } from './fonts';
 
 /** Manifest id of the layout (see src/assets.ts) and the id of its text element. */
 const PANEL_ASSET = 'room-label';
 const TEXT_ELEMENT = 'room-label-text';
+const ROOT_ELEMENT = 'room-label-root';
 /** Height above the centre of the room floor, in world metres. */
 export const ROOM_LABEL_LIFT = 0.12;
 /** The label is never farther than this from the head, in metres. */
@@ -33,6 +35,7 @@ export class RoomLabelPanel {
   private entity: Entity | null = null;
   private text = '';
   private appliedText: string | null = null;
+  private fontApplied = false;
   private anchor: Object3D | null = null;
   private shown = false;
   private readonly target = new Vector3();
@@ -75,6 +78,10 @@ export class RoomLabelPanel {
       const doc = entity.getValue(PanelDocument, 'document') as UiDocument | undefined;
       const element = doc?.getElementById<UIKit.Text>(TEXT_ELEMENT);
       if (element) {
+        if (!this.fontApplied) {
+          applyPanelFont(doc, ROOT_ELEMENT);
+          this.fontApplied = true;
+        }
         element.setProperties({ text: this.text });
         this.appliedText = this.text;
       }

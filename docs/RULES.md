@@ -44,6 +44,16 @@ Il `contest-reviewer` lo ricontrolla a ogni gate.
   non si vedono. Sono copiati in `public/models/hands/` con la licenza accanto, citati in
   `CREDITS.md` con autore e licenza. Nessun altro asset non CC0 è ammesso senza una voce analoga
   qui; sono generici e non raffigurano marchi.
+- **Seconda eccezione alla regola 6 (CC0): il font dei pannelli, Inter con licenza SIL OFL 1.1,
+  citato (decisione dell'utente, 2026-10-05).** I pannelli usano un atlante MSDF generato da noi
+  dal TTF ufficiale di Inter (release v4.1 di `rsms/inter`, Copyright (c) 2016 The Inter Project
+  Authors, nessun Reserved Font Name) con glifi in più (`² · × − ± → ≈`) che il font incluso in
+  `@pmndrs/msdfonts` non ha (verificato a schermo, vedi `docs/plans/M2.md`, "Esiti degli
+  spike"). Non è CC0, ma la OFL permette uso, modifica e ridistribuzione con la licenza accanto:
+  il testo è in `public/fonts/OFL.txt` (e in `assets-src/fonts/OFL.txt` insieme ai TTF
+  sorgente, fuori da `public/` e quindi fuori dalla build), i file `public/fonts/inter-*.json` e
+  `.png` sono citati in `CREDITS.md` (id `font-inter-msdf`). Il font non è un marchio e non si
+  vende da solo. Se i file mancano, l'app ripiega sul font incluso nel framework (solo ASCII).
 - **Host esterni noti nel bundle di produzione** (default di `@iwsdk/core` / `@iwsdk/xr-input`,
   verificato su `@iwsdk/core` 1.0.1, nessuna opzione per cambiarli):
   `unpkg.com` (decoder Draco/KTX2, scatta solo caricando un glTF compresso, vietato sopra),

@@ -7,9 +7,9 @@ import { formatArea } from './geometry';
  * (`formatRoomLabel("Study", 11.96)` is "Study · 12.0 m²"). An empty or blank name leaves only the
  * area ("12.0 m²"); an area that is not a positive number shows as "0.0" (never "NaN").
  *
- * With `ascii` the same text is written with plain ASCII only: "Study: 12.0 m2". The UI font
- * (Inter MSDF bundled with UIKit) has no glyphs for the middle dot or the superscript two, so the
- * panel uses this form. A colon (not a dash) separates the parts: when the panel wraps the line it
+ * With `ascii` the same text is written with plain ASCII only: "Study: 12.0 m2". The Inter MSDF
+ * bundled with UIKit has no glyphs for the middle dot or the superscript two, so this form is the
+ * fallback when the local panel font (public/fonts) cannot be loaded. A colon (not a dash) separates the parts: when the panel wraps the line it
  * stays at the end of the first line.
  */
 export function formatRoomLabel(name: string, areaM2: number, ascii = false): string {

@@ -18,6 +18,7 @@ import { formatArea, polygonArea } from '../logic/geometry';
 import type { House } from '../logic/house';
 import { stableId } from '../logic/ids';
 import { selectRoom, type Store } from '../logic/state';
+import { panelFontSupports } from '../ui/fonts';
 import { RoomLabelPanel } from '../ui/room-label-panel';
 import { strings } from '../ui/strings';
 import { isMiniatureGestureActive } from './miniature-gesture';
@@ -78,7 +79,9 @@ export class RoomLabelSystem extends createSystem({
         if (!room || !floor) return;
         const area = polygonArea(room.polygon);
         slog(`room selected ${room.id} area=${formatArea(area)}`);
-        const text = strings.roomLabel(room.name, area);
+        const unicode = strings.roomLabel(room.name, area);
+        // Fallback only if the local panel font did not load (the bundled font has no `·` or `²`).
+        const text = panelFontSupports(unicode) ? unicode : strings.roomLabel(room.name, area, true);
         panel.show(text, floor);
         slog(`label shown "${text}"`);
       }),

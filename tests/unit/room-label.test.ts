@@ -127,30 +127,32 @@ describe('formatRoomLabel text rules', () => {
 });
 
 describe('strings.roomLabel', () => {
-  it('is importable without IWSDK and returns the ASCII form', () => {
-    expect(strings.roomLabel('Study', 11.96)).toBe('Study: 12.0 m2');
+  it('is importable without IWSDK and returns the Unicode form', () => {
+    expect(strings.roomLabel('Study', 11.96)).toBe(`Study ${DOT} 12.0 m${SQ}`);
   });
 
-  it('matches formatRoomLabel with ascii = true for every real room', () => {
+  it('matches formatRoomLabel for every real room, in both forms', () => {
     for (const file of ['apartment-a.json', 'apartment-b.json']) {
       for (const room of loadRooms(file)) {
         const m2 = polygonArea(room.polygon);
-        expect(strings.roomLabel(room.name, m2)).toBe(formatRoomLabel(room.name, m2, true));
+        expect(strings.roomLabel(room.name, m2)).toBe(formatRoomLabel(room.name, m2));
+        expect(strings.roomLabel(room.name, m2, true)).toBe(formatRoomLabel(room.name, m2, true));
       }
     }
   });
 
-  it('never contains a non-ASCII character for any real room', () => {
+  it('gives the exact D8/S1.3 texts for apartment A', () => {
+    const texts = loadRooms('apartment-a.json').map((r) => strings.roomLabel(r.name, polygonArea(r.polygon)));
+    expect(texts).toContain(`Living room & kitchen ${DOT} 23.9 m${SQ}`);
+    expect(texts).toContain(`Study ${DOT} 12.0 m${SQ}`);
+  });
+
+  it('keeps an ASCII form for the fallback font, with no non-ASCII character', () => {
+    expect(strings.roomLabel('Study', 12, true)).toBe('Study: 12.0 m2');
     for (const file of ['apartment-a.json', 'apartment-b.json']) {
       for (const room of loadRooms(file)) {
-        expect(/^[\x20-\x7e]*$/.test(strings.roomLabel(room.name, polygonArea(room.polygon)))).toBe(true);
+        expect(/^[\x20-\x7e]*$/.test(strings.roomLabel(room.name, polygonArea(room.polygon), true))).toBe(true);
       }
     }
-  });
-
-  it('differs from the Unicode form, which stays the only D8/S1.3 contract', () => {
-    // The panel shows the ASCII form only because the font lacks two glyphs; the contract is Unicode.
-    expect(strings.roomLabel('Study', 12)).not.toBe(formatRoomLabel('Study', 12));
-    expect(formatRoomLabel('Study', 12)).toBe(`Study ${DOT} 12.0 m${SQ}`);
   });
 });
