@@ -6,13 +6,13 @@
 // grab for the piece in the hand). The labels are rebuilt only when that table changes; each frame the system only
 // moves the labels (the held piece moves) and loads the text of a new label when its layout is ready.
 
-import { createSystem, Vector3, type Entity, type Object3D, type World } from '@iwsdk/core';
+import { createSystem, Quaternion, Vector3, type Entity, type Object3D, type World } from '@iwsdk/core';
 import { Furniture } from '../components/furniture';
 import { slog } from '../log';
 import type { CatalogItem } from '../logic/catalog';
-import { catalogIdOf, pickReasonLabels } from '../logic/furniture-label';
-import { REASON_LABEL_MIN_DISTANCE } from '../logic/menu-thresholds';
-import { clampDistanceFromHead, DEFAULT_FORWARD } from '../logic/view-fit';
+import { catalogIdOf, pickReasonLabels, REASON_LABEL_EXTENT } from '../logic/furniture-label';
+import { REASON_LABEL_MIN_DISTANCE, VIEW_CONE_HALF_ANGLE_DEG } from '../logic/menu-thresholds';
+import { anchorInCone, yawTowardHead, type ConeFit } from '../logic/view-fit';
 import { reasonLabelId, ReasonLabelPanel } from '../ui/reason-label-panel';
 import { strings } from '../ui/strings';
 import { currentReasons, reasonsVersion, type PieceReason } from './piece-reasons';
@@ -25,6 +25,12 @@ export { REASON_LABEL_MIN_DISTANCE };
 export const REASON_LABEL_MAX_DISTANCE = 0.6;
 /** At most this many labels at the same time. */
 export const MAX_REASON_LABELS = 3;
+/** The WHOLE label stays inside the view cone, even when its piece is far outside it (M2 rerun 2). */
+const LABEL_FIT: ConeFit = {
+  halfAngleDeg: VIEW_CONE_HALF_ANGLE_DEG,
+  minDistance: REASON_LABEL_MIN_DISTANCE,
+  maxDistance: REASON_LABEL_MAX_DISTANCE,
+};
 
 interface ReasonContext {
   catalog: readonly CatalogItem[];
@@ -58,6 +64,8 @@ export class FurnitureReasonsSystem extends createSystem({
   private seenVersion = -1;
   private readonly target = new Vector3();
   private readonly headPosition = new Vector3();
+  private readonly headForward = new Vector3();
+  private readonly headQuaternion = new Quaternion();
   private readonly pieceScale = new Vector3();
 
   init(): void {
@@ -87,6 +95,8 @@ export class FurnitureReasonsSystem extends createSystem({
 
     const head = this.world.renderer.xr.isPresenting ? this.world.player.head : this.world.camera;
     head.getWorldPosition(this.headPosition);
+    head.getWorldQuaternion(this.headQuaternion);
+    this.headForward.set(0, 0, -1).applyQuaternion(this.headQuaternion);
     for (let i = 0; i < labels.length; i += 1) {
       const label = labels[i];
       const id = label.id;
@@ -100,12 +110,12 @@ export class FurnitureReasonsSystem extends createSystem({
       piece.getWorldPosition(this.target);
       piece.getWorldScale(this.pieceScale);
       this.target.y += label.height * this.pieceScale.x + REASON_LABEL_LIFT;
-      // Along the line from the head, so the label stays above the piece as seen from the head.
-      clampDistanceFromHead(this.target, this.headPosition, REASON_LABEL_MIN_DISTANCE, REASON_LABEL_MAX_DISTANCE, DEFAULT_FORWARD, this.target);
+      // Along the line from the head, so the label stays above the piece as seen from the head, and inside the
+      // view cone: a piece far outside it (outside the house) gets its label on the edge of the cone, on that line.
+      anchorInCone(this.target, this.headPosition, this.headForward, REASON_LABEL_EXTENT, LABEL_FIT, this.target);
       object.position.copy(this.target);
-      object.updateMatrixWorld(true);
-      // Panels face +Z, which is what Object3D.lookAt aims at the point for non-cameras.
-      object.lookAt(this.headPosition);
+      // Turned toward the head about the vertical axis only (no tilt, so the text never looks slanted).
+      object.rotation.set(0, yawTowardHead(this.target, this.headPosition), 0);
     }
   }
 

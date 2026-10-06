@@ -4,6 +4,8 @@ import {
   BUTTON_PANEL,
   BUTTON_SLOTS,
   BUTTONS,
+  ITEM_BORDER,
+  ITEM_NAME_SIZE,
   ITEM_PANEL,
   ITEM_SLOTS,
   MENU_EXTENT,
@@ -119,6 +121,13 @@ describe('the single menu panel (palm-menu.uikitml)', () => {
       expect(spot.dx).toBeCloseTo(BUTTON_SLOTS[i].dx, 9);
       expect(spot.dy + PANEL_CENTER.dy).toBeCloseTo(BUTTON_SLOTS[i].dy, 9);
     });
+  });
+
+  it('uses the border and the name size that the name fitting assumes', () => {
+    for (let i = 0; i < PAGE_SIZE; i += 1) {
+      expect(num(`menu-slot-${i}`, 'border-width')).toBe(ITEM_BORDER);
+      expect(num(`menu-slot-${i}-name`, 'font-size')).toBe(ITEM_NAME_SIZE);
+    }
   });
 
   it('has one label and one icon slot for each button and a name and a size for each card', () => {

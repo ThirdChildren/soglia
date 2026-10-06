@@ -18,7 +18,7 @@ import {
 import { tagEntity } from '../components/tag-entity';
 import { stableId } from '../logic/ids';
 import { ROOM_LABEL_MIN_DISTANCE } from '../logic/menu-thresholds';
-import { clampDistanceFromHead, DEFAULT_FORWARD } from '../logic/view-fit';
+import { clampDistanceFromHead, DEFAULT_FORWARD, yawTowardHead } from '../logic/view-fit';
 import { applyPanelFont } from './fonts';
 
 /** Manifest id of the layout (see src/assets.ts) and the id of its text element. */
@@ -109,8 +109,7 @@ export class RoomLabelPanel {
     this.target.y += ROOM_LABEL_LIFT;
     clampDistanceFromHead(this.target, this.headPosition, ROOM_LABEL_MIN_DISTANCE, ROOM_LABEL_MAX_DISTANCE, DEFAULT_FORWARD, this.target);
     object.position.copy(this.target);
-    object.updateMatrixWorld(true);
-    // Panels face +Z, which is what Object3D.lookAt aims at the point for non-cameras.
-    object.lookAt(this.headPosition);
+    // Turned toward the head about the vertical axis only (no tilt, so the text never looks slanted).
+    object.rotation.set(0, yawTowardHead(this.target, this.headPosition), 0);
   }
 }

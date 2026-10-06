@@ -7,6 +7,7 @@ import { PanelDocument, PanelUI, Vector3, type Entity, type Object3D, type UIKit
 import { tagEntity } from '../components/tag-entity';
 import { swarn } from '../log';
 import { stableId } from '../logic/ids';
+import { yawTowardHead } from '../logic/view-fit';
 import { applyPanelFont } from './fonts';
 import { HINT_ICON } from './menu-icons';
 
@@ -66,9 +67,8 @@ export class MenuHintPanel {
 
     head.getWorldPosition(this.headPosition);
     object.position.set(x, y, z);
-    object.updateMatrixWorld(true);
-    // Panels face +Z, which is what Object3D.lookAt aims at the point for non-cameras.
-    object.lookAt(this.headPosition);
+    // Turned toward the head about the vertical axis only (no tilt, so the text never looks slanted).
+    object.rotation.set(0, yawTowardHead(object.position, this.headPosition), 0);
     object.visible = true;
   }
 

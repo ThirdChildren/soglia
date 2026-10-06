@@ -116,6 +116,19 @@ export function clampDistanceFromHead(
   return out;
 }
 
+/**
+ * Yaw (rotation about the vertical axis, radians) that turns a panel at `anchor`, which faces +Z, toward `head`.
+ * Only the vertical axis is used: a panel that follows this never tilts back or forward, so its text never looks
+ * slanted (M2 rerun 2). `Object3D.rotation.set(0, yaw, 0)` applies it when the panel has no turned parent.
+ * 0 when the head is straight above or below the panel (nothing to turn toward).
+ */
+export function yawTowardHead(anchor: Readonly<Point3Like>, head: Readonly<Point3Like>): number {
+  const dx = head.x - anchor.x;
+  const dz = head.z - anchor.z;
+  if (!Number.isFinite(dx + dz) || Math.hypot(dx, dz) < EPS) return 0;
+  return Math.atan2(dx, dz);
+}
+
 export interface ConeFit {
   /** Half angle of the cone around the forward direction of the head, degrees. */
   readonly halfAngleDeg: number;
@@ -200,4 +213,67 @@ export function fitPanelToCone(
   out.y = dy + (ty - dy) * hi;
   out.z = dz + (tz - dz) * hi;
   return clampDistanceFromHead(out, head, fit.minDistance, Infinity, forward, out);
+}
+
+/**
+ * Puts a label inside the view cone even when the thing it describes is far outside it (M2 rerun 2: "Outside the
+ * house" for a piece 14 plan metres away). The label starts at `desired` kept between `minDistance` and
+ * `maxDistance` from the head (the line from the head to the thing, as `clampDistanceFromHead`). If the WHOLE
+ * label (`extent`, a panel facing the head) is already inside the cone it stays there. Otherwise its direction is
+ * turned from that line toward the forward direction of the head, at the same distance, by the smallest turn that
+ * makes the whole label fit: it ends on the edge of the cone, as near as possible to the line to the thing. When
+ * even a label on the forward axis does not fit (the cone is narrower than the label), it is on the forward axis.
+ * Writes into `out` (which may be `desired`). An unusable forward direction only clamps the distance. Allocates nothing.
+ */
+export function anchorInCone(
+  desired: Readonly<Point3Like>,
+  head: Readonly<Point3Like>,
+  forward: Readonly<Point3Like>,
+  extent: Readonly<PanelExtent>,
+  fit: Readonly<ConeFit>,
+  out: Point3Like,
+): Point3Like {
+  clampDistanceFromHead(desired, head, fit.minDistance, fit.maxDistance, forward, out);
+  const fl = Math.hypot(forward.x, forward.y, forward.z);
+  if (!(fl > EPS) || !Number.isFinite(out.x + out.y + out.z)) return out;
+  if (panelConeAngleDeg(out, head, forward, extent) <= fit.halfAngleDeg) return out;
+
+  const dx = out.x - head.x;
+  const dy = out.y - head.y;
+  const dz = out.z - head.z;
+  const distance = Math.hypot(dx, dy, dz);
+  if (!(distance > EPS)) return out;
+  const ux = dx / distance;
+  const uy = dy / distance;
+  const uz = dz / distance;
+  const fx = forward.x / fl;
+  const fy = forward.y / fl;
+  const fz = forward.z / fl;
+
+  // Blend the unit direction from the line to the thing (t = 0) to the forward axis (t = 1), then renormalise.
+  const place = (t: number): void => {
+    let bx = ux + (fx - ux) * t;
+    let by = uy + (fy - uy) * t;
+    let bz = uz + (fz - uz) * t;
+    let bl = Math.hypot(bx, by, bz);
+    if (!(bl > 1e-6)) {
+      bx = fx;
+      by = fy;
+      bz = fz;
+      bl = 1;
+    }
+    out.x = head.x + (bx / bl) * distance;
+    out.y = head.y + (by / bl) * distance;
+    out.z = head.z + (bz / bl) * distance;
+  };
+  let lo = 0;
+  let hi = 1;
+  for (let i = 0; i < BISECTION_STEPS; i += 1) {
+    const mid = (lo + hi) / 2;
+    place(mid);
+    if (panelConeAngleDeg(out, head, forward, extent) <= fit.halfAngleDeg) hi = mid;
+    else lo = mid;
+  }
+  place(hi);
+  return out;
 }

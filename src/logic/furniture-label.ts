@@ -1,5 +1,13 @@
 // Pure text helpers for furniture: sizes in metres for the menu. No imports from @iwsdk/core or three.
 
+import type { PanelExtent } from './menu';
+
+/**
+ * Extent of a reason label panel around its centre, in metres (public/ui/reason-label.uikitml: 40 cm wide, one
+ * line of text 5.8 cm tall; a little taller to be safe). The view cone check uses it (`anchorInCone`).
+ */
+export const REASON_LABEL_EXTENT: PanelExtent = { halfWidth: 0.2, bottom: -0.03, top: 0.03 };
+
 /**
  * A length in metres for a label: one decimal when that is exact (`2` -> "2.0", `1.6` -> "1.6"),
  * otherwise two (`0.45` -> "0.45"). Not finite or negative values give "0.0".

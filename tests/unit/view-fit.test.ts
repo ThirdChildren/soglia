@@ -11,7 +11,16 @@ import {
 } from '../../src/logic/menu';
 import { MENU_MAX_DISTANCE, MENU_MIN_DISTANCE, VIEW_CONE_HALF_ANGLE_DEG } from '../../src/logic/menu-thresholds';
 import { menuAnchor, type Vec3Like } from '../../src/logic/palm';
-import { clampDistanceFromHead, fitPanelToCone, panelConeAngleDeg, type ConeFit } from '../../src/logic/view-fit';
+import {
+  anchorInCone,
+  clampDistanceFromHead,
+  fitPanelToCone,
+  panelConeAngleDeg,
+  yawTowardHead,
+  type ConeFit,
+} from '../../src/logic/view-fit';
+import { REASON_LABEL_EXTENT } from '../../src/logic/furniture-label';
+import { REASON_LABEL_MIN_DISTANCE } from '../../src/logic/menu-thresholds';
 
 const HEAD: Vec3Like = { x: 0, y: 1.6, z: 0 };
 const FORWARD: Vec3Like = { x: 0, y: 0, z: -1 };
@@ -246,5 +255,111 @@ describe('clampDistanceFromHead', () => {
     clampDistanceFromHead(same, HEAD, 0.5, 0.6, FORWARD, same);
     expect(same).toEqual(o);
     expect(Number.isNaN(clamp({ x: NaN, y: 1, z: 1 }, 0.5, 0.6).x)).toBe(true);
+  });
+});
+
+describe('anchorInCone (reason labels, M2 rerun 2)', () => {
+  const fit: ConeFit = { halfAngleDeg: 30, minDistance: REASON_LABEL_MIN_DISTANCE, maxDistance: 0.6 };
+  const place = (p: Vec3Like, forward: Vec3Like = FORWARD): Vec3Like =>
+    anchorInCone(p, HEAD, forward, REASON_LABEL_EXTENT, fit, out());
+  const angleOf = (p: Vec3Like, forward: Vec3Like = FORWARD): number =>
+    panelConeAngleDeg(p, HEAD, forward, REASON_LABEL_EXTENT);
+  const bearing = (p: Vec3Like): number => Math.atan2(p.x - HEAD.x, -(p.z - HEAD.z));
+
+  it('leaves a label that already fits where it is (distance kept between the minimum and the maximum)', () => {
+    const p = { x: 0.05, y: 1.5, z: -0.55 };
+    expect(angleOf(p)).toBeLessThanOrEqual(30);
+    expect(place(p)).toEqual(p);
+  });
+
+  it('only pushes out a near label that fits, along the line from the head', () => {
+    const near = { x: 0.0, y: 1.52, z: -0.3 };
+    const o = place(near);
+    expect(dist(o, HEAD)).toBeCloseTo(REASON_LABEL_MIN_DISTANCE, 9);
+    expect(bearing(o)).toBeCloseTo(bearing(near), 9);
+  });
+
+  it('puts the whole label inside the 30 degree cone for a piece far to the side ("Outside the house" at 14 plan metres)', () => {
+    const outside = { x: 0.4006, y: 1.4598, z: -0.4241 }; // the label position measured in the rerun: 43 deg off axis
+    expect(angleOf(outside)).toBeGreaterThan(30);
+    const o = place(outside);
+    expect(angleOf(o)).toBeLessThanOrEqual(30 + 1e-6);
+    expect(dist(o, HEAD)).toBeGreaterThanOrEqual(REASON_LABEL_MIN_DISTANCE - 1e-9);
+    expect(dist(o, HEAD)).toBeLessThanOrEqual(0.6 + 1e-9);
+    // It is on the edge of the cone (as near to the piece as it can be), on the same side as the piece.
+    expect(angleOf(o)).toBeGreaterThan(29.9);
+    expect(Math.sign(o.x - HEAD.x)).toBe(1);
+  });
+
+  it('works for any direction: far left, far right, high, low, far away and behind the head', () => {
+    const spots: Vec3Like[] = [
+      { x: -3, y: 1.6, z: -0.5 },
+      { x: 3, y: 1.0, z: -2 },
+      { x: 0, y: 3, z: -0.3 },
+      { x: 0.2, y: 0, z: -0.2 },
+      { x: 10, y: 1.6, z: -40 },
+      { x: 0, y: 1.6, z: 2 },
+      { x: 0.001, y: 1.6, z: 1 },
+    ];
+    for (const p of spots) {
+      const o = place(p);
+      expect(angleOf(o)).toBeLessThanOrEqual(30 + 1e-6);
+      expect(dist(o, HEAD)).toBeGreaterThanOrEqual(REASON_LABEL_MIN_DISTANCE - 1e-9);
+      expect(dist(o, HEAD)).toBeLessThanOrEqual(0.6 + 1e-9);
+      expect(Number.isFinite(o.x + o.y + o.z)).toBe(true);
+    }
+  });
+
+  it('follows a turned head: the cone is around the forward direction, not around -z', () => {
+    const forward = { x: 1, y: 0, z: 0 };
+    const o = place({ x: 0, y: 1.6, z: -0.5 }, forward);
+    expect(angleOf(o, forward)).toBeLessThanOrEqual(30 + 1e-6);
+    expect(o.x).toBeGreaterThan(0.2);
+  });
+
+  it('puts the label on the forward axis when the cone is narrower than the label, and never throws', () => {
+    const narrow: ConeFit = { halfAngleDeg: 5, minDistance: 0.5, maxDistance: 0.6 };
+    const o = anchorInCone({ x: 0.5, y: 1.6, z: -0.5 }, HEAD, FORWARD, REASON_LABEL_EXTENT, narrow, out());
+    expect(Math.abs(o.x - HEAD.x)).toBeLessThan(1e-6);
+    expect(Math.abs(o.y - HEAD.y)).toBeLessThan(1e-6);
+  });
+
+  it('only clamps the distance with an unusable forward direction, writes into out and may alias the input', () => {
+    const o = anchorInCone({ x: 5, y: 1.6, z: -0.2 }, HEAD, { x: 0, y: 0, z: 0 }, REASON_LABEL_EXTENT, fit, out());
+    expect(dist(o, HEAD)).toBeCloseTo(0.6, 9); // only the maximum distance applies
+    const same = { x: 3, y: 1.6, z: -0.5 };
+    const result = anchorInCone(same, HEAD, FORWARD, REASON_LABEL_EXTENT, fit, same);
+    expect(result).toBe(same);
+    expect(angleOf(same)).toBeLessThanOrEqual(30 + 1e-6);
+  });
+
+  it('has a reason label extent that matches reason-label.uikitml', () => {
+    expect(REASON_LABEL_EXTENT.halfWidth).toBeCloseTo(0.2, 9); // width: 40 cm
+    expect(REASON_LABEL_EXTENT.top).toBeGreaterThanOrEqual(0.029); // one line: 5.8 cm tall
+  });
+});
+
+describe('yawTowardHead', () => {
+  it('is 0 for a panel straight in front of the head (it faces +z, the head is at +z of it)', () => {
+    expect(yawTowardHead({ x: 0, y: 1.5, z: -0.5 }, HEAD)).toBeCloseTo(0, 9);
+  });
+
+  it('turns about the vertical axis only: the height of the head or the panel changes nothing', () => {
+    const a = yawTowardHead({ x: 0.3, y: 0.2, z: -0.5 }, HEAD);
+    const b = yawTowardHead({ x: 0.3, y: 2.5, z: -0.5 }, HEAD);
+    expect(a).toBeCloseTo(b, 12);
+    expect(a).toBeCloseTo(Math.atan2(-0.3, 0.5), 12);
+  });
+
+  it('points the front (+z) of the panel at the head: a panel to the right of the head turns left', () => {
+    const yaw = yawTowardHead({ x: 0.5, y: 1.6, z: 0 }, HEAD);
+    // The front of a panel rotated by yaw about y is (sin yaw, 0, cos yaw); it must point to -x.
+    expect(Math.sin(yaw)).toBeCloseTo(-1, 9);
+    expect(Math.cos(yaw)).toBeCloseTo(0, 9);
+  });
+
+  it('is 0 straight above or below the head and for non-finite input', () => {
+    expect(yawTowardHead({ x: 0, y: 3, z: 0 }, HEAD)).toBe(0);
+    expect(yawTowardHead({ x: NaN, y: 1, z: 0 }, HEAD)).toBe(0);
   });
 });

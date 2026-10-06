@@ -22,9 +22,18 @@ import {
 } from '@iwsdk/core';
 import { tagEntity } from '../components/tag-entity';
 import { stableId } from '../logic/ids';
-import { BUTTONS, MENU_EXTENT, PANEL_CENTER, type ButtonId } from '../logic/menu';
+import {
+  BUTTONS,
+  ITEM_NAME_MAX_WIDTH,
+  ITEM_NAME_MIN_SIZE,
+  ITEM_NAME_SIZE,
+  MENU_EXTENT,
+  PANEL_CENTER,
+  type ButtonId,
+} from '../logic/menu';
 import { MENU_MAX_DISTANCE, MENU_MIN_DISTANCE, VIEW_CONE_HALF_ANGLE_DEG } from '../logic/menu-thresholds';
 import { menuAnchor, type Vec3Like } from '../logic/palm';
+import { fitName } from '../logic/text-fit';
 import { fitPanelToCone, panelConeAngleDeg, type ConeFit } from '../logic/view-fit';
 import { slog } from '../log';
 import { swarn } from '../log';
@@ -241,7 +250,9 @@ export class PalmMenuPanel {
       const item = i < this.items.length ? this.items[i] : null;
       // A card in use has no opacity of its own, so it inherits the dimming of the root; an empty one is hidden.
       slot.card?.setProperties({ opacity: item ? undefined : 0 });
-      slot.name?.setProperties({ text: item ? item.name : '' });
+      // A long name breaks after its hyphen or gets a smaller font so it never touches the border of the card.
+      const name = item ? fitName(item.name, ITEM_NAME_MAX_WIDTH, ITEM_NAME_SIZE, ITEM_NAME_MIN_SIZE) : null;
+      slot.name?.setProperties({ text: name ? name.text : '', fontSize: name ? name.fontSize : ITEM_NAME_SIZE });
       slot.size?.setProperties({ text: item ? item.size : '' });
     }
   }

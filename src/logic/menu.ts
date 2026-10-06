@@ -53,6 +53,16 @@ export interface Offset {
 export const ITEM_PANEL = { width: 12.2, height: 9.4 } as const;
 /** Size of a bar button panel in UIKit units (centimetres). */
 export const BUTTON_PANEL = { width: 8.8, height: 7 } as const;
+/** Border of an item card in UIKit units (public/ui/palm-menu.uikitml). */
+export const ITEM_BORDER = 0.4;
+/** Space kept between the text of an item name and the border of its card, per side, in UIKit units. */
+export const ITEM_NAME_CLEARANCE = 0.5;
+/** Widest line of an item name that fits its card with that clearance, in UIKit units. */
+export const ITEM_NAME_MAX_WIDTH = ITEM_PANEL.width - 2 * ITEM_BORDER - 2 * ITEM_NAME_CLEARANCE;
+/** Font size of an item name, and the smallest it may shrink to for a long word, in UIKit units. */
+export const ITEM_NAME_SIZE = 2.4;
+export const ITEM_NAME_MIN_SIZE = 1.9;
+
 /** Width of the title panel in UIKit units (centimetres): as wide as the grid. */
 export const TITLE_PANEL_WIDTH = 37;
 
