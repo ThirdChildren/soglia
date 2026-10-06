@@ -1,9 +1,9 @@
 # Credits
 
 Every third-party asset used in Soglia is listed here. Only CC0 / public-domain assets,
-assets provided by Meta for the contest, or assets created by the author are allowed, with one
-two narrow exceptions: the IWSDK framework's runtime hand models and the panel font atlases listed
-below (MIT and SIL OFL 1.1, both cited), see `docs/RULES.md`.
+assets provided by Meta for the contest, or assets created by the author are allowed, with three
+narrow exceptions: the IWSDK framework's runtime hand models, the panel font atlases and the menu icons
+listed below (MIT, SIL OFL 1.1 and ISC/MIT, all cited), see `docs/RULES.md`.
 
 | Id | Asset | Author | Source (URL) | License | Changes |
 |---|---|---|---|---|---|
@@ -34,7 +34,7 @@ MSDF form embedded in the `@pmndrs/msdfonts` npm package and bundled into the ap
 downloaded from a CDN at runtime.
 
 Menu icons: `@pmndrs/uikit-lucide` 1.0.76 (MIT, Bela Bohlender and Coconut Capital), included in the
-bundle one icon at a time (`Undo2`, `ChevronLeft`, `ChevronRight`, `LocateFixed`); nothing is loaded from a
+bundle one icon at a time (`Undo2`, `ChevronLeft`, `ChevronRight`, `LocateFixed`, `Hand`); nothing is loaded from a
 host at runtime. The drawings are Lucide icons (https://lucide.dev/license): ISC, Copyright (c) 2026
 Lucide Icons and Contributors; the icons derived from Feather, such as the chevrons, are MIT,
 Copyright (c) 2013-present Cole Bemis. Every icon has a text label next to it.

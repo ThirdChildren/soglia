@@ -54,6 +54,16 @@ Il `contest-reviewer` lo ricontrolla a ogni gate.
   sorgente, fuori da `public/` e quindi fuori dalla build), i file `public/fonts/inter-*.json` e
   `.png` sono citati in `CREDITS.md` (id `font-inter-msdf`). Il font non è un marchio e non si
   vende da solo. Se i file mancano, l'app ripiega sul font incluso nel framework (solo ASCII).
+- **Terza eccezione alla regola 6 (CC0): le icone dei pulsanti del menu, da `@pmndrs/uikit-lucide`,
+  licenza ISC, citate.** I pulsanti del menu del palmo e il suggerimento hanno un'icona
+  (`Undo2`, `ChevronLeft`, `ChevronRight`, `LocateFixed`, `Hand`) presa dal pacchetto
+  `@pmndrs/uikit-lucide` 1.0.76 (involucro MIT, Copyright 2024 Bela Bohlender e 2023 Coconut
+  Capital). I disegni sono icone Lucide (ISC, Copyright (c) 2026 Lucide Icons and Contributors);
+  i chevron derivano da Feather e sono MIT (Copyright (c) 2013-present Cole Bemis). Non sono CC0,
+  ma le licenze permettono uso e ridistribuzione con il testo accanto; le icone sono citate in
+  `CREDITS.md`. Sono incluse nel
+  bundle una per una (nessuna richiesta a un host in esecuzione), stanno sempre accanto a
+  un'etichetta di testo e sono forme generiche: nessun marchio, nessun logo.
 - **Host esterni noti nel bundle di produzione** (default di `@iwsdk/core` / `@iwsdk/xr-input`,
   verificato su `@iwsdk/core` 1.0.1, nessuna opzione per cambiarli):
   `unpkg.com` (decoder Draco/KTX2, scatta solo caricando un glTF compresso, vietato sopra),

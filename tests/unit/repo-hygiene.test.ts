@@ -273,3 +273,17 @@ describe('CREDITS.md covers every asset in public/', () => {
     expect(isCredited('public/catalog/models/sofa.glb', synthetic)).toBe(false);
   });
 });
+
+describe('CREDITS.md lists the menu icons that the code imports', () => {
+  const imported = [...readText('src/ui/menu-icons.ts').matchAll(/from '@pmndrs\/uikit-lucide\/dist\/(\w+)\.js'/g)].map((m) => m[1]);
+  const section = readText('CREDITS.md').split('Menu icons:')[1] ?? '';
+  const listed = [...(section.split('\n\n')[0] ?? '').matchAll(/`([A-Z]\w*)`/g)].map((m) => m[1]);
+
+  it('finds the imported icons (the check is not vacuous)', () => {
+    expect(imported.length).toBeGreaterThanOrEqual(5);
+  });
+
+  it('names exactly the icons imported from @pmndrs/uikit-lucide', () => {
+    expect([...listed].sort()).toEqual([...imported].sort());
+  });
+});
