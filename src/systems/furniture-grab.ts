@@ -53,7 +53,7 @@ import type { FurnitureVisuals } from '../ui/furniture-visuals';
 import { forgetPieceStatus, getFurnitureEntity, logPieceStatus, publishReason } from './furniture';
 import { onMenuItemPick, releaseMenuHand } from './menu-items';
 import { isMiniatureGestureActive } from './miniature-gesture';
-import { onPinchEnd, onPinchStart, pinchClaims, pinchPoint } from './pinch-input';
+import { isPanActive, onPinchEnd, onPinchStart, pinchClaims, pinchPoint } from './pinch-input';
 
 interface GrabContext {
   store: Store;
@@ -322,7 +322,7 @@ export class FurnitureGrabSystem extends createSystem({}) {
       return;
     }
     if (pinchClaims.ownerOf(hand) !== null) return; // the menu (or another owner) has this pinch
-    if (isMiniatureGestureActive()) return;
+    if (isMiniatureGestureActive() || isPanActive()) return; // a drag of the model is running: no new grab
     this.readHand(ctx, hand);
     const id = pickPiece(this.planTuple, ctx.store.get().furniture, ctx.catalog, this.rootPose.scale);
     if (id === null) return;
@@ -354,6 +354,7 @@ export class FurnitureGrabSystem extends createSystem({}) {
 
   private startFromMenu(ctx: GrabContext, catalogId: string, hand: GrabHand): void {
     if (this.held) return; // one piece at a time: the menu claim of this hand lasts until its pinch ends
+    if (isPanActive()) return; // a drag of the model is running: the menu keeps this pinch, nothing is picked
     const item = findItem(ctx.catalog, catalogId);
     if (!item) return;
     if (ctx.store.get().furniture.length >= MAX_PIECES) {

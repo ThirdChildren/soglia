@@ -34,6 +34,7 @@ import { stableId } from '../logic/ids';
 import { MenuControlPanel } from '../ui/menu-control-panel';
 import { strings } from '../ui/strings';
 import { panelFontSupports } from '../ui/fonts';
+import { endMiniaturePan } from './miniature-pan';
 import { getPalmMenuPanel } from './palm-menu';
 import { onPinchStart, pinchClaims, pinchPoint, type Hand } from './pinch-input';
 
@@ -223,6 +224,8 @@ export class MenuItemsSystem extends createSystem({}) {
         this.turn(ctx, 1);
         break;
       case 'recenter':
+        // A drag with the other hand would put the model back where it was on its next frame.
+        endMiniaturePan();
         ctx.store.dispatch(recenterMiniature());
         slog(`miniature recentered scale=${ctx.store.get().miniature.scale.toFixed(4)}`);
         break;

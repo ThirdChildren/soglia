@@ -20,6 +20,7 @@ import { createFurnitureReasons } from './systems/furniture-reasons';
 import { createMenuItems } from './systems/menu-items';
 import { createMiniature, syncMiniature } from './systems/miniature';
 import { createMiniatureGesture } from './systems/miniature-gesture';
+import { createMiniaturePan } from './systems/miniature-pan';
 import { createOnboarding } from './systems/onboarding';
 import { createPalmMenu } from './systems/palm-menu';
 import { installPinchInput } from './systems/pinch-input';
@@ -88,6 +89,8 @@ async function start(): Promise<void> {
         applyFurnish(store, result.house, catalogResult.items, params.furnish);
       }
     }
+    // After the menu and the grab: their pinch listeners run first, so a pinch on a menu item or a piece is never a pan.
+    createMiniaturePan(world, store, result.house);
     return;
   }
   if (result.reason === 'not-found') {
