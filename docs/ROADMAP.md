@@ -159,6 +159,7 @@ microfono nel Quest Browser (se c'è), ripresa dopo aver tolto il visore.
 - Confronto di due disposizioni e di due case.
 - Accessibilità: modalità una mano, alto contrasto, testo grande.
 - **Onboarding completo del menu del palmo** (rimandato da M2/T2.16, dove resta solo un suggerimento): insegnare il palmo in su e la presa dal catalogo, con testo minimo in inglese; qui si sceglie anche il menu **ancorato** per la modalità a una mano (inclusi Undo e Recenter a una mano).
+- **Menu e Recenter usabili con una mano sola** (voce esplicita, decisione del gate M2 del 2026-10-06; regola 9 di `CLAUDE.md`): in modalità una mano il menu del palmo si **àncora** (`pinned`) in un punto fisso a 0,5–0,8 m, nel cono centrale di 30° della testa, e resta aperto senza tenere il palmo in su; **Undo e Recenter sono inclusi** (oggi il Recenter e l'Undo stanno nel menu e richiedono l'altra mano per tenerlo aperto, limite dichiarato in S2.9). Scenario PC: S5.4 esteso con "Recenter e Undo eseguiti con la sola mano destra, menu ancorato"; gate visore: raggiungibilità e comodità dell'ancoraggio.
 - **T1.15 · Zoom e rotazione del plastico con una mano** (alternativa ai gesti a due mani di M1,
   che oggi sono l'unico modo per ruotare e ingrandire; regola 9). Proposta del piano M1: pizzico
   trascinato con una mano sul plastico = rotazione attorno a Y; due pulsanti piccoli sul bordo
@@ -204,3 +205,7 @@ leggibile, sessione completa di 10 minuti senza fastidio.
 - `contest-reviewer`: revisione finale su `docs/RULES.md`.
 - Deploy manuale su GitHub Pages, prova del link dal visore, consegna entro domenica 15 novembre.
 - **Congelamento** fino all'annuncio dei vincitori.
+
+## Changelog
+
+- 2026-10-06: M5 ha ora la voce esplicita "menu e Recenter usabili con una mano sola" (menu `pinned`, Undo e Recenter inclusi) — decisione dell'utente sul gate di M2 (finding del report `qa/reports/M2-2026-10-06.md`). Nessuno stato di milestone è cambiato.
