@@ -29,6 +29,7 @@ import {
   type ButtonId,
   type Offset,
 } from '../logic/menu';
+import { menuOpacity, menuSelectable } from '../logic/menu-dim';
 import { recenterMiniature, undo, type Store } from '../logic/state';
 import { stableId } from '../logic/ids';
 import { MenuControlPanel } from '../ui/menu-control-panel';
@@ -133,9 +134,12 @@ export class MenuItemsSystem extends createSystem({}) {
     }
 
     this.frameQuat.copy(menu.frameOrientation);
+    // Dimmed while a piece is in the hand (the controls cannot be picked either, see `onPinch`).
+    const opacity = menuOpacity(pinchClaims.anyClaimed('furniture'));
     for (const slot of this.slots) {
       const control = slot.control;
       control.panel.tryApply();
+      control.panel.setOpacity(opacity);
       const object = control.panel.object;
       if (!object) continue;
       this.spot.set(control.offset.dx, control.offset.dy, 0).applyQuaternion(this.frameQuat).add(menu.framePosition);
@@ -201,6 +205,8 @@ export class MenuItemsSystem extends createSystem({}) {
   private onPinch(hand: Hand): void {
     const ctx = context;
     if (!ctx || !this.open) return;
+    // Nothing in the menu can be picked while a piece is held (a pinch of the free hand rotates the piece).
+    if (!menuSelectable(pinchClaims.anyClaimed('furniture'))) return;
     pinchPoint(hand, this.point);
     const ready = this.slots.filter((slot) => slot.control.panel.ready);
     const hit = pickSlot(this.point, ready);

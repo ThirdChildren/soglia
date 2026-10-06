@@ -15,6 +15,7 @@ import {
   updatePalmDetector,
   type PalmHand,
 } from '../logic/palm';
+import { menuOpacity } from '../logic/menu-dim';
 import { markMenuOpened, type Store } from '../logic/state';
 import { PalmMenuPanel } from '../ui/palm-menu';
 import { isMiniatureGestureActive } from './miniature-gesture';
@@ -83,6 +84,8 @@ export class PalmMenuSystem extends createSystem({}) {
     if (next !== this.owner) this.setOwner(ctx, next);
     if (this.owner === null) return;
 
+    // While a piece is in the hand the menu is dimmed (and its controls cannot be picked, see menu-items).
+    ctx.panel.setOpacity(menuOpacity(pieceHeld));
     grips[this.owner].getWorldPosition(this.handPosition);
     ctx.panel.update(this.handPosition, world.player.head);
   }

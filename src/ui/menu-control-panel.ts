@@ -29,6 +29,8 @@ export type ControlContent =
 export class MenuControlPanel {
   readonly entity: Entity;
   private applied = false;
+  private opacity = 1;
+  private root: UIKit.Container | null = null;
 
   constructor(
     world: World,
@@ -66,7 +68,8 @@ export class MenuControlPanel {
     if (!text) return;
 
     applyPanelFont(doc, rootId);
-    root.setProperties({ depthTest: false, renderOrder: CONTROL_RENDER_ORDER });
+    root.setProperties({ depthTest: false, renderOrder: CONTROL_RENDER_ORDER, opacity: this.opacity });
+    this.root = root;
     if (content.kind === 'item') {
       text.setProperties({ text: content.name });
       doc.getElementById<UIKit.Text>('menu-item-size')?.setProperties({ text: content.size });
@@ -75,6 +78,13 @@ export class MenuControlPanel {
       this.addIcon(doc, content.button);
     }
     this.applied = true;
+  }
+
+  /** Dims the control (1 = normal). It also applies to a control whose layout is not loaded yet, once it is. */
+  setOpacity(opacity: number): void {
+    if (opacity === this.opacity) return;
+    this.opacity = opacity;
+    this.root?.setProperties({ opacity });
   }
 
   /** Adds the icon of a button into its slot; without the slot or on any error the button keeps just its text. */

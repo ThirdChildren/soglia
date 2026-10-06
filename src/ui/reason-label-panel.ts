@@ -12,6 +12,11 @@ import { applyPanelFont } from './fonts';
 const PANEL_ASSET = 'reason-label';
 const TEXT_ELEMENT = 'reason-label-text';
 const ROOT_ELEMENT = 'reason-label-root';
+/**
+ * Drawn after the palm menu (1000) and its controls (1001) and never hidden by them: the reason label has to
+ * stay readable above the dimmed menu while a piece is held (M2 gate W2).
+ */
+export const REASON_LABEL_RENDER_ORDER = 1002;
 
 interface UiDocument {
   getElementById: <T>(id: string) => T | null;
@@ -64,6 +69,10 @@ export class ReasonLabelPanel {
       applyPanelFont(doc, ROOT_ELEMENT);
       this.fontApplied = true;
     }
+    doc.getElementById<UIKit.Container>(ROOT_ELEMENT)?.setProperties({
+      depthTest: false,
+      renderOrder: REASON_LABEL_RENDER_ORDER,
+    });
     element.setProperties({ text: this.text });
     this.appliedText = this.text;
   }

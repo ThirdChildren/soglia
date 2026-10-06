@@ -53,6 +53,8 @@ export class PalmMenuPanel {
   private readonly headQuaternion = new Quaternion();
   private readonly handAnchor: Vec3Like = { x: 0, y: 0, z: 0 };
   private fitLogged = false;
+  private opacity = 1;
+  private root: UIKit.Container | null = null;
   private frameReady = false;
   private readonly titleOffset = new Vector3();
   /** Bottom centre of the menu (above the palm) and its orientation, for the item panels. */
@@ -89,10 +91,19 @@ export class PalmMenuPanel {
     this.fitLogged = false;
   }
 
+  /** Dims the menu panel (1 = normal): see `src/logic/menu-dim.ts`. */
+  setOpacity(opacity: number): void {
+    if (opacity === this.opacity) return;
+    this.opacity = opacity;
+    this.root?.setProperties({ opacity });
+  }
+
   /** Disposes the panel entity. */
   close(): void {
     this.entity?.dispose();
     this.entity = null;
+    this.root = null;
+    this.opacity = 1;
     this.textApplied = false;
     this.frameReady = false;
   }
@@ -109,10 +120,8 @@ export class PalmMenuPanel {
       if (title) {
         applyPanelFont(doc, ROOT_ELEMENT);
         // The hand menu is never hidden by the model or the table that happen to be in front of it.
-        doc?.getElementById<UIKit.Container>(ROOT_ELEMENT)?.setProperties({
-          depthTest: false,
-          renderOrder: MENU_RENDER_ORDER,
-        });
+        this.root = doc?.getElementById<UIKit.Container>(ROOT_ELEMENT) ?? null;
+        this.root?.setProperties({ depthTest: false, renderOrder: MENU_RENDER_ORDER, opacity: this.opacity });
         title.setProperties({ text: this.title });
         this.textApplied = true;
       }
