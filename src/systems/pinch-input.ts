@@ -69,6 +69,7 @@ export function onPinchEnd(listener: PinchListener): () => void {
 
 function setPinch(hand: Hand, value: boolean): void {
   if (pinching[hand] === value) return;
+  slog(`pinch ${hand} ${value ? 'start' : 'end'}`);
   pinching[hand] = value;
   // The state is set before the listeners run (they may read `isPinching` for the other hand).
   const listeners = value ? startListeners : endListeners;

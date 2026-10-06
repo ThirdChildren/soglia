@@ -2,6 +2,16 @@
 // @iwsdk/core or three, so it can be tested. The system reads the grip pose of each hand and calls
 // these functions with plain numbers.
 
+import {
+  MENU_LIFT,
+  MENU_MAX_DISTANCE,
+  MENU_RELEASE_GUARD_SECONDS,
+  PALM_CLOSE_DEG,
+  PALM_CLOSE_HOLD_SECONDS,
+  PALM_OPEN_DEG,
+  PALM_OPEN_HOLD_SECONDS,
+} from './menu-thresholds';
+
 export type PalmHand = 'left' | 'right';
 
 export interface Vec3Like {
@@ -16,16 +26,16 @@ export interface Vec3Like {
  */
 export const PALM_NORMAL_LOCAL: Readonly<Vec3Like> = { x: 1, y: 0, z: 0 };
 
-/** The palm opens the menu when its normal is within this angle of straight up, in degrees. */
-export const PALM_OPEN_DEG = 35;
-/** An open menu closes when the normal is farther than this angle from straight up, in degrees. */
-export const PALM_CLOSE_DEG = 55;
-/** The angle condition must hold this long before the state changes, in seconds. */
-export const PALM_HOLD_SECONDS = 0.25;
-/** The menu floats this high above the palm, in metres. */
-export const MENU_LIFT = 0.1;
-/** The menu is never farther than this from the head, in metres (rule 8: near the centre of the view). */
-export const MENU_MAX_DISTANCE = 0.6;
+// The thresholds live in menu-thresholds.ts (one file, to be tuned on the headset); they are re-exported here.
+export {
+  MENU_LIFT,
+  MENU_MAX_DISTANCE,
+  MENU_RELEASE_GUARD_SECONDS,
+  PALM_CLOSE_DEG,
+  PALM_CLOSE_HOLD_SECONDS,
+  PALM_OPEN_DEG,
+  PALM_OPEN_HOLD_SECONDS,
+};
 
 /**
  * World Y component of `axis` (a unit vector in the local frame of the quaternion q = x, y, z, w).
@@ -67,23 +77,28 @@ export function createPalmDetector(clock: () => number): PalmDetector {
 }
 
 /**
- * Updates the detector with the current palm normal (world Y component) and pinch state, and
- * returns the new state. A palm that faces up (angle below PALM_OPEN_DEG) and is not pinching for
- * PALM_HOLD_SECONDS opens it; an angle above PALM_CLOSE_DEG for PALM_HOLD_SECONDS closes it; a
- * pinch closes it at once.
+ * Updates the detector with the current palm normal (world Y component) and returns the new state.
+ *
+ * - `pinching`: this hand is pinching. It closes an open menu at once and keeps a closed one closed.
+ * - `mayOpen`: nothing else forbids the opening (see `createMenuGate`: a piece held, a two-hand gesture,
+ *   a pinch that has just ended). While it is false a closed menu stays closed and the hold timer restarts.
+ *
+ * A palm that faces up (angle below PALM_OPEN_DEG) with `mayOpen` and no pinch for PALM_OPEN_HOLD_SECONDS
+ * opens it; an angle above PALM_CLOSE_DEG for PALM_CLOSE_HOLD_SECONDS closes it.
  */
 export function updatePalmDetector(
   detector: PalmDetector,
   normalY: number,
   pinching: boolean,
+  mayOpen = true,
 ): PalmState {
   const now = detector.clock();
   const angle = palmAngleDeg(normalY);
 
   if (detector.state === 'closed') {
-    if (angle < PALM_OPEN_DEG && !pinching) {
+    if (angle < PALM_OPEN_DEG && !pinching && mayOpen) {
       if (detector.since === null) detector.since = now;
-      if (now - detector.since >= PALM_HOLD_SECONDS) {
+      if (now - detector.since >= PALM_OPEN_HOLD_SECONDS) {
         detector.state = 'open';
         detector.since = null;
       }
@@ -100,7 +115,7 @@ export function updatePalmDetector(
   }
   if (angle > PALM_CLOSE_DEG) {
     if (detector.since === null) detector.since = now;
-    if (now - detector.since >= PALM_HOLD_SECONDS) {
+    if (now - detector.since >= PALM_CLOSE_HOLD_SECONDS) {
       detector.state = 'closed';
       detector.since = null;
     }
@@ -108,6 +123,45 @@ export function updatePalmDetector(
     detector.since = null;
   }
   return detector.state;
+}
+
+export interface MenuGateInputs {
+  /** This hand is pinching. */
+  readonly pinching: boolean;
+  /** A piece is held, by either hand. */
+  readonly pieceHeld: boolean;
+  /** A two-hand gesture or a one-hand drag of the model is running. */
+  readonly gestureActive: boolean;
+}
+
+/**
+ * Decides, hand by hand, whether the palm menu may open (decision of the M2 gate, finding F1). The menu
+ * must not open while the same hand pinches, while any hand holds a piece, while a two-hand gesture or a
+ * one-hand drag is active, nor within MENU_RELEASE_GUARD_SECONDS after the end of any of these.
+ * Call `mayOpen` once per frame for each hand (the guard needs to see every frame to notice the end).
+ */
+export interface MenuGate {
+  mayOpen(hand: PalmHand, inputs: MenuGateInputs): boolean;
+}
+
+/** Creates a gate. `clock` returns the time in seconds (injected for tests). */
+export function createMenuGate(clock: () => number): MenuGate {
+  const busy: Record<PalmHand, boolean> = { left: false, right: false };
+  const unlockAt: Record<PalmHand, number> = { left: Number.NEGATIVE_INFINITY, right: Number.NEGATIVE_INFINITY };
+  return {
+    mayOpen(hand, inputs) {
+      const now = clock();
+      if (inputs.pinching || inputs.pieceHeld || inputs.gestureActive) {
+        busy[hand] = true;
+        return false;
+      }
+      if (busy[hand]) {
+        busy[hand] = false;
+        unlockAt[hand] = now + MENU_RELEASE_GUARD_SECONDS;
+      }
+      return now >= unlockAt[hand];
+    },
+  };
 }
 
 /**
