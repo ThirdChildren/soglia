@@ -4,8 +4,8 @@
 // Pose convention (D13): `position` is the footprint centre [x, z]; `rotationDeg` in {0, 90, 180, 270}.
 
 import { footprint, isFlat, normalizeRotation, type CatalogItem } from './catalog';
-import { aabb, doorZone, satOverlap, wallPieces, type Rect } from './footprint';
-import { pointInPolygon, type Point2 } from './geometry';
+import { aabb, doorZone, satDepth, wallPieces, type Rect } from './footprint';
+import { pointInPolygon, pointInPolygonXZ, type Point2 } from './geometry';
 import type { House, Wall } from './house';
 import { stableId } from './ids';
 
@@ -71,8 +71,9 @@ const gridRound = (v: number): number => clean(Math.round(v / GRID) * GRID);
 
 /** Id of the first room whose polygon contains the point (boundary counts as inside), else null. */
 export function roomAt(house: House, x: number, z: number): string | null {
-  for (const room of house.rooms) {
-    if (pointInPolygon([x, z], room.polygon)) return room.id;
+  const rooms = house.rooms;
+  for (let i = 0; i < rooms.length; i += 1) {
+    if (pointInPolygonXZ(x, z, rooms[i].polygon)) return rooms[i].id;
   }
   return null;
 }
@@ -81,6 +82,17 @@ export function roomAt(house: House, x: number, z: number): string | null {
 export function pieceRect(item: Pick<CatalogItem, 'size'>, pose: Pose): Rect {
   const [w, d] = footprint(item, pose.rotationDeg);
   return { cx: pose.x, cz: pose.z, w, d, angleRad: 0 };
+}
+
+/** `pieceRect` written into `out` (no allocation). */
+function pieceRectInto(item: Pick<CatalogItem, 'size'>, x: number, z: number, rotationDeg: number, out: Rect): Rect {
+  const swap = normalizeRotation(rotationDeg) % 180 !== 0;
+  out.cx = x;
+  out.cz = z;
+  out.w = swap ? item.size[1] : item.size[0];
+  out.d = swap ? item.size[0] : item.size[1];
+  out.angleRad = 0;
+  return out;
 }
 
 interface AxisWall {
@@ -110,6 +122,41 @@ function axisWalls(walls: readonly Wall[], vertical: boolean): AxisWall[] {
 }
 
 /**
+ * Everything about the walls and doors of a house that the placement rules need, worked out once: the axis-parallel
+ * walls that pieces snap to, the solid parts of every wall and the clear zone of every door. The per-frame functions
+ * (`snapPoseInto`, `evaluatePlacementInto`) take this instead of the house so that they allocate nothing. It
+ * describes the house as it was when `prepareHouseCollision` ran: prepare it again if the walls change.
+ */
+export interface HouseCollision {
+  readonly verticalWalls: readonly AxisWall[];
+  readonly horizontalWalls: readonly AxisWall[];
+  /** Solid parts of the walls, in wall order. */
+  readonly wallRects: readonly { readonly wallId: string; readonly rect: Rect }[];
+  /** Clear zone of every door, in wall and opening order. `id` is the stable id `door:<openingId>`. */
+  readonly doorZones: readonly { readonly id: string; readonly rect: Rect }[];
+}
+
+export function prepareHouseCollision(house: House): HouseCollision {
+  const wallRects: { wallId: string; rect: Rect }[] = [];
+  const doorZones: { id: string; rect: Rect }[] = [];
+  for (const wall of house.walls) {
+    for (const rect of wallPieces(wall)) wallRects.push({ wallId: wall.id, rect });
+  }
+  for (const wall of house.walls) {
+    for (const opening of wall.openings) {
+      if (opening.type !== 'door') continue;
+      doorZones.push({ id: stableId.door(opening.id), rect: doorZone(wall, opening, DOOR_CLEARANCE) });
+    }
+  }
+  return {
+    verticalWalls: axisWalls(house.walls, true),
+    horizontalWalls: axisWalls(house.walls, false),
+    wallRects,
+    doorZones,
+  };
+}
+
+/**
  * Snaps one axis to the nearest wall face within SNAP_DISTANCE. `center`/`half` describe the piece
  * on this axis, `otherMin`/`otherMax` its extent on the other axis (the wall must face the piece).
  * Returns the snapped centre, or null when no wall is close enough.
@@ -123,7 +170,8 @@ function snapAxis(
 ): number | null {
   let best: number | null = null;
   let bestDistance = Infinity;
-  for (const wall of candidates) {
+  for (let i = 0; i < candidates.length; i += 1) {
+    const wall = candidates[i];
     if (Math.min(otherMax, wall.spanMax) - Math.max(otherMin, wall.spanMin) <= EPS) continue;
     const before = center < wall.line; // piece on the low side of the wall line
     const face = before ? wall.line - wall.half : wall.line + wall.half;
@@ -137,18 +185,40 @@ function snapAxis(
   return best;
 }
 
-function snapOnce(house: House, item: Pick<CatalogItem, 'size'>, pose: Pose): Pose {
+/** One snapping pass: `pose` -> `out` (they may be the same object). */
+function snapOnce(collision: HouseCollision, item: Pick<CatalogItem, 'size'>, pose: Pose, out: Pose): void {
   const rotationDeg = normalizeRotation(pose.rotationDeg);
-  const [w, d] = footprint(item, rotationDeg);
-  const hw = w / 2;
-  const hd = d / 2;
-  const x = snapAxis(pose.x, hw, pose.z - hd, pose.z + hd, axisWalls(house.walls, true));
-  const z = snapAxis(pose.z, hd, pose.x - hw, pose.x + hw, axisWalls(house.walls, false));
-  return {
-    x: x === null ? gridRound(pose.x) : clean(x),
-    z: z === null ? gridRound(pose.z) : clean(z),
-    rotationDeg,
-  };
+  const swap = rotationDeg % 180 !== 0;
+  const hw = (swap ? item.size[1] : item.size[0]) / 2;
+  const hd = (swap ? item.size[0] : item.size[1]) / 2;
+  const x = snapAxis(pose.x, hw, pose.z - hd, pose.z + hd, collision.verticalWalls);
+  const z = snapAxis(pose.z, hd, pose.x - hw, pose.x + hw, collision.horizontalWalls);
+  out.x = x === null ? gridRound(pose.x) : clean(x);
+  out.z = z === null ? gridRound(pose.z) : clean(z);
+  out.rotationDeg = rotationDeg;
+}
+
+const snapNext: Pose = { x: 0, z: 0, rotationDeg: 0 };
+
+/**
+ * `snapPose` for the frame loop: writes the snapped pose into `out` (which may be `pose`) and allocates nothing.
+ */
+export function snapPoseInto(
+  collision: HouseCollision,
+  item: Pick<CatalogItem, 'size'>,
+  pose: Pose,
+  out: Pose,
+): Pose {
+  snapOnce(collision, item, pose, out);
+  // Rounding to the grid can move a piece into snap range; a few passes reach a fixed point.
+  for (let i = 0; i < SNAP_PASSES; i++) {
+    snapOnce(collision, item, out, snapNext);
+    if (snapNext.x === out.x && snapNext.z === out.z) break;
+    out.x = snapNext.x;
+    out.z = snapNext.z;
+    out.rotationDeg = snapNext.rotationDeg;
+  }
+  return out;
 }
 
 /**
@@ -157,14 +227,120 @@ function snapOnce(house: House, item: Pick<CatalogItem, 'size'>, pose: Pose): Po
  * Idempotent: `snapPose(snapPose(p)) = snapPose(p)`.
  */
 export function snapPose(house: House, item: Pick<CatalogItem, 'size'>, pose: Pose): Pose {
-  let current = snapOnce(house, item, pose);
-  // Rounding to the grid can move a piece into snap range; a few passes reach a fixed point.
-  for (let i = 0; i < SNAP_PASSES; i++) {
-    const next = snapOnce(house, item, current);
-    if (next.x === current.x && next.z === current.z) break;
-    current = next;
+  return snapPoseInto(prepareHouseCollision(house), item, pose, { x: 0, z: 0, rotationDeg: 0 });
+}
+
+/** A result to write into with `evaluatePlacementInto` (and to reuse: nothing is allocated after this). */
+export function createPlacementResult(): PlacementResult {
+  return { status: 'outside', reasons: [], roomId: null, details: { with: undefined, door: undefined, wall: undefined } };
+}
+
+/** Copies a result into another one (the reasons are copied, not shared). */
+export function copyPlacementResult(from: Readonly<PlacementResult>, to: PlacementResult): PlacementResult {
+  to.status = from.status;
+  to.reasons.length = 0;
+  for (let i = 0; i < from.reasons.length; i += 1) to.reasons.push(from.reasons[i]);
+  to.roomId = from.roomId;
+  to.details.with = from.details.with;
+  to.details.door = from.details.door;
+  to.details.wall = from.details.wall;
+  return to;
+}
+
+/** Writes the result of a pose that is outside every room into `out`. */
+export function setOutsideResult(out: PlacementResult): PlacementResult {
+  out.status = 'outside';
+  out.reasons.length = 0;
+  out.reasons.push('outside-house');
+  out.roomId = null;
+  out.details.with = undefined;
+  out.details.door = undefined;
+  out.details.wall = undefined;
+  return out;
+}
+
+const rectScratch: Rect = { cx: 0, cz: 0, w: 0, d: 0, angleRad: 0 };
+const otherScratch: Rect = { cx: 0, cz: 0, w: 0, d: 0, angleRad: 0 };
+
+/**
+ * `evaluatePlacement` for the frame loop: the same result written into `out`, with the walls and doors prepared
+ * once (`prepareHouseCollision`) and no allocation (`out` is reused: its `reasons` array and `details` object are
+ * overwritten, absent details are `undefined`). Evaluates a pose as given (it does not snap).
+ */
+export function evaluatePlacementInto(
+  house: House,
+  collision: HouseCollision,
+  item: Pick<CatalogItem, 'size'>,
+  pose: Pose,
+  others: readonly PlacedLike[],
+  catalog: readonly Pick<CatalogItem, 'id' | 'size'>[],
+  out: PlacementResult,
+): PlacementResult {
+  const roomId = roomAt(house, pose.x, pose.z);
+  if (roomId === null) return setOutsideResult(out);
+
+  const rect = pieceRectInto(item, pose.x, pose.z, pose.rotationDeg, rectScratch);
+  const flat = isFlat(item);
+  let withId: string | undefined;
+  let doorId: string | undefined;
+  let wallId: string | undefined;
+
+  // Walls (flat pieces too).
+  let wallDepth = 0;
+  for (let i = 0; i < collision.wallRects.length; i += 1) {
+    const piece = collision.wallRects[i];
+    const depth = satDepth(rect, piece.rect);
+    if (depth > OVERLAP_TOLERANCE_WALL && depth > wallDepth) {
+      wallDepth = depth;
+      wallId = piece.wallId;
+    }
   }
-  return current;
+
+  // Door clear zones (not for flat pieces).
+  let doorDepth = 0;
+  if (!flat) {
+    for (let i = 0; i < collision.doorZones.length; i += 1) {
+      const zone = collision.doorZones[i];
+      const depth = satDepth(rect, zone.rect);
+      if (depth > OVERLAP_TOLERANCE_WALL && depth > doorDepth) {
+        doorDepth = depth;
+        doorId = zone.id;
+      }
+    }
+  }
+
+  // Other furniture (flat pieces neither collide nor get collided with).
+  let furnitureDepth = 0;
+  if (!flat) {
+    for (let i = 0; i < others.length; i += 1) {
+      const other = others[i];
+      let otherItem: Pick<CatalogItem, 'id' | 'size'> | undefined;
+      for (let k = 0; k < catalog.length; k += 1) {
+        if (catalog[k].id === other.catalogId) {
+          otherItem = catalog[k];
+          break;
+        }
+      }
+      if (!otherItem || isFlat(otherItem)) continue;
+      const depth = satDepth(rect, pieceRectInto(otherItem, other.x, other.z, other.rotationDeg, otherScratch));
+      if (depth > OVERLAP_TOLERANCE_FURNITURE && depth > furnitureDepth) {
+        furnitureDepth = depth;
+        withId = other.id;
+      }
+    }
+  }
+
+  const reasons = out.reasons;
+  reasons.length = 0;
+  if (doorDepth > 0) reasons.push('blocks-door');
+  if (wallDepth > 0) reasons.push('overlaps-wall');
+  if (furnitureDepth > 0) reasons.push('overlaps-furniture');
+  out.details.door = doorDepth > 0 ? doorId : undefined;
+  out.details.wall = wallDepth > 0 ? wallId : undefined;
+  out.details.with = furnitureDepth > 0 ? withId : undefined;
+  out.status = reasons.length > 0 ? 'invalid' : 'valid';
+  out.roomId = roomId;
+  return out;
 }
 
 /**
@@ -178,65 +354,7 @@ export function evaluatePlacement(
   others: readonly PlacedLike[],
   catalog: readonly Pick<CatalogItem, 'id' | 'size'>[],
 ): PlacementResult {
-  const roomId = roomAt(house, pose.x, pose.z);
-  if (roomId === null) {
-    return { status: 'outside', reasons: ['outside-house'], roomId: null, details: {} };
-  }
-
-  const rect = pieceRect(item, { ...pose, rotationDeg: normalizeRotation(pose.rotationDeg) });
-  const flat = isFlat(item);
-  const details: PlacementDetails = {};
-
-  // Walls (flat pieces too).
-  let wallDepth = 0;
-  for (const wall of house.walls) {
-    for (const piece of wallPieces(wall)) {
-      const hit = satOverlap(rect, piece);
-      if (hit.overlaps && hit.depth > OVERLAP_TOLERANCE_WALL && hit.depth > wallDepth) {
-        wallDepth = hit.depth;
-        details.wall = wall.id;
-      }
-    }
-  }
-
-  // Door clear zones (not for flat pieces).
-  let doorDepth = 0;
-  if (!flat) {
-    for (const wall of house.walls) {
-      for (const opening of wall.openings) {
-        if (opening.type !== 'door') continue;
-        const hit = satOverlap(rect, doorZone(wall, opening, DOOR_CLEARANCE));
-        if (hit.overlaps && hit.depth > OVERLAP_TOLERANCE_WALL && hit.depth > doorDepth) {
-          doorDepth = hit.depth;
-          details.door = stableId.door(opening.id);
-        }
-      }
-    }
-  }
-
-  // Other furniture (flat pieces neither collide nor get collided with).
-  let furnitureDepth = 0;
-  if (!flat) {
-    for (const other of others) {
-      const otherItem = catalog.find((c) => c.id === other.catalogId);
-      if (!otherItem || isFlat(otherItem)) continue;
-      const hit = satOverlap(rect, pieceRect(otherItem, other));
-      if (hit.overlaps && hit.depth > OVERLAP_TOLERANCE_FURNITURE && hit.depth > furnitureDepth) {
-        furnitureDepth = hit.depth;
-        details.with = other.id;
-      }
-    }
-  }
-
-  const reasons: Reason[] = [];
-  if (doorDepth > 0) reasons.push('blocks-door');
-  if (wallDepth > 0) reasons.push('overlaps-wall');
-  if (furnitureDepth > 0) reasons.push('overlaps-furniture');
-  if (doorDepth === 0) delete details.door;
-  if (wallDepth === 0) delete details.wall;
-  if (furnitureDepth === 0) delete details.with;
-
-  return { status: reasons.length > 0 ? 'invalid' : 'valid', reasons, roomId, details };
+  return evaluatePlacementInto(house, prepareHouseCollision(house), item, pose, others, catalog, createPlacementResult());
 }
 
 function distanceToSegment(p: Point2, a: Point2, b: Point2): number {

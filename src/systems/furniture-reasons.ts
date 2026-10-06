@@ -40,6 +40,8 @@ export function createFurnitureReasons(world: World, catalog: readonly CatalogIt
 }
 
 interface Label {
+  /** Stable id of the piece the label belongs to. */
+  id: string;
   panel: ReasonLabelPanel;
   /** The piece height in metres (the label sits above it). */
   height: number;
@@ -50,6 +52,8 @@ export class FurnitureReasonsSystem extends createSystem({
   pieces: { required: [Furniture] },
 }) {
   private readonly labels = new Map<string, Label>();
+  /** The labels as an array in the same order as `labels`, rebuilt with it: the frame loop walks this one (no iterator). */
+  private labelList: Label[] = [];
   private readonly pieceObjects = new Map<string, Object3D>();
   private seenVersion = -1;
   private readonly target = new Vector3();
@@ -78,11 +82,14 @@ export class FurnitureReasonsSystem extends createSystem({
       this.seenVersion = version;
       this.rebuild(ctx);
     }
-    if (this.labels.size === 0) return;
+    const labels = this.labelList;
+    if (labels.length === 0) return;
 
     const head = this.world.renderer.xr.isPresenting ? this.world.player.head : this.world.camera;
     head.getWorldPosition(this.headPosition);
-    for (const [id, label] of this.labels) {
+    for (let i = 0; i < labels.length; i += 1) {
+      const label = labels[i];
+      const id = label.id;
       label.panel.tryApply();
       const object = label.panel.object;
       if (!object) continue;
@@ -134,9 +141,10 @@ export class FurnitureReasonsSystem extends createSystem({
       }
       const item = ctx.catalog.find((c) => c.id === reason.catalogId);
       const panel = new ReasonLabelPanel(this.world, reasonLabelId(reason.catalogId, reason.instance), text);
-      this.labels.set(id, { panel, height: item?.size[2] ?? 0.5, text });
+      this.labels.set(id, { id, panel, height: item?.size[2] ?? 0.5, text });
       slog(`reason shown ${id} "${text}"`);
     }
+    this.labelList = Array.from(this.labels.values());
   }
 
   private textFor(ctx: ReasonContext, reason: PieceReason, reasons: ReadonlyMap<string, PieceReason>): string {
@@ -151,6 +159,7 @@ export class FurnitureReasonsSystem extends createSystem({
   private clear(): void {
     for (const label of this.labels.values()) label.panel.dispose();
     this.labels.clear();
+    this.labelList = [];
     this.pieceObjects.clear();
   }
 }

@@ -8,8 +8,18 @@
 // `releaseAction` says what to do: place or move the piece, or send it back where it came from.
 
 import type { CatalogItem } from './catalog';
-import { snapPose, evaluatePlacement } from './placement-rules';
-import type { PlacedLike, PlacementResult, Pose, Reason } from './placement-rules';
+import {
+  createPlacementResult,
+  evaluatePlacementInto,
+  prepareHouseCollision,
+  setOutsideResult,
+  snapPoseInto,
+  type HouseCollision,
+  type PlacedLike,
+  type PlacementResult,
+  type Pose,
+  type Reason,
+} from './placement-rules';
 
 export type GrabSource = 'menu' | 'model';
 export type GrabHand = 'left' | 'right';
@@ -70,7 +80,7 @@ export interface HeldEval {
 }
 
 export interface EvalInput {
-  house: Parameters<typeof evaluatePlacement>[0];
+  house: Parameters<typeof evaluatePlacementInto>[0];
   item: Pick<CatalogItem, 'size'>;
   catalog: readonly Pick<CatalogItem, 'id' | 'size'>[];
   /** The other pieces in the model (the held one left out). */
@@ -84,29 +94,48 @@ export interface EvalInput {
   overModel: boolean;
 }
 
-const OUTSIDE: PlacementResult = { status: 'outside', reasons: ['outside-house'], roomId: null, details: {} };
+/** A `HeldEval` to write into with `evaluateHeldInto`; keep it and reuse it (nothing is allocated after this). */
+export function createHeldEval(): HeldEval {
+  return {
+    pose: { x: 0, z: 0, rotationDeg: 0 },
+    result: createPlacementResult(),
+    status: 'invalid',
+    outline: 'red',
+    frameVisible: false,
+    overModel: false,
+  };
+}
+
+const rawPose: Pose = { x: 0, z: 0, rotationDeg: 0 };
+
+/**
+ * `evaluateHeld` for the frame loop: the same evaluation written into `out` (from `createHeldEval`) and no
+ * allocation, with the walls and doors of the house prepared once (`prepareHouseCollision`). `out` is overwritten: copy what must outlive the next call.
+ */
+export function evaluateHeldInto(input: EvalInput, collision: HouseCollision, out: HeldEval): HeldEval {
+  rawPose.x = input.handPlan[0] + input.offset[0];
+  rawPose.z = input.handPlan[1] + input.offset[1];
+  rawPose.rotationDeg = input.rotationDeg;
+  snapPoseInto(collision, input.item, rawPose, out.pose);
+  out.overModel = input.overModel;
+  if (!input.overModel) {
+    setOutsideResult(out.result);
+    out.status = 'invalid';
+    out.outline = 'red';
+    out.frameVisible = false;
+    return out;
+  }
+  evaluatePlacementInto(input.house, collision, input.item, out.pose, input.others, input.catalog, out.result);
+  const valid = out.result.status === 'valid';
+  out.status = valid ? 'valid' : 'invalid';
+  out.outline = valid ? 'green' : 'red';
+  out.frameVisible = true;
+  return out;
+}
 
 /** The pose the held piece would take on release, and whether that is valid. */
 export function evaluateHeld(input: EvalInput): HeldEval {
-  const raw: Pose = {
-    x: input.handPlan[0] + input.offset[0],
-    z: input.handPlan[1] + input.offset[1],
-    rotationDeg: input.rotationDeg,
-  };
-  const pose = snapPose(input.house, input.item, raw);
-  if (!input.overModel) {
-    return { pose, result: OUTSIDE, status: 'invalid', outline: 'red', frameVisible: false, overModel: false };
-  }
-  const result = evaluatePlacement(input.house, input.item, pose, input.others, input.catalog);
-  const valid = result.status === 'valid';
-  return {
-    pose,
-    result,
-    status: valid ? 'valid' : 'invalid',
-    outline: valid ? 'green' : 'red',
-    frameVisible: true,
-    overModel: true,
-  };
+  return evaluateHeldInto(input, prepareHouseCollision(input.house), createHeldEval());
 }
 
 export type ReleaseAction =

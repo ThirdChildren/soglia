@@ -108,3 +108,19 @@ export function formatStatusLine(id: string, result: PlacementResult): string {
 export function statusKey(result: PlacementResult): string {
   return formatStatusLine('', result);
 }
+
+/**
+ * True when two results have the same `statusKey`, without building the strings (the grab compares them on every
+ * evaluation while a piece is in the hand): the same validity, the same reasons in the same order and the same
+ * `with`, `door` and `wall`.
+ */
+export function sameStatus(a: PlacementResult, b: PlacementResult): boolean {
+  if ((a.status === 'valid') !== (b.status === 'valid')) return false;
+  if (a.reasons.length !== b.reasons.length) return false;
+  for (let i = 0; i < a.reasons.length; i += 1) if (a.reasons[i] !== b.reasons[i]) return false;
+  return (
+    (a.details.with || '') === (b.details.with || '') &&
+    (a.details.door || '') === (b.details.door || '') &&
+    (a.details.wall || '') === (b.details.wall || '')
+  );
+}

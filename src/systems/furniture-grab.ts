@@ -20,12 +20,14 @@ import { Furniture } from '../components/furniture';
 import { tagEntity } from '../components/tag-entity';
 import { slog, swarn } from '../log';
 import { findItem, type CatalogItem } from '../logic/catalog';
-import { evaluatePiece, outlineFor, statusKey } from '../logic/furniture-diff';
+import { evaluatePiece, outlineFor, sameStatus } from '../logic/furniture-diff';
 import {
   createGrabMachine,
-  evaluateHeld,
+  createHeldEval,
+  evaluateHeldInto,
   formatPlacedLine,
   releaseAction,
+  type EvalInput,
   type GrabHand,
   type GrabSource,
   type HeldEval,
@@ -47,7 +49,14 @@ import { bbox, type Point2 } from '../logic/geometry';
 import type { House } from '../logic/house';
 import { planCenter } from '../logic/house-layout';
 import { stableId } from '../logic/ids';
-import { MAX_PIECES, type PlacedPiece, type PlacementResult } from '../logic/placement-rules';
+import {
+  MAX_PIECES,
+  copyPlacementResult,
+  createPlacementResult,
+  prepareHouseCollision,
+  type HouseCollision,
+  type PlacedPiece,
+} from '../logic/placement-rules';
 import { moveFurniture, placeFurniture, removeFurniture, type Store } from '../logic/state';
 import type { FurnitureVisuals } from '../ui/furniture-visuals';
 import { forgetPieceStatus, getFurnitureEntity, logPieceStatus, publishReason } from './furniture';
@@ -111,11 +120,19 @@ interface Held {
   grabbedAt: number;
   /** The piece as stored when it was grabbed (model source). */
   original: PlacedPiece | null;
-  /** The last evaluation (what a release would do). */
+  /**
+   * The last evaluation (what a release would do): the system's own `HeldEval`, overwritten by every evaluation,
+   * or null until the first one.
+   */
   last: HeldEval | null;
-  /** A status not logged yet: it is written once it has lasted STATUS_SETTLE_MS (a sweep over walls is not logged). */
-  pending: PlacementResult | null;
+  /**
+   * True while `pendingResult` holds a status that is not logged yet: it is written once it has lasted
+   * STATUS_SETTLE_MS (a sweep over walls is not logged).
+   */
+  pending: boolean;
   pendingSince: number;
+  /** `reasons` of the held piece as written in the `Furniture` component ("-" when valid): rebuilt only when the status changes. */
+  reasonsText: string;
 }
 
 /** A change of the hand below this (plan metres) does not trigger a new evaluation. */
@@ -141,6 +158,23 @@ export class FurnitureGrabSystem extends createSystem({}) {
   private readonly center: [number, number] = [0, 0];
   private readonly quat = new Quaternion();
   private box = bbox([]);
+  /** Walls and doors of the house, prepared once so the evaluation of every frame allocates nothing. */
+  private collision!: HouseCollision;
+  /** What the evaluation of every frame reads and writes: all preallocated and reused. */
+  private readonly evalOut = createHeldEval();
+  private readonly evalInput: { -readonly [K in keyof EvalInput]: EvalInput[K] } = {
+    house: undefined as unknown as EvalInput['house'],
+    item: { size: [0, 0, 0] },
+    catalog: [],
+    others: [],
+    handPlan: [0, 0],
+    offset: [0, 0],
+    rotationDeg: 0,
+    overModel: false,
+  };
+  private readonly handPlan: [number, number] = [0, 0];
+  /** The status that has not been logged yet (a snapshot of `evalOut.result`, see `Held.pending`). */
+  private readonly pendingResult = createPlacementResult();
   private lastPlanX = NaN;
   private lastPlanZ = NaN;
   private lastRotation = -1;
@@ -154,6 +188,10 @@ export class FurnitureGrabSystem extends createSystem({}) {
     for (const room of ctx.house.rooms) for (const p of room.polygon) points.push(p);
     for (const wall of ctx.house.walls) points.push(wall.from, wall.to);
     this.box = bbox(points);
+    this.collision = prepareHouseCollision(ctx.house);
+    this.evalInput.house = ctx.house;
+    this.evalInput.handPlan = this.handPlan;
+    this.evalInput.catalog = ctx.catalog;
 
     this.cleanupFuncs.push(
       onMenuItemPick((catalogId, hand) => this.startFromMenu(ctx, catalogId, hand)),
@@ -233,16 +271,15 @@ export class FurnitureGrabSystem extends createSystem({}) {
   }
 
   private evaluate(ctx: GrabContext, held: Held, planX: number, planZ: number, overModel: boolean): void {
-    const ev = evaluateHeld({
-      house: ctx.house,
-      item: held.item,
-      catalog: ctx.catalog,
-      others: this.others,
-      handPlan: [planX, planZ],
-      offset: held.offset,
-      rotationDeg: held.rotationDeg,
-      overModel,
-    });
+    const input = this.evalInput;
+    input.item = held.item;
+    input.others = this.others;
+    this.handPlan[0] = planX;
+    this.handPlan[1] = planZ;
+    input.offset = held.offset;
+    input.rotationDeg = held.rotationDeg;
+    input.overModel = overModel;
+    const ev = evaluateHeldInto(input, this.collision, this.evalOut);
     held.last = ev;
 
     // The preview frame sits on the floor at the snapped pose.
@@ -250,24 +287,31 @@ export class FurnitureGrabSystem extends createSystem({}) {
     held.previewMesh.rotation.y = -ev.pose.rotationDeg * DEG_TO_RAD;
     ctx.visuals.setPreview(held.previewMesh, ev.frameVisible ? ev.outline : 'none');
 
+    // The text of the reasons is built only when the status changed (no string work on a frame that did not).
+    const changed = !held.pending || !sameStatus(this.pendingResult, ev.result);
+    if (changed) {
+      held.pendingSince = performance.now();
+      held.reasonsText = ev.result.reasons.length > 0 ? ev.result.reasons.join(',') : '-';
+    }
+    copyPlacementResult(ev.result, this.pendingResult);
+    held.pending = true;
+
     const entity = held.entity;
     entity.setValue(Furniture, 'status', ev.status);
     entity.setValue(Furniture, 'outline', ev.outline);
-    entity.setValue(Furniture, 'reasons', ev.result.reasons.length > 0 ? ev.result.reasons.join(',') : '-');
+    entity.setValue(Furniture, 'reasons', held.reasonsText);
     entity.setValue(Furniture, 'x', ev.pose.x);
     entity.setValue(Furniture, 'z', ev.pose.z);
     entity.setValue(Furniture, 'rotationDeg', ev.pose.rotationDeg);
     entity.setValue(Furniture, 'roomId', ev.result.roomId ?? '');
-    if (held.pending === null || statusKey(held.pending) !== statusKey(ev.result)) held.pendingSince = performance.now();
-    held.pending = ev.result;
   }
 
   /** Writes the pending status of the held piece (the shared dedupe skips it when it did not change). */
   private flushStatus(held: Held): void {
     if (!held.pending) return;
-    logPieceStatus(held.id, held.pending);
-    publishReason(held.id, held.pending, true);
-    held.pending = null;
+    logPieceStatus(held.id, this.pendingResult);
+    publishReason(held.id, this.pendingResult, true);
+    held.pending = false;
   }
 
   /** Takes the grab offset (piece centre minus hand) and the wrist reference once the pinch has settled. */
@@ -388,11 +432,11 @@ export class FurnitureGrabSystem extends createSystem({}) {
     });
   }
 
-  private begin(ctx: GrabContext, start: Omit<Held, 'preview' | 'previewMesh' | 'last' | 'pending' | 'pendingSince'>): void {
+  private begin(ctx: GrabContext, start: Omit<Held, 'preview' | 'previewMesh' | 'last' | 'pending' | 'pendingSince' | 'reasonsText'>): void {
     const previewMesh = ctx.visuals.createPreviewFrame(start.item);
     const preview = this.world.createTransformEntity(previewMesh, ctx.houseEntity);
     tagEntity(preview, PREVIEW_ID);
-    const held: Held = { ...start, preview, previewMesh, last: null, pending: null, pendingSince: 0 };
+    const held: Held = { ...start, preview, previewMesh, last: null, pending: false, pendingSince: 0, reasonsText: '-' };
     if (!this.machine.begin({ id: held.id, catalogId: held.catalogId, source: held.source, hand: held.hand })) {
       preview.dispose({ disposeResources: false });
       pinchClaims.release(held.hand, 'furniture');

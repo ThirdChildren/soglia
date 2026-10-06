@@ -1,0 +1,20 @@
+{
+  "apartment-a": {
+    "cases": 1500,
+    "hash": "1d8b08bb0e71f2",
+    "statuses": {
+      "invalid": 716,
+      "outside": 455,
+      "valid": 329
+    }
+  },
+  "apartment-b": {
+    "cases": 1500,
+    "hash": "15cadd640788fd",
+    "statuses": {
+      "invalid": 794,
+      "outside": 341,
+      "valid": 365
+    }
+  }
+}

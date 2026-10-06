@@ -145,10 +145,13 @@ export function wallFrame(from: Point2, to: Point2): WallFrame {
  * always returns false.
  */
 export function pointInPolygon(p: Point2, poly: readonly Point2[]): boolean {
+  return pointInPolygonXZ(p[0], p[1], poly);
+}
+
+/** `pointInPolygon` for a point given as two numbers (no point array to allocate). */
+export function pointInPolygonXZ(px: number, pz: number, poly: readonly Point2[]): boolean {
   const n = poly.length;
   if (n < 3) return false;
-  const px = p[0];
-  const pz = p[1];
 
   // Boundary check first so that edge points are always inside.
   for (let i = 0; i < n; i++) {

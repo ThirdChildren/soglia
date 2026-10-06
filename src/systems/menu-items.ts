@@ -143,7 +143,9 @@ export class MenuItemsSystem extends createSystem({}) {
     this.frameQuat.copy(menu.frameOrientation);
     // Dimmed while a piece is in the hand (the controls cannot be picked either, see `onPinch`).
     const opacity = menuOpacity(pinchClaims.anyClaimed('furniture'));
-    for (const slot of this.slots) {
+    const slots = this.slots;
+    for (let i = 0; i < slots.length; i += 1) {
+      const slot = slots[i];
       const control = slot.control;
       control.panel.tryApply();
       control.panel.setOpacity(opacity);
