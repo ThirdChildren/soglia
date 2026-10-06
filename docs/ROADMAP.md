@@ -14,7 +14,7 @@ Legenda stato: ⬜ da fare · 🟨 in corso · ✅ PC-done · 🟩 Device-done
 |---|---|---|
 | M0 Setup e strumenti | 30 set – 1 ott | ✅ PC-done (piano: `docs/plans/M0.md`) |
 | M1 Casa e plastico | 2 – 7 ott | ✅ PC-done 2026-10-05 (piano: `docs/plans/M1.md`; report: `qa/reports/M1-2026-10-05-rerun.md`; gate visore in debito) |
-| M2 Arredare con le mani | 8 – 14 ott | 🟨 piano consegnato e aggiornato con le decisioni dell'utente 2026-10-05 (`docs/plans/M2.md`; scenari `qa/scenarios/M2-*.md`); **PC-done previsto entro l'11 ott** |
+| M2 Arredare con le mani | 8 – 14 ott (PC-done anticipato al 7 ott) | ✅ PC-done 2026-10-07 (piano: `docs/plans/M2.md`; report: `qa/reports/M2-2026-10-06-rerun3.md`; `contest-reviewer`: SUPERATO CON RISERVE, nessun bloccante; gate visore in debito, vedi `qa/device/DEBT.md`) |
 | M3 Dentro la casa e i miei mobili | 15 – 21 ott | ⬜ |
 | M4 Segnalazioni e persistenza | 22 – 28 ott | ⬜ |
 | M5 Luce, agente, accessibilità, realtà mista | 29 ott – 4 nov | ⬜ |
@@ -101,8 +101,8 @@ etichette, pizzico a due mani affidabile, fps ≥ 60.
 | S2.9 Sposta il plastico | **obbligatorio (T2.17a/b)**: traslazione a due mani **e a una mano** (pizzico sulla base), limite 0,30 m, quota invariata, "Recenter", nessun conflitto con presa dei pezzi e selezione delle stanze (aggiunto dal piano M2) |
 
 **Unit test**: snap alle pareti, collisioni tra rettangoli ruotati, porta bloccata, rotazione a scatti, store con annulla, catalogo, arbitraggio dei pizzichi, rilevamento del palmo, guardia dei glifi, traslazione del plastico (clamp, zone di pizzico disgiunte), preset di arredo valido, etichette dei motivi.
-**Calendario**: PC-done entro l'**11 ottobre 2026** (cuscinetto 12–14 ott). Ordine di esecuzione e stime in `docs/plans/M2.md`.
-**Gate visore**: presa naturale, niente tremolii, rotazione col polso affidabile, palmo in su affidabile.
+**Calendario**: PC-done previsto entro l'**11 ottobre 2026** (cuscinetto 12–14 ott); **raggiunto il 7 ottobre 2026** (report `qa/reports/M2-2026-10-06-rerun3.md`, verdetto SUPERATO CON RISERVE, nessun bloccante; riserve e avvisi nel report). Ordine di esecuzione e stime in `docs/plans/M2.md`.
+**Gate visore (in debito, non ancora fatto)**: presa naturale, niente tremolii, rotazione col polso affidabile, palmo in su affidabile; voci M2 in `qa/device/DEBT.md`. Il budget di IWER (66 chiamate per vista a scala 0,05 e 53 a 0,12 nel caso peggiore, 30,7k triangoli) è un numero del PC, non del visore. Persistenza assente fino a M4 (regola 4): i mobili si perdono ricaricando.
 
 ## M3 · Dentro la casa e i miei mobili
 
@@ -208,4 +208,5 @@ leggibile, sessione completa di 10 minuti senza fastidio.
 
 ## Changelog
 
+- 2026-10-07: M2 PC-done (report `qa/reports/M2-2026-10-06-rerun3.md`; `contest-reviewer`: SUPERATO CON RISERVE, nessun bloccante). Gate visore di M2 in debito: voci aggiunte o allineate in `qa/device/DEBT.md`. Stato di M3+ invariato (lo aggiorna il piano M3).
 - 2026-10-06: M5 ha ora la voce esplicita "menu e Recenter usabili con una mano sola" (menu `pinned`, Undo e Recenter inclusi) — decisione dell'utente sul gate di M2 (finding del report `qa/reports/M2-2026-10-06.md`). Nessuno stato di milestone è cambiato.
