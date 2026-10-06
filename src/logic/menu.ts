@@ -66,6 +66,30 @@ export const ITEM_SLOTS: readonly Offset[] = ROWS.flatMap((dy) => COLUMNS.map((d
 /** The four buttons of the bar, in the order of `BUTTONS`; the bar is the lowest row, right above the palm. */
 export const BUTTON_SLOTS: readonly Offset[] = BAR_COLUMNS.map((dx) => ({ dx, dy: 0.04 }));
 
+/** Height of the title panel in UIKit units (centimetres): two paddings of 1.6 and one line of 2.6 * 1.25. */
+export const TITLE_PANEL_HEIGHT = 6.5;
+
+/** Extent of a panel in its own plane, from its anchor, in metres: `halfWidth` to each side, `bottom` and `top` along its up axis. */
+export interface PanelExtent {
+  readonly halfWidth: number;
+  readonly bottom: number;
+  readonly top: number;
+}
+
+/**
+ * Extent of the whole menu (title, grid and bar) from its frame, the bottom centre above the palm, derived
+ * from the layout above. The view cone check (`src/logic/view-fit.ts`) uses it.
+ */
+export const MENU_EXTENT: PanelExtent = {
+  halfWidth: Math.max(
+    Math.max(...COLUMNS) + ITEM_PANEL.width / 200,
+    Math.max(...BAR_COLUMNS) + BUTTON_PANEL.width / 200,
+    TITLE_PANEL_WIDTH / 200,
+  ),
+  bottom: Math.min(...BUTTON_SLOTS.map((slot) => slot.dy - BUTTON_PANEL.height / 200)),
+  top: TITLE_OFFSET.dy + TITLE_PANEL_HEIGHT / 200,
+};
+
 export interface PickSlot {
   readonly id: string;
   readonly x: number;

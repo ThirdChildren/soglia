@@ -20,8 +20,11 @@ import {
 } from '@iwsdk/core';
 import { tagEntity } from '../components/tag-entity';
 import { stableId } from '../logic/ids';
-import { TITLE_OFFSET } from '../logic/menu';
+import { MENU_EXTENT, TITLE_OFFSET } from '../logic/menu';
+import { MENU_MAX_DISTANCE, MENU_MIN_DISTANCE, VIEW_CONE_HALF_ANGLE_DEG } from '../logic/menu-thresholds';
 import { menuAnchor, type Vec3Like } from '../logic/palm';
+import { fitPanelToCone, panelConeAngleDeg, type ConeFit } from '../logic/view-fit';
+import { slog } from '../log';
 import { applyPanelFont } from './fonts';
 
 export type PalmMenuMode = 'palm';
@@ -31,6 +34,11 @@ const TITLE_ELEMENT = 'palm-menu-title';
 const ROOT_ELEMENT = 'palm-menu-root';
 /** Drawn after the scene (and its transparent parts) so it is never covered. */
 const MENU_RENDER_ORDER = 1000;
+const CONE_FIT: ConeFit = {
+  halfAngleDeg: VIEW_CONE_HALF_ANGLE_DEG,
+  minDistance: MENU_MIN_DISTANCE,
+  maxDistance: MENU_MAX_DISTANCE,
+};
 
 interface UiDocument {
   getElementById: <T>(id: string) => T | null;
@@ -41,6 +49,10 @@ export class PalmMenuPanel {
   private textApplied = false;
   private readonly anchor: Vec3Like = { x: 0, y: 0, z: 0 };
   private readonly headPosition = new Vector3();
+  private readonly headForward = new Vector3();
+  private readonly headQuaternion = new Quaternion();
+  private readonly handAnchor: Vec3Like = { x: 0, y: 0, z: 0 };
+  private fitLogged = false;
   private frameReady = false;
   private readonly titleOffset = new Vector3();
   /** Bottom centre of the menu (above the palm) and its orientation, for the item panels. */
@@ -74,6 +86,7 @@ export class PalmMenuPanel {
     this.entity = entity;
     this.textApplied = false;
     this.frameReady = false;
+    this.fitLogged = false;
   }
 
   /** Disposes the panel entity. */
@@ -107,7 +120,12 @@ export class PalmMenuPanel {
     if (!this.textApplied) return;
 
     head.getWorldPosition(this.headPosition);
-    menuAnchor(handPosition, this.headPosition, this.anchor);
+    // Above the hand, then pulled toward the middle of the view only as far as needed so that the WHOLE menu
+    // (title, items and bar) stays inside the central cone of the head (rule 8, M2 gate W3).
+    menuAnchor(handPosition, this.headPosition, this.handAnchor);
+    head.getWorldQuaternion(this.headQuaternion);
+    this.headForward.set(0, 0, -1).applyQuaternion(this.headQuaternion);
+    fitPanelToCone(this.handAnchor, this.headPosition, this.headForward, MENU_EXTENT, CONE_FIT, this.anchor);
     object.position.set(this.anchor.x, this.anchor.y, this.anchor.z);
     object.updateMatrixWorld(true);
     // Panels face +Z, which is what Object3D.lookAt aims at the point for non-cameras.
@@ -119,5 +137,12 @@ export class PalmMenuPanel {
     object.position.add(this.titleOffset);
     object.visible = true;
     this.frameReady = true;
+    if (!this.fitLogged) {
+      this.fitLogged = true;
+      const angle = panelConeAngleDeg(this.anchor, this.headPosition, this.headForward, MENU_EXTENT);
+      slog(
+        `menu view maxAngleDeg=${angle.toFixed(1)} distance=${this.headPosition.distanceTo(this.framePosition).toFixed(2)}`,
+      );
+    }
   }
 }

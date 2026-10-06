@@ -35,3 +35,13 @@ export const MENU_RELEASE_GUARD_SECONDS = 0.3;
 export const MENU_LIFT = 0.1;
 /** The menu is never farther than this from the head, in metres (rule 8: panels at 0.5-0.8 m). */
 export const MENU_MAX_DISTANCE = 0.6;
+
+/** The menu is never nearer to the head than this when it is pulled toward the centre of the view, in metres. */
+export const MENU_MIN_DISTANCE = 0.45;
+/**
+ * The WHOLE menu (title, items, bar) stays inside a cone of this half angle around the forward direction of
+ * the head, in degrees (rule 8: nothing important near the edge of a narrow field of view). The menu is
+ * 0.37 m wide and 0.35 m tall: at 0.5 m its corners are 27 degrees from its centre, so a 25 degree cone
+ * only fits at 0.55 m or more; 30 degrees leaves room to keep the menu near the hand.
+ */
+export const VIEW_CONE_HALF_ANGLE_DEG = 30;
