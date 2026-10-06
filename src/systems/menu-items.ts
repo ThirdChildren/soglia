@@ -1,8 +1,9 @@
-// Content of the palm menu (task T2.12, decision D18): while `ui:palm-menu` is open, one panel entity per
+// Content of the palm menu (task T2.12, decision D18): while `ui:palm-menu` is open, one light anchor entity per
 // item of the current catalog page (`ui:menu-item-<catalogId>`, six per page) and a bar of four buttons
-// (`ui:menu-undo`, `ui:menu-page-prev`, `ui:menu-page-next`, `ui:menu-recenter`). They follow the menu in
-// its plane (the layout is in src/logic/menu.ts) and are disposed when the menu closes. The page
-// always starts at 1 when the menu opens.
+// (`ui:menu-undo`, `ui:menu-page-prev`, `ui:menu-page-next`, `ui:menu-recenter`). The menu is drawn as ONE panel
+// (src/ui/palm-menu.ts) whose item cards are rewritten in place when the page changes; the anchors have no
+// rendering and sit where each card or button is drawn, in the plane of the menu (the layout is in
+// src/logic/menu.ts). They are disposed when the menu closes. The page always starts at 1 when the menu opens.
 //
 // A pinch of the free hand inside the rectangle of a control (its real size in the plane of the menu) claims that hand as `menu` (the highest
 // priority, so it never selects a room and never starts a gesture) and runs the action:
@@ -32,14 +33,15 @@ import {
   type HalfSize,
   type Offset,
 } from '../logic/menu';
-import { menuOpacity, menuSelectable } from '../logic/menu-dim';
+import { menuSelectable } from '../logic/menu-dim';
 import { recenterMiniature, undo, type Store } from '../logic/state';
 import { stableId } from '../logic/ids';
-import { MenuControlPanel } from '../ui/menu-control-panel';
+import { MenuAnchor } from '../ui/menu-anchor';
 import { strings } from '../ui/strings';
 import { panelFontSupports } from '../ui/fonts';
 import { endMiniaturePan } from './miniature-pan';
 import { getPalmMenuPanel } from './palm-menu';
+import type { PalmMenuPanel } from '../ui/palm-menu';
 import { onPinchStart, pinchClaims, pinchPoint, type Hand } from './pinch-input';
 
 interface MenuItemsContext {
@@ -55,13 +57,6 @@ const BUTTON_IDS: Readonly<Record<ButtonId, string>> = {
   prev: 'menu-page-prev',
   next: 'menu-page-next',
   recenter: 'menu-recenter',
-};
-
-const BUTTON_LABELS: Readonly<Record<ButtonId, string>> = {
-  undo: strings.menu.undo,
-  prev: strings.menu.previous,
-  next: strings.menu.next,
-  recenter: strings.menu.recenter,
 };
 
 // Shared with the system, which has no constructor arguments: set by `createMenuItems`.
@@ -88,7 +83,7 @@ export function createMenuItems(world: World, store: Store, items: readonly Cata
 }
 
 interface Control {
-  panel: MenuControlPanel;
+  anchor: MenuAnchor;
   offset: Offset;
   /** What a pinch does: the catalog id of an item, or the button. */
   catalogId?: string;
@@ -98,7 +93,7 @@ interface Control {
 /** A control as seen by `pickRect`: its id, its current world position and its size in the plane of the menu. */
 interface Slot {
   id: string;
-  /** Size of the rectangle when the panel is ready; a panel that is not ready is not visible and has no size. */
+  /** Size of the pick rectangle (the card or button as drawn). */
   half: HalfSize;
   x: number;
   y: number;
@@ -137,26 +132,23 @@ export class MenuItemsSystem extends createSystem({}) {
       this.open = true;
       this.page = 0;
       this.buildButtons(ctx);
-      this.buildItems(ctx, false);
+      this.buildItems(ctx, menu, false);
     }
 
     this.frameQuat.copy(menu.frameOrientation);
-    // Dimmed while a piece is in the hand (the controls cannot be picked either, see `onPinch`).
-    const opacity = menuOpacity(pinchClaims.anyClaimed('furniture'));
+    // The menu is dimmed while a piece is in the hand by its own system (the controls cannot be picked either,
+    // see `onPinch`); the anchors only follow the plane of the menu.
     const slots = this.slots;
     for (let i = 0; i < slots.length; i += 1) {
       const slot = slots[i];
       const control = slot.control;
-      control.panel.tryApply();
-      control.panel.setOpacity(opacity);
-      const object = control.panel.object;
+      const object = control.anchor.object;
       if (!object) continue;
       this.spot.set(control.offset.dx, control.offset.dy, 0).applyQuaternion(this.frameQuat).add(menu.framePosition);
       object.position.copy(this.spot);
       object.quaternion.copy(this.frameQuat);
-      object.visible = control.panel.ready;
-      slot.halfWidth = control.panel.ready ? slot.half.halfWidth : 0;
-      slot.halfHeight = control.panel.ready ? slot.half.halfHeight : 0;
+      slot.halfWidth = slot.half.halfWidth;
+      slot.halfHeight = slot.half.halfHeight;
       slot.x = this.spot.x;
       slot.y = this.spot.y;
       slot.z = this.spot.z;
@@ -165,31 +157,25 @@ export class MenuItemsSystem extends createSystem({}) {
 
   private buildButtons(_ctx: MenuItemsContext): void {
     this.buttonControls = BUTTONS.map((button, index) => ({
-      panel: new MenuControlPanel(this.world, stableId.ui(BUTTON_IDS[button]), {
-        kind: 'button',
-        button,
-        label: BUTTON_LABELS[button],
-      }),
+      anchor: new MenuAnchor(this.world, stableId.ui(BUTTON_IDS[button])),
       offset: BUTTON_SLOTS[index],
       button,
     }));
   }
 
-  /** Creates the panels of the current page (after disposing the previous ones). */
-  private buildItems(ctx: MenuItemsContext, log: boolean): void {
-    for (const control of this.itemControls) control.panel.dispose();
+  /** Moves the anchors to the items of the current page and rewrites the item cards of the menu in place. */
+  private buildItems(ctx: MenuItemsContext, menu: PalmMenuPanel, log: boolean): void {
+    for (const control of this.itemControls) control.anchor.dispose();
     const items = pageItems(ctx.items, this.page);
     const ascii = !panelFontSupports(strings.menu.itemSize(1, 1));
     this.itemControls = items.map((item, index) => ({
-      panel: new MenuControlPanel(this.world, stableId.ui(`menu-item-${item.id}`), {
-        kind: 'item',
-        catalogId: item.id,
-        name: item.name,
-        size: strings.menu.itemSize(item.size[0], item.size[1], ascii),
-      }),
+      anchor: new MenuAnchor(this.world, stableId.ui(`menu-item-${item.id}`), item.id),
       offset: ITEM_SLOTS[index],
       catalogId: item.id,
     }));
+    menu.setItems(
+      items.map((item) => ({ name: item.name, size: strings.menu.itemSize(item.size[0], item.size[1], ascii) })),
+    );
     this.rebuildSlots();
     if (log) slog(formatPageLine(this.page, ctx.items.length, items.map((item) => item.id)));
   }
@@ -197,13 +183,13 @@ export class MenuItemsSystem extends createSystem({}) {
   private rebuildSlots(): void {
     this.slots = [...this.itemControls, ...this.buttonControls].map((control) => {
       const half = control.catalogId !== undefined ? ITEM_HALF : BUTTON_HALF;
-      return { id: control.panel.stableId, half, x: 0, y: 0, z: 0, halfWidth: 0, halfHeight: 0, control };
+      return { id: control.anchor.stableId, half, x: 0, y: 0, z: 0, halfWidth: 0, halfHeight: 0, control };
     });
   }
 
   private closeAll(): void {
-    for (const control of this.itemControls) control.panel.dispose();
-    for (const control of this.buttonControls) control.panel.dispose();
+    for (const control of this.itemControls) control.anchor.dispose();
+    for (const control of this.buttonControls) control.anchor.dispose();
     this.itemControls = [];
     this.buttonControls = [];
     this.slots = [];
@@ -261,7 +247,9 @@ export class MenuItemsSystem extends createSystem({}) {
   private turn(ctx: MenuItemsContext, direction: -1 | 1): void {
     const next = turnPage(this.page, direction, ctx.items.length);
     if (next === this.page || next >= pageCount(ctx.items.length)) return;
+    const menu = getPalmMenuPanel();
+    if (!menu) return;
     this.page = next;
-    this.buildItems(ctx, true);
+    this.buildItems(ctx, menu, true);
   }
 }

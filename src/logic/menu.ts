@@ -93,6 +93,19 @@ export const MENU_EXTENT: PanelExtent = {
   top: TITLE_OFFSET.dy + TITLE_PANEL_HEIGHT / 200,
 };
 
+/**
+ * The whole menu is ONE panel (title, six item cards and the bar of four buttons; public/ui/palm-menu.uikitml),
+ * updated in place when the page changes. Its centre is this far above the frame (the bottom centre of the
+ * menu), in the plane of the menu.
+ */
+export const PANEL_CENTER: Offset = { dx: 0, dy: (MENU_EXTENT.top + MENU_EXTENT.bottom) / 2 };
+
+/** Size of the single menu panel in UIKit units (centimetres): exactly the extent of the menu. */
+export const MENU_PANEL = {
+  width: MENU_EXTENT.halfWidth * 200,
+  height: (MENU_EXTENT.top - MENU_EXTENT.bottom) * 100,
+} as const;
+
 /** Half width and half height of a control rectangle in its own plane, metres (from the layout above). */
 export interface HalfSize {
   readonly halfWidth: number;

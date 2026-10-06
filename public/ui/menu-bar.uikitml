@@ -1,4 +1,0 @@
-<div id="menu-bar-root" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 8.8; height: 7; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a; padding-top: 0.6; padding-bottom: 0.6; padding-left: 0.4; padding-right: 0.4;">
-  <div id="menu-bar-icon" style="display: flex; align-items: center; justify-content: center; width: 2.8; height: 2.8; margin-bottom: 0.4;"></div>
-  <span id="menu-bar-label" style="font-size: 1.7; font-weight: bold; color: #1a1a1a; line-height: 1.2; text-align: center;">-</span>
-</div>

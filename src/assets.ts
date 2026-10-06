@@ -43,18 +43,8 @@ export default defineAssets({
     type: AssetType.UIKitML,
     priority: 'lazy',
   },
-  'menu-item': {
-    url: `${import.meta.env.BASE_URL}ui/menu-item.uikitml`,
-    type: AssetType.UIKitML,
-    priority: 'lazy',
-  },
   'menu-hint': {
     url: `${import.meta.env.BASE_URL}ui/menu-hint.uikitml`,
-    type: AssetType.UIKitML,
-    priority: 'lazy',
-  },
-  'menu-bar': {
-    url: `${import.meta.env.BASE_URL}ui/menu-bar.uikitml`,
     type: AssetType.UIKitML,
     priority: 'lazy',
   },
