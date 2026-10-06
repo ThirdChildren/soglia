@@ -4,6 +4,7 @@
 
 import { ChevronLeft } from '@pmndrs/uikit-lucide/dist/ChevronLeft.js';
 import { ChevronRight } from '@pmndrs/uikit-lucide/dist/ChevronRight.js';
+import { Hand } from '@pmndrs/uikit-lucide/dist/Hand.js';
 import { LocateFixed } from '@pmndrs/uikit-lucide/dist/LocateFixed.js';
 import { Undo2 } from '@pmndrs/uikit-lucide/dist/Undo2.js';
 import type { ButtonId } from '../logic/menu';
@@ -16,3 +17,6 @@ export const BUTTON_ICONS: Readonly<Record<ButtonId, IconClass>> = {
   next: ChevronRight,
   recenter: LocateFixed,
 };
+
+/** Icon of the menu hint (always next to its text). */
+export const HINT_ICON: IconClass = Hand;

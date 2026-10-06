@@ -21,6 +21,7 @@ import { createMenuItems } from './systems/menu-items';
 import { createMiniature, syncMiniature } from './systems/miniature';
 import { createMiniatureGesture } from './systems/miniature-gesture';
 import { createMiniaturePan } from './systems/miniature-pan';
+import { createMenuHint } from './systems/menu-hint';
 import { createOnboarding } from './systems/onboarding';
 import { createPalmMenu } from './systems/palm-menu';
 import { installPinchInput } from './systems/pinch-input';
@@ -68,7 +69,8 @@ async function start(): Promise<void> {
     createMiniatureGesture(world, store, planRadius(result.house));
     createRoomLabel(world, store, result.house);
     createOnboarding(world, store);
-    createPalmMenu(world, catalogResult.ok ? strings.menu.title : strings.menu.catalogUnavailable);
+    createMenuHint(world, store);
+    createPalmMenu(world, store, catalogResult.ok ? strings.menu.title : strings.menu.catalogUnavailable);
     // Recenter changes the scale and the offset in the store: keep the model in step with them. Only a change of
     // the `miniature` part counts (the reducer keeps its identity otherwise), so a drag in progress is not disturbed.
     let appliedMiniature = store.get().miniature;

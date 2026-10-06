@@ -14,10 +14,11 @@ import {
   updatePalmDetector,
   type PalmHand,
 } from '../logic/palm';
+import { markMenuOpened, type Store } from '../logic/state';
 import { PalmMenuPanel } from '../ui/palm-menu';
 import { isPinching, pinchClaims } from './pinch-input';
 
-let context: { panel: PalmMenuPanel } | null = null;
+let context: { panel: PalmMenuPanel; store: Store } | null = null;
 
 /** True while the palm menu is open (other systems use it to avoid conflicting pinches). */
 export function isPalmMenuOpen(): boolean {
@@ -30,9 +31,9 @@ export function getPalmMenuPanel(): PalmMenuPanel | null {
   return panel && panel.hasFrame ? panel : null;
 }
 
-/** Registers the palm menu system. */
-export function createPalmMenu(world: World, title: string): void {
-  context = { panel: new PalmMenuPanel(world, title) };
+/** Registers the palm menu system. The first opening is recorded in the store (`prefs.menuOpened`, T2.16). */
+export function createPalmMenu(world: World, store: Store, title: string): void {
+  context = { panel: new PalmMenuPanel(world, title), store };
   world.registerSystem(PalmMenuSystem);
 }
 
@@ -53,7 +54,7 @@ export class PalmMenuSystem extends createSystem({}) {
 
     if (!xr.isPresenting) {
       // No session: no hand is up. Close the menu if it was open.
-      if (this.owner !== null) this.setOwner(ctx.panel, null);
+      if (this.owner !== null) this.setOwner(ctx, null);
       return;
     }
 
@@ -69,20 +70,21 @@ export class PalmMenuSystem extends createSystem({}) {
     // away, and closing it never drops the piece (the grab does not depend on the menu).
     const blocked = this.owner === null && pinchClaims.anyClaimed('furniture');
     const next = blocked ? null : chooseMenuHand(this.owner, leftOpen, rightOpen);
-    if (next !== this.owner) this.setOwner(ctx.panel, next);
+    if (next !== this.owner) this.setOwner(ctx, next);
     if (this.owner === null) return;
 
     grips[this.owner].getWorldPosition(this.handPosition);
     ctx.panel.update(this.handPosition, world.player.head);
   }
 
-  private setOwner(panel: PalmMenuPanel, next: PalmHand | null): void {
+  private setOwner(ctx: { panel: PalmMenuPanel; store: Store }, next: PalmHand | null): void {
     this.owner = next;
     if (next) {
-      panel.open();
+      ctx.panel.open();
       slog(`menu opened hand=${next}`);
+      ctx.store.dispatch(markMenuOpened()); // idempotent: only the first opening changes the state
     } else {
-      panel.close();
+      ctx.panel.close();
       slog('menu closed');
     }
   }

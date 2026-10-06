@@ -29,6 +29,10 @@ export const strings = {
     /** "1.6 × 2.0 m" (plain x when the local panel font is missing). */
     itemSize: (width: number, depth: number, ascii = false): string => formatSize(width, depth, ascii),
   },
+  /** Shown above the model until the palm menu has been opened once (T2.16); plain ASCII. */
+  hint: {
+    palmMenu: 'Palm up for the menu',
+  },
   reason,
   /** The text of a reason; `withName` is the catalog name of the piece it overlaps (for `overlaps-furniture`). */
   reasonText: (kind: ReasonKind, withName?: string): string => {
