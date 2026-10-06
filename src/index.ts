@@ -9,7 +9,8 @@ import { loadHouse } from './data/load-house';
 import { slog, swarn } from './log';
 import { formatParamsLine, hasInvalidHouse, mergeParams, parseParams } from './logic/params';
 import { furnitureItems } from './logic/catalog';
-import { createInitialState, createStore, setMiniature } from './logic/state';
+import { planRadius } from './logic/house-layout';
+import { createInitialState, createStore, setMiniature, setMiniatureOffset } from './logic/state';
 import { applyFurnish, createFurniture } from './systems/furniture';
 import { buildHouse } from './systems/house-builder';
 import { installLocalControllers } from './systems/local-controllers';
@@ -17,7 +18,7 @@ import { installLocalHands } from './systems/local-hands';
 import { createFurnitureGrab } from './systems/furniture-grab';
 import { createFurnitureReasons } from './systems/furniture-reasons';
 import { createMenuItems } from './systems/menu-items';
-import { createMiniature } from './systems/miniature';
+import { createMiniature, syncMiniature } from './systems/miniature';
 import { createMiniatureGesture } from './systems/miniature-gesture';
 import { createOnboarding } from './systems/onboarding';
 import { createPalmMenu } from './systems/palm-menu';
@@ -58,19 +59,22 @@ async function start(): Promise<void> {
   if (result.ok) {
     const miniature = createMiniature(world, (scale, yawDeg) => {
       store.dispatch(setMiniature(scale, yawDeg));
+      // A new placement is a new anchor: the drag of the previous session is gone (decision D3).
+      store.dispatch(setMiniatureOffset(0, 0));
     });
     const built = buildHouse(world, result.house, miniature.root);
     installPinchInput(world);
-    createMiniatureGesture(world, store);
+    createMiniatureGesture(world, store, planRadius(result.house));
     createRoomLabel(world, store, result.house);
     createOnboarding(world, store);
     createPalmMenu(world, catalogResult.ok ? strings.menu.title : strings.menu.catalogUnavailable);
-    // Recenter (and later the pan) change the scale in the store: keep the model in step with it.
+    // Recenter changes the scale and the offset in the store: keep the model in step with them. Only a change of
+    // the `miniature` part counts (the reducer keeps its identity otherwise), so a drag in progress is not disturbed.
+    let appliedMiniature = store.get().miniature;
     store.subscribe((state) => {
-      const object = miniature.root.object3D;
-      if (object && Math.abs(object.scale.x - state.miniature.scale) > 1e-6) {
-        object.scale.setScalar(state.miniature.scale);
-      }
+      if (state.miniature === appliedMiniature) return;
+      appliedMiniature = state.miniature;
+      syncMiniature(miniature.root, state.miniature.scale, state.miniature.offset);
     });
     // Without a catalog the house is still usable: no furniture (the menu will say so, T2.12).
     if (catalogResult.ok) {

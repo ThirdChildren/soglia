@@ -4,6 +4,9 @@
 // start of each XR session, on the first frame that has the head pose. It never follows the
 // head afterwards: the user can walk around the model.
 // The maths is in src/logic/placement.ts; this file only reads the camera and moves the root.
+// The placement is the ANCHOR of the model. The model itself sits at `anchor + offset`, where the offset
+// (store: `miniature.offset`, metres [dx, dz], T2.17) is what the user dragged; the height is the
+// anchor's. `getMiniatureAnchor` and `syncMiniature` are how the other systems read and apply it.
 
 import {
   CylinderGeometry,
@@ -19,15 +22,14 @@ import {
 import { StableId } from '../components/stable-id';
 import { tagEntity } from '../components/tag-entity';
 import { slog } from '../log';
+import { BASE_RADIUS, BASE_TOP } from '../logic/constants';
 import { MINIATURE_ROOT_ID, TABLE_PLINTH_ID } from '../logic/ids';
 import { computeAnchor, SCALE, yawFromForward } from '../logic/placement';
 import { palette } from '../ui/theme';
 
-/** Base size in world metres at the initial scale (9 real metres at 1:20). */
-const PLINTH_RADIUS = 0.45;
+/** The base is BASE_RADIUS (9 real metres: 0.45 m in the world at 1:20) wide and 0.02 m thick in the world at 1:20. */
 const PLINTH_THICKNESS = 0.02;
-/** The base top sits just under the floor of the model so the two never z-fight (real metres). */
-const PLINTH_TOP = -0.02;
+const PLINTH_TOP = BASE_TOP;
 
 export interface MiniatureNodes {
   root: Entity;
@@ -39,6 +41,25 @@ export type PlacedListener = (scale: number, yawDeg: number) => void;
 
 // Shared with the system, which has no constructor arguments: set by `createMiniature`.
 let placedListener: PlacedListener | null = null;
+
+/** Where the model was placed (world metres): the anchor that `miniature.offset` is measured from. */
+const anchor = { x: 0, y: 0, z: 0 };
+
+/** Writes the anchor of the model into `out` and returns it. */
+export function getMiniatureAnchor(out: { x: number; y: number; z: number }): { x: number; y: number; z: number } {
+  out.x = anchor.x;
+  out.y = anchor.y;
+  out.z = anchor.z;
+  return out;
+}
+
+/** Puts the model at `anchor + offset` (the height of the anchor) with `scale`. Allocation-free. */
+export function syncMiniature(root: Entity, scale: number, offset: readonly [number, number]): void {
+  const object = root.object3D;
+  if (!object) return;
+  if (Math.abs(object.scale.x - scale) > 1e-6) object.scale.setScalar(scale);
+  object.position.set(anchor.x + offset[0], anchor.y, anchor.z + offset[1]);
+}
 
 const headPosition = new Vector3();
 const headForward = new Vector3();
@@ -55,11 +76,14 @@ function placeInFrontOf(source: Object3D, root: Entity): void {
   source.getWorldQuaternion(headQuaternion);
   headForward.set(0, 0, -1).applyQuaternion(headQuaternion);
   const yawRad = yawFromForward(headForward.x, headForward.z);
-  const anchor = computeAnchor({ head: [headPosition.x, headPosition.y, headPosition.z], yawRad });
+  const anchorPose = computeAnchor({ head: [headPosition.x, headPosition.y, headPosition.z], yawRad });
 
   const object = root.object3D;
   if (!object) return;
-  object.position.set(anchor.position[0], anchor.position[1], anchor.position[2]);
+  anchor.x = anchorPose.position[0];
+  anchor.y = anchorPose.position[1];
+  anchor.z = anchorPose.position[2];
+  object.position.set(anchor.x, anchor.y, anchor.z);
   // rotation.y = yaw turns the plan's -z toward the head's forward, so the entrance side faces the user.
   object.rotation.set(0, yawRad, 0);
   object.updateMatrixWorld(true);
@@ -67,9 +91,9 @@ function placeInFrontOf(source: Object3D, root: Entity): void {
   // The scale is a 32-bit float in Three.js: round away the noise before it reaches the store.
   const scale = Math.round(object.scale.x * 1e6) / 1e6;
   slog(
-    `miniature placed x=${anchor.position[0].toFixed(3)} y=${anchor.position[1].toFixed(3)} z=${anchor.position[2].toFixed(3)} yawDeg=${anchor.yawDeg.toFixed(1)} scale=${scale.toFixed(4)}`,
+    `miniature placed x=${anchorPose.position[0].toFixed(3)} y=${anchorPose.position[1].toFixed(3)} z=${anchorPose.position[2].toFixed(3)} yawDeg=${anchorPose.yawDeg.toFixed(1)} scale=${scale.toFixed(4)}`,
   );
-  placedListener?.(scale, anchor.yawDeg);
+  placedListener?.(scale, anchorPose.yawDeg);
 }
 
 /** Re-places the model once at the start of each XR session, on the first frame with a head pose. */
@@ -110,8 +134,8 @@ export function createMiniature(world: World, onPlaced?: PlacedListener): Miniat
 
   // Geometry is in real metres inside the root, so world sizes are divided by the scale.
   const geometry = new CylinderGeometry(
-    PLINTH_RADIUS / SCALE,
-    PLINTH_RADIUS / SCALE,
+    BASE_RADIUS,
+    BASE_RADIUS,
     PLINTH_THICKNESS / SCALE,
     48,
   );

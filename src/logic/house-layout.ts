@@ -19,6 +19,25 @@ export function planCenter(house: House): [number, number] {
   return [box.cx, box.cz];
 }
 
+/**
+ * Radius of the smallest circle around the plan centre that holds every room point and wall end point,
+ * in real metres. The model's reach for the two-hand gesture is this radius times the current scale.
+ */
+export function planRadius(house: House): number {
+  const [cx, cz] = planCenter(house);
+  let max = 0;
+  const grow = (p: Point2): void => {
+    const d = Math.hypot(p[0] - cx, p[1] - cz);
+    if (d > max) max = d;
+  };
+  for (const room of house.rooms) for (const p of room.polygon) grow(p);
+  for (const wall of house.walls) {
+    grow(wall.from);
+    grow(wall.to);
+  }
+  return max;
+}
+
 /** Origin of a room node: the area centroid of its floor polygon. */
 export function roomOrigin(polygon: readonly Point2[]): [number, number] {
   return polygonCentroid(polygon);

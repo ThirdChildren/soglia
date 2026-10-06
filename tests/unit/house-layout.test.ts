@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CUT_HEIGHT } from '../../src/logic/constants';
 import { wallFrame } from '../../src/logic/geometry';
-import { openingPlacement, planCenter, polygonRelativeTo, roomOrigin } from '../../src/logic/house-layout';
+import { openingPlacement, planCenter, planRadius, polygonRelativeTo, roomOrigin } from '../../src/logic/house-layout';
 import type { House, Vec2 } from '../../src/logic/house';
 import { loadJson } from '../helpers/load-json';
 
@@ -282,5 +282,24 @@ describe('openingPlacement', () => {
     openingPlacement(wall, opening);
     expect(wall).toEqual({ from: [1, 1], to: [7, 9] });
     expect(opening).toEqual({ offset: 2, width: 2 });
+  });
+});
+
+describe('planRadius', () => {
+  it('is the distance from the plan centre to the farthest corner (a 4 x 3 rectangle: 2.5 m)', () => {
+    const house = miniHouse([[[0, 0], [4, 0], [4, 3], [0, 3]]], []);
+    expect(planRadius(house)).toBeCloseTo(2.5, 12);
+  });
+
+  it('counts wall end points that are outside the rooms', () => {
+    const house = miniHouse([[[0, 0], [4, 0], [4, 3], [0, 3]]], [[[0, 0], [10, 0]]]);
+    const [cx, cz] = planCenter(house);
+    expect(planRadius(house)).toBeCloseTo(Math.max(Math.hypot(10 - cx, 0 - cz), Math.hypot(0 - cx, 3 - cz)), 12);
+  });
+
+  it('is about 6.6 m for house A (the half diagonal of its 11 x 7.2 m plan)', () => {
+    expect(planRadius(houseA)).toBeGreaterThan(6.4);
+    expect(planRadius(houseA)).toBeLessThan(6.8);
+    expect(planRadius(houseB)).toBeGreaterThan(0);
   });
 });

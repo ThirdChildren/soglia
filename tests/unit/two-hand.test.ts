@@ -3,10 +3,12 @@ import {
   DEAD_ZONE,
   DEFAULT_LIMITS,
   MIN_START_DISTANCE,
-  REACH_XZ,
+  REACH_HEAD,
+  REACH_MARGIN,
   REACH_Y,
   handsDistance,
   normalizeDegrees,
+  pivotTranslation,
   startTwoHand,
   tiltDegrees,
   updateTwoHand,
@@ -37,7 +39,8 @@ describe('two-hand constants', () => {
   it('uses the documented dead zone, minimum start distance and reach', () => {
     expect(DEAD_ZONE).toBe(0.005);
     expect(MIN_START_DISTANCE).toBe(0.02);
-    expect(REACH_XZ).toBe(0.35);
+    expect(REACH_MARGIN).toBe(0.1);
+    expect(REACH_HEAD).toBe(0.65);
     expect(REACH_Y).toBe(0.25);
   });
 
@@ -514,70 +517,139 @@ describe('two-hand determinism and session integrity', () => {
 
 describe('withinReach', () => {
   const c = p(0, 0, 0);
+  // Radius of the model in the world: 0.33 m (house A at scale 0.05) -> the reach is 0.43 m.
+  const R = 0.33;
 
   it('accepts a hand at the model centre', () => {
-    expect(withinReach(c, c)).toBe(true);
+    expect(withinReach(c, c, R)).toBe(true);
   });
 
-  it('accepts a hand just inside the horizontal reach', () => {
-    expect(withinReach(p(0.349, 0, 0), c)).toBe(true);
+  it('reaches the radius of the model plus the margin, as a circle', () => {
+    expect(withinReach(p(R + REACH_MARGIN - 0.001, 0, 0), c, R)).toBe(true);
+    expect(withinReach(p(0, 0, -(R + REACH_MARGIN)), c, R)).toBe(true);
+    expect(withinReach(p(R + REACH_MARGIN + 0.001, 0, 0), c, R)).toBe(false);
+    // Diagonal: 0.30 + 0.30 along the axes is 0.424 from the centre, inside; 0.31 + 0.31 is 0.438, outside.
+    expect(withinReach(p(0.3, 0, 0.3), c, R)).toBe(true);
+    expect(withinReach(p(0.31, 0, 0.31), c, R)).toBe(false);
   });
 
-  it('accepts a hand exactly on the horizontal reach limit', () => {
-    expect(withinReach(p(REACH_XZ, 0, 0), c)).toBe(true);
-    expect(withinReach(p(0, 0, -REACH_XZ), c)).toBe(true);
+  it('grows with the model: at scale 0.12 the radius is 0.79 m, so a hand 0.80 m out still starts the gesture', () => {
+    const big = 6.58 * 0.12;
+    expect(withinReach(p(0.8, 0, 0), c, big)).toBe(true);
+    expect(withinReach(p(0.8, 0, 0), c, 6.58 * 0.05)).toBe(false);
   });
 
-  it('rejects a hand just outside the horizontal reach', () => {
-    expect(withinReach(p(0.351, 0, 0), c)).toBe(false);
+  it('keeps the vertical reach of 0.25 m above and below the centre', () => {
+    expect(withinReach(p(0, 0.249, 0), c, R)).toBe(true);
+    expect(withinReach(p(0, -REACH_Y, 0), c, R)).toBe(true);
+    expect(withinReach(p(0, 0.251, 0), c, R)).toBe(false);
+    expect(withinReach(p(0, -0.251, 0), c, R)).toBe(false);
+    expect(withinReach(p(0.1, 0.5, 0.1), c, R)).toBe(false);
   });
 
-  it('measures the horizontal reach as a circle, not a square', () => {
-    expect(withinReach(p(0.24, 0, 0.24), c)).toBe(true);
-    expect(withinReach(p(0.25, 0, 0.25), c)).toBe(false);
-  });
-
-  it('accepts a hand just inside the vertical reach, above and below', () => {
-    expect(withinReach(p(0, 0.249, 0), c)).toBe(true);
-    expect(withinReach(p(0, -0.249, 0), c)).toBe(true);
-  });
-
-  it('accepts a hand exactly on the vertical reach limit, above and below', () => {
-    expect(withinReach(p(0, REACH_Y, 0), c)).toBe(true);
-    expect(withinReach(p(0, -REACH_Y, 0), c)).toBe(true);
-  });
-
-  it('rejects a hand just outside the vertical reach, above and below', () => {
-    expect(withinReach(p(0, 0.251, 0), c)).toBe(false);
-    expect(withinReach(p(0, -0.251, 0), c)).toBe(false);
-  });
-
-  it('rejects a hand that is inside horizontally but outside vertically', () => {
-    expect(withinReach(p(0.1, 0.5, 0.1), c)).toBe(false);
-  });
-
-  it('rejects a hand that is inside vertically but outside horizontally', () => {
-    expect(withinReach(p(0.5, 0.1, 0), c)).toBe(false);
-  });
-
-  it('measures the reach from an off-origin centre', () => {
+  it('measures from an off-origin centre', () => {
     const center = p(1, 0.7, -2);
-    expect(withinReach(p(1.3, 0.8, -2), center)).toBe(true);
-    expect(withinReach(p(1.4, 0.8, -2), center)).toBe(false);
-    expect(withinReach(p(1, 1.1, -2), center)).toBe(false);
+    expect(withinReach(p(1.4, 0.8, -2), center, R)).toBe(true);
+    expect(withinReach(p(1.5, 0.8, -2), center, R)).toBe(false);
+    expect(withinReach(p(1, 1.1, -2), center, R)).toBe(false);
   });
 
-  it('honours custom reach values', () => {
-    expect(withinReach(p(0.5, 0, 0), c, 0.6, 0.1)).toBe(true);
-    expect(withinReach(p(0.7, 0, 0), c, 0.6, 0.1)).toBe(false);
-    expect(withinReach(p(0, 0.2, 0), c, 0.6, 0.1)).toBe(false);
+  it('also needs the hand within 0.65 m of the head, in three dimensions', () => {
+    const head = p(0, 1.6, 0);
+    const center = p(0, 1.35, -0.45);
+    expect(withinReach(p(0.35, 1.38, -0.45), center, R, head)).toBe(true); // 0.61 m from the head
+    expect(withinReach(p(0.4, 1.38, -0.7), center, R, head)).toBe(false); // 0.84 m from the head
+    expect(withinReach(p(0.15, 1.40, -0.45), center, R, head, 0.5)).toBe(false); // custom limit
+    expect(withinReach(p(0.15, 1.40, -0.45), center, R, head, 0.6)).toBe(true);
+    expect(REACH_HEAD).toBe(0.65);
+  });
+
+  it('rejects non-finite input instead of accepting it', () => {
+    expect(withinReach(p(Number.NaN, 0, 0), c, R)).toBe(false);
+    expect(withinReach(p(0, 0, 0), c, Number.NaN)).toBe(false);
   });
 
   it('does not modify the centre or the hand', () => {
     const center = Object.freeze(p(0.1, 0.2, 0.3));
     const hand = Object.freeze(p(0.2, 0.2, 0.3));
-    expect(() => withinReach(hand, center)).not.toThrow();
+    expect(() => withinReach(hand, center, R)).not.toThrow();
     expect(center).toEqual({ x: 0.1, y: 0.2, z: 0.3 });
+  });
+});
+
+describe('pivotTranslation (D28)', () => {
+  const pt = (x: number, z: number): { x: number; z: number } => ({ x, z });
+  const near = (a: { x: number; z: number }, x: number, z: number): void => {
+    expect(a.x).toBeCloseTo(x, 9);
+    expect(a.z).toBeCloseTo(z, 9);
+  };
+
+  it('is a pure drag with r = 1 and no turn: the centre moves like the midpoint', () => {
+    const out = pivotTranslation(pt(0, 0), pt(0.1, 0.1), pt(0.3, 0.1), 1, 0);
+    near(out, 0.2, 0);
+  });
+
+  it('is the midpoint itself when the hands start above the centre', () => {
+    near(pivotTranslation(pt(0, -0.45), pt(0, -0.45), pt(0.2, -0.35), 2.4, 1.2), 0.2, -0.35);
+  });
+
+  it('with r = 2 the centre runs away from the pivot, twice as far', () => {
+    // Pivot 0.1 m to the right of the centre: after doubling the centre is 0.2 m to the left of the pivot.
+    near(pivotTranslation(pt(0, 0), pt(0.1, 0), pt(0.1, 0), 2, 0), -0.1, 0);
+  });
+
+  it('rotates the centre around the pivot by theta (as rotation.y)', () => {
+    // Pivot at (0.1, 0), centre at the origin: vector (-0.1, 0). A quarter turn of +90 deg around +Y maps
+    // (x, z) to (x cos + z sin, -x sin + z cos) = (0, 0.1).
+    near(pivotTranslation(pt(0, 0), pt(0.1, 0), pt(0.1, 0), 1, Math.PI / 2), 0.1, 0.1);
+  });
+
+  it('keeps hands placed symmetrically around the centre from moving it, for any ratio and turn', () => {
+    for (const [r, theta] of [[1, 0], [1.667, 0], [4, 0.7], [0.13, -1.1]] as const) {
+      near(pivotTranslation(pt(0.2, -0.3), pt(0.2, -0.3), pt(0.2, -0.3), r, theta), 0.2, -0.3);
+    }
+  });
+
+  it('moves a model point that was under the pivot together with the pivot', () => {
+    // The model point q (relative to the centre) at the pivot at the start: c0 + q = m0.
+    const c0 = pt(0.05, -0.4);
+    const m0 = pt(0.2, -0.3);
+    const q = { x: m0.x - c0.x, z: m0.z - c0.z };
+    const r = 1.7;
+    const theta = 0.6;
+    const mt = pt(-0.1, -0.5);
+    const c = pivotTranslation(c0, m0, mt, r, theta);
+    // The same point after the gesture: c + r R(theta) q, which must be the pivot now.
+    const x = c.x + r * (q.x * Math.cos(theta) + q.z * Math.sin(theta));
+    const z = c.z + r * (-q.x * Math.sin(theta) + q.z * Math.cos(theta));
+    near(pt(x, z), mt.x, mt.z);
+  });
+
+  it('ignores a drag of the midpoint under 5 mm and follows one over 5 mm', () => {
+    near(pivotTranslation(pt(0, 0), pt(0, 0), pt(0.004, 0), 1, 0), 0, 0);
+    near(pivotTranslation(pt(0, 0), pt(0, 0), pt(0.006, 0), 1, 0), 0.006, 0);
+  });
+
+  it('coincident hands do not divide by zero: no NaN', () => {
+    const out = pivotTranslation(pt(0, 0), pt(0, 0), pt(0, 0), 1, 0);
+    expect(Number.isNaN(out.x) || Number.isNaN(out.z)).toBe(false);
+    const s = startTwoHand(p(0.1, 0, 0), p(0.1, 0, 0), { scale: 0.05, yawDeg: 0 });
+    const res = updateTwoHand(s, p(0.1, 0, 0), p(0.1, 0, 0));
+    const c = pivotTranslation(pt(0, 0), pt(0.1, 0), pt(0.1, 0), res.scale / 0.05, 0);
+    expect(Number.isFinite(c.x) && Number.isFinite(c.z)).toBe(true);
+  });
+
+  it('leaves the centre where it was for non-finite input', () => {
+    near(pivotTranslation(pt(0.1, 0.2), pt(0, 0), pt(Number.NaN, 0), 1, 0), 0.1, 0.2);
+    near(pivotTranslation(pt(0.1, 0.2), pt(0, 0), pt(0, 0), Number.POSITIVE_INFINITY, 0), 0.1, 0.2);
+  });
+
+  it('writes into `out` and returns it, and does not touch its inputs', () => {
+    const out = pt(9, 9);
+    const c0 = Object.freeze(pt(0, 0));
+    const res = pivotTranslation(c0, c0, Object.freeze(pt(0.1, 0)), 1, 0, out);
+    expect(res).toBe(out);
+    near(out, 0.1, 0);
   });
 });
 

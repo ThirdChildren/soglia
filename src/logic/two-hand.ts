@@ -2,13 +2,15 @@
 // No imports from @iwsdk/core or three: the MiniatureGesture system calls these functions.
 //
 // Only the horizontal plane (x-z) matters: the scale follows the ratio of the distance between
-// the hands, the yaw follows the turn of the line between the hands around +Y. The model is never
-// moved or tilted by this gesture.
+// the hands, the yaw follows the turn of the line between the hands around +Y, and the midpoint of
+// the hands is the pivot that moves the centre of the model (`pivotTranslation`, decision D28).
+// The model is never tilted by this gesture and its height never changes.
 //
 // Yaw convention: rotation around +Y in degrees, the same as `object3D.rotation.y` in Three.js.
 // Positive = counter-clockwise seen from above. Seen from above (x right, z toward the user), the
 // right hand moving away from the user (-z) while the left hand comes closer is +90 degrees.
 
+import { TRANSLATE_DEAD_ZONE } from './miniature-pan';
 import { ZOOM_MAX, ZOOM_MIN } from './state';
 
 /** A point in world metres. A Three.js Vector3 satisfies this shape. */
@@ -36,9 +38,14 @@ export const MIN_START_DISTANCE = 0.02;
 /** Below this distance (metres) the direction of the line between the hands is undefined. */
 const MIN_ANGLE_DISTANCE = 1e-6;
 
-/** A hand takes part in the gesture only within this horizontal distance of the model centre (metres). */
-export const REACH_XZ = 0.35;
-/** ... and within this vertical distance (metres). Documented in docs/plans/M1.md (T1.12). */
+/**
+ * A hand takes part in the gesture only within the radius of the model at its current scale plus this
+ * margin (metres, horizontal), ... (decision D28: at scale 0.12 the far rooms must still be reachable)
+ */
+export const REACH_MARGIN = 0.1;
+/** ... within this distance of the head (metres), so that the start is always inside the seated reach ... */
+export const REACH_HEAD = 0.65;
+/** ... and within this vertical distance of the model centre (metres). Documented in docs/plans/M1.md (T1.12). */
 export const REACH_Y = 0.25;
 
 export const DEFAULT_LIMITS: ScaleLimits = { min: ZOOM_MIN, max: ZOOM_MAX };
@@ -154,17 +161,81 @@ function clamp(value: number, limits: ScaleLimits): number {
   return Math.min(hi, Math.max(lo, value));
 }
 
-/** True when `hand` is close enough to the model `center` to take part in the gesture. */
+/**
+ * True when `hand` is close enough to the model to take part in the gesture: horizontally within
+ * `modelRadius + REACH_MARGIN` of the model `center`, vertically within `reachY`, and (when `head` is
+ * given) within `maxHeadDistance` of the head. `modelRadius` is the radius of the model at its current
+ * scale in world metres (plan radius times scale).
+ */
 export function withinReach(
   hand: HandPoint,
   center: HandPoint,
-  reachXZ: number = REACH_XZ,
+  modelRadius: number,
+  head?: HandPoint,
+  maxHeadDistance: number = REACH_HEAD,
   reachY: number = REACH_Y,
 ): boolean {
-  if (Math.abs(hand.y - center.y) > reachY) return false;
+  if (!(Math.abs(hand.y - center.y) <= reachY)) return false;
   const dx = hand.x - center.x;
   const dz = hand.z - center.z;
-  return dx * dx + dz * dz <= reachXZ * reachXZ;
+  const reach = modelRadius + REACH_MARGIN;
+  if (!(dx * dx + dz * dz <= reach * reach)) return false;
+  if (head) {
+    const hx = hand.x - head.x;
+    const hy = hand.y - head.y;
+    const hz = hand.z - head.z;
+    if (!(hx * hx + hy * hy + hz * hz <= maxHeadDistance * maxHeadDistance)) return false;
+  }
+  return true;
+}
+
+/** A point on the horizontal plane (a Three.js Vector3 satisfies this shape). */
+export interface PlanePoint {
+  readonly x: number;
+  readonly z: number;
+}
+
+/**
+ * New centre of the model for a two-hand gesture (decision D28). The midpoint of the hands is the
+ * pivot: with `c0` the centre and `m0` the midpoint when the gesture was captured, `mt` the midpoint
+ * now, `r` the scale ratio since then and `thetaRad` the turn since then (around +Y, as
+ * `rotation.y` in Three.js), the centre becomes `mt + r * R(theta) * (c0 - m0)`. A point of the
+ * model that was under the pivot stays under the pivot. With the hands above the centre this is
+ * a pure drag; hands placed symmetrically around the centre never move it.
+ *
+ * A drag of the midpoint smaller than the dead zone (5 mm) counts as no drag. Allocation-free when
+ * `out` is given; non-finite input leaves the centre where it was.
+ */
+export function pivotTranslation(
+  c0: PlanePoint,
+  m0: PlanePoint,
+  mt: PlanePoint,
+  r: number,
+  thetaRad: number,
+  out: { x: number; z: number } = { x: 0, z: 0 },
+): { x: number; z: number } {
+  let px = mt.x;
+  let pz = mt.z;
+  const dragX = mt.x - m0.x;
+  const dragZ = mt.z - m0.z;
+  if (dragX * dragX + dragZ * dragZ < TRANSLATE_DEAD_ZONE * TRANSLATE_DEAD_ZONE) {
+    px = m0.x;
+    pz = m0.z;
+  }
+  const rx = c0.x - m0.x;
+  const rz = c0.z - m0.z;
+  const cos = Math.cos(thetaRad);
+  const sin = Math.sin(thetaRad);
+  const x = px + r * (rx * cos + rz * sin);
+  const z = pz + r * (-rx * sin + rz * cos);
+  if (!Number.isFinite(x) || !Number.isFinite(z)) {
+    out.x = c0.x;
+    out.z = c0.z;
+    return out;
+  }
+  out.x = x;
+  out.z = z;
+  return out;
 }
 
 /** Distance between the hands in the horizontal plane (metres). */
