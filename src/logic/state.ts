@@ -49,7 +49,7 @@ export interface AppState {
     /** True once the palm menu has been opened at least once (T2.16). */
     readonly menuOpened: boolean;
   };
-  /** Furniture placed in the house, in placement order. */
+  /** Furniture placed in the house, in order of last placement or move (the evaluation order of collisions). */
   readonly furniture: readonly PlacedPiece[];
   /** Per catalog id, the instance number the NEXT placed piece gets. Monotonic: never goes back, not even on undo. */
   readonly nextInstance: Readonly<Record<string, number>>;
@@ -285,8 +285,11 @@ export function reduce(state: AppState, action: Action): AppState {
       if (index < 0) return state;
       const old = state.furniture[index];
       if (old.x === x + 0 && old.z === z + 0 && old.rotationDeg === rotationDeg && old.roomId === roomId) return state;
-      const furniture = state.furniture.slice();
-      furniture[index] = { ...old, x: x + 0, z: z + 0, rotationDeg, roomId };
+      // The list is in order of last placement or move, and a piece is only judged against the pieces before it
+      // (`evaluateAll`): the piece that was just moved goes to the end, so when it lands on another piece the
+      // MOVED piece is marked and the one that stayed put is not (M2 gate).
+      const furniture = state.furniture.filter((_, i) => i !== index);
+      furniture.push({ ...old, x: x + 0, z: z + 0, rotationDeg, roomId });
       return {
         ...state,
         furniture,

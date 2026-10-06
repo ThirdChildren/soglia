@@ -70,9 +70,10 @@ export function evaluatePiece(
 
 /**
  * Status of every piece, by id. Pieces with an unknown catalog id are left out. A piece is only judged
- * against the pieces that come BEFORE it in the list (the list is in placement order): when two pieces
- * collide, the one that was there first stays valid and the later one is the one marked (scenario S2.3:
- * "the wardrobe stays valid"). Walls and doors do not depend on the other pieces.
+ * against the pieces that come BEFORE it in the list (the list is in order of last placement or move: a
+ * moved piece goes to the end, see `moveFurniture`): when two pieces collide, the one that was there first
+ * stays valid and the one that was placed or moved last is the one marked (scenario S2.3: "the wardrobe
+ * stays valid"). Walls and doors do not depend on the other pieces.
  */
 export function evaluateAll(
   house: House,

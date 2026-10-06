@@ -11,6 +11,16 @@ import {
 import type { House } from '../../src/logic/house';
 import type { PlacedPiece } from '../../src/logic/placement-rules';
 import { stagingToPieces } from '../../src/logic/staging';
+import {
+  createInitialState,
+  moveFurniture,
+  placeFurniture,
+  reduce,
+  undo,
+  type Action,
+  type AppState,
+} from '../../src/logic/state';
+import { DEFAULT_PARAMS } from '../../src/logic/params';
 import { loadJson } from '../helpers/load-json';
 
 const houseA = loadJson<House>('public/houses', 'apartment-a.json');
@@ -151,5 +161,72 @@ describe('outline and status line', () => {
     const invalid = evaluatePiece(houseA, a, [a, b], catalog)!;
     expect(statusKey(valid)).toBe(statusKey(evaluatePiece(houseA, a, [a], catalog)!));
     expect(statusKey(valid)).not.toBe(statusKey(invalid));
+  });
+});
+
+describe('who is marked when pieces collide after a move (M2 gate: the moved piece, not the one that stays)', () => {
+  const run = (state: AppState, ...actions: Action[]): AppState => actions.reduce(reduce, state);
+  const initial = (): AppState => createInitialState({ ...DEFAULT_PARAMS });
+  const flagged = (state: AppState): string[] =>
+    [...evaluateAll(houseA, state.furniture, catalog)].filter(([, r]) => r.status !== 'valid').map(([id]) => id);
+
+  it('an OLD piece moved onto a NEWER one becomes invalid; the newer one that did not move stays valid', () => {
+    // #1 (older) at the left of the bedroom, #2 (newer) at the right; then #1 is moved on top of #2.
+    const apart = run(
+      initial(),
+      placeFurniture('bed-double', 6.06, 3.0, 0, 'bedroom'),
+      placeFurniture('wardrobe', 7.44, 0.425, 0, 'bedroom'),
+    );
+    expect(flagged(apart)).toEqual([]);
+    const moved = reduce(apart, moveFurniture('furniture:bed-double#1', 7.0, 1.125, 0, 'bedroom'));
+    const results = evaluateAll(houseA, moved.furniture, catalog);
+    expect(results.get('furniture:bed-double#1')?.status).toBe('invalid');
+    expect(results.get('furniture:bed-double#1')?.details.with).toBe('furniture:wardrobe#1');
+    expect(results.get('furniture:wardrobe#1')?.status).toBe('valid');
+  });
+
+  it('a NEWER piece moved onto an older one is still the one marked', () => {
+    const apart = run(
+      initial(),
+      placeFurniture('wardrobe', 7.44, 0.425, 0, 'bedroom'),
+      placeFurniture('bed-double', 6.06, 3.0, 0, 'bedroom'),
+    );
+    const moved = reduce(apart, moveFurniture('furniture:bed-double#1', 7.0, 1.125, 0, 'bedroom'));
+    expect(flagged(moved)).toEqual(['furniture:bed-double#1']);
+  });
+
+  it('among three pieces only the moved one is marked, whatever its age', () => {
+    const three = run(
+      initial(),
+      placeFurniture('bed-double', 6.06, 3.0, 0, 'bedroom'),
+      placeFurniture('wardrobe', 7.44, 0.425, 0, 'bedroom'),
+      placeFurniture('armchair', 7.5, 3.6, 0, 'bedroom'),
+    );
+    expect(flagged(three)).toEqual([]);
+    const moved = reduce(three, moveFurniture('furniture:bed-double#1', 7.0, 1.125, 0, 'bedroom'));
+    expect(flagged(moved)).toEqual(['furniture:bed-double#1']);
+  });
+
+  it('moving the marked piece away makes everything valid again, and the ids are untouched', () => {
+    const apart = run(
+      initial(),
+      placeFurniture('bed-double', 6.06, 3.0, 0, 'bedroom'),
+      placeFurniture('wardrobe', 7.44, 0.425, 0, 'bedroom'),
+    );
+    const onTop = reduce(apart, moveFurniture('furniture:bed-double#1', 7.0, 1.125, 0, 'bedroom'));
+    const away = reduce(onTop, moveFurniture('furniture:bed-double#1', 6.06, 3.0, 0, 'bedroom'));
+    expect(flagged(away)).toEqual([]);
+    expect(away.furniture.map((p) => p.id).sort()).toEqual(['furniture:bed-double#1', 'furniture:wardrobe#1']);
+    expect(away.nextInstance).toEqual(apart.nextInstance);
+  });
+
+  it('undo of the move puts the pieces back in their previous order', () => {
+    const apart = run(
+      initial(),
+      placeFurniture('bed-double', 6.06, 3.0, 0, 'bedroom'),
+      placeFurniture('wardrobe', 7.44, 0.425, 0, 'bedroom'),
+    );
+    const undone = run(apart, moveFurniture('furniture:bed-double#1', 7.0, 1.125, 0, 'bedroom'), undo());
+    expect(undone.furniture).toEqual(apart.furniture);
   });
 });
