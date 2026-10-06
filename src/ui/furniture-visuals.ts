@@ -59,11 +59,17 @@ export class FurnitureVisuals {
   /**
    * Loads the model of every catalog item that has one (all in parallel, through the AssetManager).
    * A model that fails to load is reported once and that item keeps the fallback block.
+   * With `simulateFailure` (`failmodels=1` together with `debug=1`) every load is replaced by a failure.
    */
-  async preload(): Promise<{ models: number; fallbacks: number }> {
+  async preload(simulateFailure = false): Promise<{ models: number; fallbacks: number }> {
     const withModel = [...this.itemById.values()].filter((item) => typeof item.model === 'string');
+    if (simulateFailure) slog('debug failmodels=1: every furniture model fails to load');
     const results = await Promise.allSettled(
-      withModel.map((item) => AssetManager.loadGLTFById(modelAssetId(item.id))),
+      withModel.map((item) =>
+        simulateFailure
+          ? Promise.reject(new Error('simulated model failure'))
+          : AssetManager.loadGLTFById(modelAssetId(item.id)),
+      ),
     );
     results.forEach((result, index) => {
       const item = withModel[index];

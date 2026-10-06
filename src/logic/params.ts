@@ -1,5 +1,5 @@
 // Pure URL / dev-file parameter parsing: no imports from @iwsdk/core or three.
-// Recognised keys: house, role, reset, seed, time, debug, mr, glyphs, furnish.
+// Recognised keys: house, role, reset, seed, time, debug, mr, glyphs, furnish, failmodels.
 // Unknown values fall back to the default and produce a warning returned as data;
 // the caller decides how to log it.
 
@@ -18,7 +18,8 @@ export type ParamKey =
   | 'debug'
   | 'mr'
   | 'glyphs'
-  | 'furnish';
+  | 'furnish'
+  | 'failmodels';
 
 export type ParamsSource = 'url' | 'dev-file' | 'default';
 
@@ -40,6 +41,11 @@ export interface Params {
   glyphs: boolean;
   /** `furnish=scandinavian`: start with the staging preset of the house (development aid, D23). */
   furnish: FurnishStyle;
+  /**
+   * `failmodels=1`: pretend every furniture glb fails to load, so the pieces show as fallback blocks (development
+   * aid). Only honoured together with `debug=1` (`mergeParams` drops it with a warning otherwise).
+   */
+  failmodels: boolean;
 }
 
 export interface ParsedParams {
@@ -68,6 +74,7 @@ export const DEFAULT_PARAMS: Readonly<Params> = Object.freeze({
   mr: false,
   glyphs: false,
   furnish: 'none',
+  failmodels: false,
 });
 
 /** Letters, digits, `_` and `-` only: no dots, slashes, spaces or markup. */
@@ -123,6 +130,7 @@ const FIELD_PARSERS: { [K in ParamKey]: (raw: string) => FieldResult<Params[K]> 
     }
     return { ok: true, value: raw };
   },
+  failmodels: parseFlag,
 };
 
 const KEYS = Object.keys(FIELD_PARSERS) as ParamKey[];
@@ -189,15 +197,21 @@ export function mergeParams(
   const source: ParamsSource =
     fromUrl.size > 0 ? 'url' : fromFile.size > 0 ? 'dev-file' : 'default';
   const warnings = [...urlParams.warnings, ...(devFileParams ? devFileParams.warnings : [])];
+  // A development aid that can hide real problems: it needs the debug switch.
+  if (params.failmodels && !params.debug) {
+    params.failmodels = false;
+    warnings.push('param failmodels ignored: needs debug=1');
+  }
   return { params, source, warnings };
 }
 
 /** The `[soglia] params ...` log line body (without the prefix), as in the log contract. */
 export function formatParamsLine(source: ParamsSource, p: Params): string {
-  return (
+  const line =
     `params source=${source} house=${p.house} role=${p.role} reset=${p.reset} ` +
-    `seed=${p.seed} debug=${p.debug} time=${p.time ?? '-'}`
-  );
+    `seed=${p.seed} debug=${p.debug} time=${p.time ?? '-'}`;
+  // Only when it is on, so the line stays the one the QA scenarios know.
+  return p.failmodels ? `${line} failmodels=true` : line;
 }
 
 /** True when the warnings include a discarded `house` value (the app then logs that it kept the default home). */

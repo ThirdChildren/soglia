@@ -83,7 +83,7 @@ async function start(): Promise<void> {
     if (catalogResult.ok) {
       createMenuItems(world, store, furnitureItems(catalogResult.items));
       const visuals = new FurnitureVisuals(furnitureItems(catalogResult.items));
-      await visuals.preload();
+      await visuals.preload(params.failmodels);
       createFurniture(world, store, result.house, catalogResult.items, visuals, built.entity);
       createFurnitureReasons(world, catalogResult.items);
       createFurnitureGrab(world, store, result.house, catalogResult.items, visuals, built.entity, miniature.root);

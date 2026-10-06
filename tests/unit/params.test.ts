@@ -8,6 +8,7 @@ import {
   mergeParams,
   parseParams,
   type ParamKey,
+  type ParsedParams,
 } from '../../src/logic/params';
 
 describe('parseParams defaults', () => {
@@ -35,6 +36,7 @@ describe('parseParams defaults', () => {
       mr: false,
       glyphs: false,
       furnish: 'none',
+      failmodels: false,
     });
   });
 
@@ -125,7 +127,7 @@ describe('parseParams role', () => {
 });
 
 describe('parseParams boolean flags', () => {
-  const FLAGS = ['reset', 'debug', 'mr', 'glyphs'] as const;
+  const FLAGS = ['reset', 'debug', 'mr', 'glyphs', 'failmodels'] as const;
 
   it.each(FLAGS)('%s=1 is true', (key) => {
     const r = parseParams(`${key}=1`);
@@ -244,7 +246,7 @@ describe('parseParams time', () => {
 
 describe('parseParams multiple keys', () => {
   it('parses every key in one query string', () => {
-    const r = parseParams('house=apartment-b&role=landlord&reset=1&seed=7&time=2026-12-21T10:00&debug=1&mr=1&glyphs=1&furnish=scandinavian');
+    const r = parseParams('house=apartment-b&role=landlord&reset=1&seed=7&time=2026-12-21T10:00&debug=1&mr=1&glyphs=1&furnish=scandinavian&failmodels=1');
     expect(r.params).toEqual({
       house: 'apartment-b',
       role: 'landlord',
@@ -255,8 +257,9 @@ describe('parseParams multiple keys', () => {
       mr: true,
       glyphs: true,
       furnish: 'scandinavian',
+      failmodels: true,
     });
-    expect([...r.present].sort()).toEqual(['debug', 'furnish', 'glyphs', 'house', 'mr', 'reset', 'role', 'seed', 'time']);
+    expect([...r.present].sort()).toEqual(['debug', 'failmodels', 'furnish', 'glyphs', 'house', 'mr', 'reset', 'role', 'seed', 'time']);
     expect(r.warnings).toEqual([]);
   });
 
@@ -285,7 +288,7 @@ describe('parseParams multiple keys', () => {
     expect(r.params.house).toBe('apartment-b');
     expect(r.present).toEqual(['house']);
     expect(r.warnings).toEqual([]);
-    expect(Object.keys(r.params).sort()).toEqual(['debug', 'furnish', 'glyphs', 'house', 'mr', 'reset', 'role', 'seed', 'time']);
+    expect(Object.keys(r.params).sort()).toEqual(['debug', 'failmodels', 'furnish', 'glyphs', 'house', 'mr', 'reset', 'role', 'seed', 'time']);
   });
 
   it('ignores key names that differ only by case', () => {
@@ -296,9 +299,9 @@ describe('parseParams multiple keys', () => {
   });
 
   it('emits one warning per rejected key, in the fixed key order and not in URL order', () => {
-    const r = parseParams('time=bad&seed=x&furnish=x&glyphs=2&mr=2&debug=2&reset=2&role=boss&house=../x');
+    const r = parseParams('failmodels=2&time=bad&seed=x&furnish=x&glyphs=2&mr=2&debug=2&reset=2&role=boss&house=../x');
     const keys = r.warnings.map((w) => /^param (\w+)=/u.exec(w)?.[1]);
-    expect(keys).toEqual(['house', 'role', 'reset', 'debug', 'mr', 'glyphs', 'furnish', 'seed', 'time']);
+    expect(keys).toEqual(['house', 'role', 'reset', 'debug', 'mr', 'glyphs', 'furnish', 'seed', 'time', 'failmodels']);
   });
 
   it('formats a warning as: param key="value" ignored: reason', () => {
@@ -445,6 +448,7 @@ describe('mergeParams', () => {
     ['mr', 'mr=1'],
     ['glyphs', 'glyphs=1'],
     ['furnish', 'furnish=scandinavian'],
+    ['failmodels', 'failmodels=1&debug=1'],
   ])('takes %s from the dev file', (key, query) => {
     const m = mergeParams(none, parseParams(query));
     expect(m.params[key]).toEqual(parseParams(query).params[key]);
@@ -464,6 +468,7 @@ describe('formatParamsLine', () => {
       mr: false,
       glyphs: false,
       furnish: 'none',
+      failmodels: false,
     });
     expect(line).toBe('params source=dev-file house=apartment-b role=visitor reset=false seed=1 debug=true time=-');
   });
@@ -562,5 +567,51 @@ describe('furnish parameter', () => {
     expect(r.params.furnish).toBe('none');
     expect(r.present).toEqual([]);
     expect(r.warnings).toEqual(['param furnish="modern" ignored: expected one of none, scandinavian']);
+  });
+});
+
+describe('failmodels parameter (development aid, needs debug=1)', () => {
+  const none: ParsedParams = parseParams('');
+
+  it('is false by default and accepts 1 and 0', () => {
+    expect(parseParams('').params.failmodels).toBe(false);
+    expect(parseParams('failmodels=1').params.failmodels).toBe(true);
+    expect(parseParams('failmodels=0').params.failmodels).toBe(false);
+  });
+
+  it('warns about any other value like the other flags and keeps the default', () => {
+    const r = parseParams('failmodels=yes');
+    expect(r.params.failmodels).toBe(false);
+    expect(r.present).toEqual([]);
+    expect(r.warnings).toEqual(['param failmodels="yes" ignored: expected 1 or 0']);
+  });
+
+  it('is active only together with debug=1 (both in the URL)', () => {
+    const m = mergeParams(parseParams('failmodels=1&debug=1'), null);
+    expect(m.params.failmodels).toBe(true);
+    expect(m.warnings).toEqual([]);
+  });
+
+  it('is dropped with a warning when debug is off or missing', () => {
+    for (const query of ['failmodels=1', 'failmodels=1&debug=0']) {
+      const m = mergeParams(parseParams(query), null);
+      expect(m.params.failmodels).toBe(false);
+      expect(m.warnings).toEqual(['param failmodels ignored: needs debug=1']);
+    }
+  });
+
+  it('takes debug from another source: URL failmodels with dev-file debug counts, and the other way round', () => {
+    expect(mergeParams(parseParams('failmodels=1'), parseParams('debug=1')).params.failmodels).toBe(true);
+    expect(mergeParams(none, parseParams('failmodels=1&debug=1')).params.failmodels).toBe(true);
+    const off = mergeParams(parseParams('debug=0'), parseParams('failmodels=1&debug=1'));
+    expect(off.params.failmodels).toBe(false); // the URL wins: debug off
+    expect(off.warnings).toEqual(['param failmodels ignored: needs debug=1']);
+  });
+
+  it('is not part of the log line unless it is on, so the known line does not change', () => {
+    expect(formatParamsLine('default', { ...DEFAULT_PARAMS })).not.toContain('failmodels');
+    expect(formatParamsLine('url', { ...DEFAULT_PARAMS, debug: true, failmodels: true })).toBe(
+      'params source=url house=apartment-a role=visitor reset=false seed=1 debug=true time=- failmodels=true',
+    );
   });
 });
