@@ -4,8 +4,11 @@
 
 /** Catalog items per page (a 3 x 2 grid). */
 export const PAGE_SIZE = 6;
-/** A pinch takes the item whose centre is within this distance (metres, D15). */
-export const PICK_RADIUS = 0.05;
+/**
+ * A pinch takes a control when the pinch point is inside its rectangle in the plane of the menu and no farther
+ * than this from that plane, in front of it or behind it (metres, D15).
+ */
+export const PICK_DEPTH = 0.05;
 
 /** Number of pages for `count` items: at least 1, so an empty catalog still has "page 1". */
 export function pageCount(count: number): number {
@@ -90,7 +93,18 @@ export const MENU_EXTENT: PanelExtent = {
   top: TITLE_OFFSET.dy + TITLE_PANEL_HEIGHT / 200,
 };
 
-export interface PickSlot {
+/** Half width and half height of a control rectangle in its own plane, metres (from the layout above). */
+export interface HalfSize {
+  readonly halfWidth: number;
+  readonly halfHeight: number;
+}
+
+/** Half size of an item panel (`ITEM_PANEL`, UIKit units are centimetres). */
+export const ITEM_HALF: HalfSize = { halfWidth: ITEM_PANEL.width / 200, halfHeight: ITEM_PANEL.height / 200 };
+/** Half size of a bar button panel (`BUTTON_PANEL`). */
+export const BUTTON_HALF: HalfSize = { halfWidth: BUTTON_PANEL.width / 200, halfHeight: BUTTON_PANEL.height / 200 };
+
+export interface PickSlot extends HalfSize {
   readonly id: string;
   readonly x: number;
   readonly y: number;
@@ -103,20 +117,49 @@ export interface Point3 {
   readonly z: number;
 }
 
+/** A unit quaternion (the orientation of the menu plane: x to the right, y up, z toward the head). */
+export interface Quat {
+  readonly x: number;
+  readonly y: number;
+  readonly z: number;
+  readonly w: number;
+}
+
 /**
- * The slot closest to `point` within `radius` metres, or null. Ties go to the first slot. A point or a
- * slot with a non-finite coordinate never matches.
+ * The control whose rectangle holds `point`, or null. A control is a rectangle in the plane of the menu
+ * (`frame` is its orientation) around its centre, `halfWidth` x `halfHeight` as in the layout (the corners
+ * count, not just a circle around the centre); the point may be up to `depth` metres in front of or behind
+ * that plane. When rectangles overlap, the control with the closest centre wins (the first on an exact tie).
+ * A point, a centre or a frame with a non-finite value never matches, nor does a control with no size. Allocates nothing.
  */
-export function pickSlot<T extends PickSlot>(point: Point3, slots: readonly T[], radius = PICK_RADIUS): T | null {
+export function pickRect<T extends PickSlot>(
+  point: Point3,
+  slots: readonly T[],
+  frame: Quat,
+  depth = PICK_DEPTH,
+): T | null {
+  // Inverse rotation of the frame (its conjugate), as a rotation matrix applied below: v' = q* v q.
+  const { x: qx, y: qy, z: qz, w: qw } = frame;
+  if (!Number.isFinite(qx + qy + qz + qw)) return null;
   let best: T | null = null;
-  let bestDistance = radius;
-  for (const slot of slots) {
-    const distance = Math.hypot(slot.x - point.x, slot.y - point.y, slot.z - point.z);
-    if (Number.isFinite(distance) && distance <= bestDistance) {
-      if (best === null || distance < bestDistance) {
-        best = slot;
-        bestDistance = distance;
-      }
+  let bestDistance = Infinity;
+  for (let i = 0; i < slots.length; i += 1) {
+    const slot = slots[i];
+    const dx = point.x - slot.x;
+    const dy = point.y - slot.y;
+    const dz = point.z - slot.z;
+    // t = 2 * cross(-q.xyz, d); v' = d + w * t + cross(-q.xyz, t)
+    const tx = 2 * (-qy * dz + qz * dy);
+    const ty = 2 * (-qz * dx + qx * dz);
+    const tz = 2 * (-qx * dy + qy * dx);
+    const lx = dx + qw * tx + (-qy * tz + qz * ty);
+    const ly = dy + qw * ty + (-qz * tx + qx * tz);
+    const lz = dz + qw * tz + (-qx * ty + qy * tx);
+    if (!(slot.halfWidth > 0 && slot.halfHeight > 0 && Math.abs(lx) <= slot.halfWidth && Math.abs(ly) <= slot.halfHeight && Math.abs(lz) <= depth)) continue;
+    const distance = Math.sqrt(lx * lx + ly * ly + lz * lz);
+    if (distance < bestDistance) {
+      best = slot;
+      bestDistance = distance;
     }
   }
   return best;

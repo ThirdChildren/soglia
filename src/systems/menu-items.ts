@@ -4,7 +4,7 @@
 // its plane (the layout is in src/logic/menu.ts) and are disposed when the menu closes. The page
 // always starts at 1 when the menu opens.
 //
-// A pinch of the free hand within PICK_RADIUS of a control claims that hand as `menu` (the highest
+// A pinch of the free hand inside the rectangle of a control (its real size in the plane of the menu) claims that hand as `menu` (the highest
 // priority, so it never selects a room and never starts a gesture) and runs the action:
 //   item     -> listeners registered with `onMenuItemPick` (the grab, task T2.13). They may take the hand with
 //               `releaseMenuHand` and claim it as `furniture`; otherwise the claim lasts until the pinch ends.
@@ -18,15 +18,18 @@ import { createSystem, Quaternion, Vector3, type World } from '@iwsdk/core';
 import { slog } from '../log';
 import type { CatalogItem } from '../logic/catalog';
 import {
+  BUTTON_HALF,
   BUTTON_SLOTS,
   BUTTONS,
+  ITEM_HALF,
   ITEM_SLOTS,
   formatPageLine,
   pageCount,
   pageItems,
-  pickSlot,
+  pickRect,
   turnPage,
   type ButtonId,
+  type HalfSize,
   type Offset,
 } from '../logic/menu';
 import { menuOpacity, menuSelectable } from '../logic/menu-dim';
@@ -92,12 +95,16 @@ interface Control {
   button?: ButtonId;
 }
 
-/** A control as seen by `pickSlot`: its id and its current world position. */
+/** A control as seen by `pickRect`: its id, its current world position and its size in the plane of the menu. */
 interface Slot {
   id: string;
+  /** Size of the rectangle when the panel is ready; a panel that is not ready is not visible and has no size. */
+  half: HalfSize;
   x: number;
   y: number;
   z: number;
+  halfWidth: number;
+  halfHeight: number;
   control: Control;
 }
 
@@ -146,6 +153,8 @@ export class MenuItemsSystem extends createSystem({}) {
       object.position.copy(this.spot);
       object.quaternion.copy(this.frameQuat);
       object.visible = control.panel.ready;
+      slot.halfWidth = control.panel.ready ? slot.half.halfWidth : 0;
+      slot.halfHeight = control.panel.ready ? slot.half.halfHeight : 0;
       slot.x = this.spot.x;
       slot.y = this.spot.y;
       slot.z = this.spot.z;
@@ -184,13 +193,10 @@ export class MenuItemsSystem extends createSystem({}) {
   }
 
   private rebuildSlots(): void {
-    this.slots = [...this.itemControls, ...this.buttonControls].map((control) => ({
-      id: control.panel.stableId,
-      x: 0,
-      y: 0,
-      z: 0,
-      control,
-    }));
+    this.slots = [...this.itemControls, ...this.buttonControls].map((control) => {
+      const half = control.catalogId !== undefined ? ITEM_HALF : BUTTON_HALF;
+      return { id: control.panel.stableId, half, x: 0, y: 0, z: 0, halfWidth: 0, halfHeight: 0, control };
+    });
   }
 
   private closeAll(): void {
@@ -208,8 +214,9 @@ export class MenuItemsSystem extends createSystem({}) {
     // Nothing in the menu can be picked while a piece is held (a pinch of the free hand rotates the piece).
     if (!menuSelectable(pinchClaims.anyClaimed('furniture'))) return;
     pinchPoint(hand, this.point);
-    const ready = this.slots.filter((slot) => slot.control.panel.ready);
-    const hit = pickSlot(this.point, ready);
+    const menu = getPalmMenuPanel();
+    if (!menu) return;
+    const hit = pickRect(this.point, this.slots, menu.frameOrientation);
     if (!hit) return;
     // The menu has the highest priority: this only fails if the menu already owns the hand.
     if (!pinchClaims.claim(hand, 'menu')) return;
