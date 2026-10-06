@@ -287,3 +287,50 @@ describe('CREDITS.md lists the menu icons that the code imports', () => {
     expect([...listed].sort()).toEqual([...imported].sort());
   });
 });
+
+describe('license texts of the credited components ship with the build', () => {
+  const credits = readText('CREDITS.md');
+  // What each license text must contain, to be that license (not just a file with the right name).
+  const SIGNATURES: Record<string, RegExp> = {
+    ISC: /ISC License[\s\S]*Permission to use, copy, modify, and\/or distribute this software for any\s+purpose with or without fee/,
+    MIT: /Permission is hereby granted, free of charge, to any person obtaining a copy/,
+    OFL: /SIL OPEN FONT LICENSE Version 1\.1/i,
+  };
+  /** Licenses CREDITS.md cites in its tables and text (CC0 needs no file). */
+  const cited = new Set<string>();
+  if (/\bISC\b/.test(credits)) cited.add('ISC');
+  if (/\bMIT\b/.test(credits)) cited.add('MIT');
+  if (/SIL Open Font License|\bOFL\b/.test(credits)) cited.add('OFL');
+  const licenseFiles = filesUnder('public', ['.txt', '.md']).filter((f) => /licen[sc]e|OFL/i.test(f));
+
+  it('cites ISC, MIT and OFL (the check is not vacuous)', () => {
+    expect([...cited].sort()).toEqual(['ISC', 'MIT', 'OFL']);
+    expect(licenseFiles.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it.each([...cited])('has a license text for %s under public/ (so in dist/)', (id) => {
+    const files = licenseFiles.filter((f) => SIGNATURES[id].test(readText(f)));
+    expect(files, `no file under public/ holds the ${id} license text`).not.toEqual([]);
+  });
+
+  it('keeps the MIT notice for the Feather-derived icons next to the Lucide ISC text', () => {
+    const text = readText('public/licenses/lucide-ISC-and-Feather-MIT.txt');
+    expect(text).toMatch(SIGNATURES.ISC);
+    expect(text).toMatch(SIGNATURES.MIT);
+    expect(text).toContain('Cole Bemis');
+    expect(text).toMatch(/chevron-left/);
+    expect(text).toMatch(/chevron-right/);
+  });
+
+  it('has every license file that CREDITS.md names, and CREDITS.md names every license file under public/', () => {
+    const named = [...credits.matchAll(/`(public\/[^`]*(?:licen[sc]e|OFL)[^`]*)`/gi)].map((m) => m[1]);
+    expect(named.length).toBeGreaterThanOrEqual(4);
+    for (const file of named) expect(existsSync(repoPath(file)), `${file} is named in CREDITS.md but missing`).toBe(true);
+    for (const file of licenseFiles) expect(named, `${file} is not named in CREDITS.md`).toContain(file);
+  });
+
+  it('licenses the Lucide icons as ISC and the Feather-derived ones as MIT in the credits text', () => {
+    expect(credits).toMatch(/ISC/);
+    expect(credits).toMatch(/Cole Bemis/);
+  });
+});

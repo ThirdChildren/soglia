@@ -60,8 +60,9 @@ Il `contest-reviewer` lo ricontrolla a ogni gate.
   `@pmndrs/uikit-lucide` 1.0.76 (involucro MIT, Copyright 2024 Bela Bohlender e 2023 Coconut
   Capital). I disegni sono icone Lucide (ISC, Copyright (c) 2026 Lucide Icons and Contributors);
   i chevron derivano da Feather e sono MIT (Copyright (c) 2013-present Cole Bemis). Non sono CC0,
-  ma le licenze permettono uso e ridistribuzione con il testo accanto; le icone sono citate in
-  `CREDITS.md`. Sono incluse nel
+  ma le licenze permettono uso e ridistribuzione con il testo accanto: i testi (ISC di Lucide con
+  l'avviso MIT di Feather, MIT del pacchetto) sono in `public/licenses/`, quindi in `dist/`, e le icone sono
+  citate in `CREDITS.md`. Sono incluse nel
   bundle una per una (nessuna richiesta a un host in esecuzione), stanno sempre accanto a
   un'etichetta di testo e sono forme generiche: nessun marchio, nessun logo.
 - **Host esterni noti nel bundle di produzione** (default di `@iwsdk/core` / `@iwsdk/xr-input`,

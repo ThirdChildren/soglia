@@ -38,3 +38,10 @@ bundle one icon at a time (`Undo2`, `ChevronLeft`, `ChevronRight`, `LocateFixed`
 host at runtime. The drawings are Lucide icons (https://lucide.dev/license): ISC, Copyright (c) 2026
 Lucide Icons and Contributors; the icons derived from Feather, such as the chevrons, are MIT,
 Copyright (c) 2013-present Cole Bemis. Every icon has a text label next to it.
+
+License texts shipped in the build (everything under `public/` is copied to `dist/`):
+
+- `public/licenses/lucide-ISC-and-Feather-MIT.txt`: Lucide, ISC License, with the MIT notice (Copyright (c) 2013-present Cole Bemis) for the icons derived from Feather, such as the chevrons.
+- `public/licenses/uikit-lucide-MIT.txt`: the `@pmndrs/uikit-lucide` package, MIT License (Bela Bohlender, Coconut Capital).
+- `public/models/hands/LICENSE.md`: MIT License, the hand models.
+- `public/fonts/OFL.txt`: SIL Open Font License 1.1, the Inter font.
