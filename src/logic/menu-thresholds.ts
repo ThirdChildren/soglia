@@ -36,8 +36,17 @@ export const MENU_LIFT = 0.1;
 /** The menu is never farther than this from the head, in metres (rule 8: panels at 0.5-0.8 m). */
 export const MENU_MAX_DISTANCE = 0.6;
 
-/** The menu is never nearer to the head than this when it is pulled toward the centre of the view, in metres. */
-export const MENU_MIN_DISTANCE = 0.45;
+/**
+ * The menu (its frame, the bottom centre) is never nearer to the head than this, in metres (rule 8: panels at
+ * 0.5-0.8 m). A hand held close to the face pushes the menu away along the line from the head.
+ */
+export const MENU_MIN_DISTANCE = 0.5;
+/** The "Palm up for the menu" hint is never nearer to the head than this, in metres. */
+export const HINT_MIN_DISTANCE = 0.5;
+/** The room label is never nearer to the head than this (it slides along the line from the head), in metres. */
+export const ROOM_LABEL_MIN_DISTANCE = 0.5;
+/** A reason label is never nearer to the head than this (it slides along the line from the head), in metres. */
+export const REASON_LABEL_MIN_DISTANCE = 0.5;
 /**
  * The WHOLE menu (title, items, bar) stays inside a cone of this half angle around the forward direction of
  * the head, in degrees (rule 8: nothing important near the edge of a narrow field of view). The menu is

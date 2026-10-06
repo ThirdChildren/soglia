@@ -11,7 +11,7 @@ import {
 } from '../../src/logic/menu';
 import { MENU_MAX_DISTANCE, MENU_MIN_DISTANCE, VIEW_CONE_HALF_ANGLE_DEG } from '../../src/logic/menu-thresholds';
 import { menuAnchor, type Vec3Like } from '../../src/logic/palm';
-import { fitPanelToCone, panelConeAngleDeg, type ConeFit } from '../../src/logic/view-fit';
+import { clampDistanceFromHead, fitPanelToCone, panelConeAngleDeg, type ConeFit } from '../../src/logic/view-fit';
 
 const HEAD: Vec3Like = { x: 0, y: 1.6, z: 0 };
 const FORWARD: Vec3Like = { x: 0, y: 0, z: -1 };
@@ -95,9 +95,9 @@ describe('panelConeAngleDeg', () => {
 });
 
 describe('fitPanelToCone', () => {
-  it('uses a cone of 30 degrees, distances 0.45 to 0.6 m (thresholds to tune on the headset)', () => {
+  it('uses a cone of 30 degrees, distances 0.5 to 0.6 m (thresholds to tune on the headset)', () => {
     expect(VIEW_CONE_HALF_ANGLE_DEG).toBe(30);
-    expect(MENU_MIN_DISTANCE).toBe(0.45);
+    expect(MENU_MIN_DISTANCE).toBe(0.5);
     expect(MENU_MAX_DISTANCE).toBe(0.6);
   });
 
@@ -126,6 +126,7 @@ describe('fitPanelToCone', () => {
           const angle = panelConeAngleDeg(placed, HEAD, FORWARD, MENU_EXTENT);
           expect(angle).toBeLessThanOrEqual(30 + 1e-3);
           expect(dist(placed, HEAD)).toBeLessThanOrEqual(MENU_MAX_DISTANCE + 1e-9);
+          expect(dist(placed, HEAD)).toBeGreaterThanOrEqual(MENU_MIN_DISTANCE - 1e-9);
         }
       }
     }
@@ -136,7 +137,7 @@ describe('fitPanelToCone', () => {
     expect(panelConeAngleDeg(placed, HEAD, FORWARD, MENU_EXTENT)).toBeGreaterThan(30 - 0.5);
   });
 
-  it('follows the head: the same hand with the head turned toward it needs no correction', () => {
+  it('follows the head: the same hand with the head turned toward it needs no correction (except the minimum distance)', () => {
     const hand = { x: -0.25, y: 1.15, z: -0.2 };
     const above = menuAnchor(hand, HEAD, out());
     // Aim at the middle of the menu.
@@ -145,7 +146,14 @@ describe('fitPanelToCone', () => {
     const forward = { x: toward.x / l, y: toward.y / l, z: toward.z / l };
     const result = fitPanelToCone(above, HEAD, forward, MENU_EXTENT, FIT, out());
     expect(panelConeAngleDeg(above, HEAD, forward, MENU_EXTENT)).toBeLessThanOrEqual(30);
-    expect(result).toEqual(above);
+    // The hand anchor is 0.37 m from the head, nearer than the minimum: it only moves away along the line from the head.
+    expect(dist(above, HEAD)).toBeLessThan(MENU_MIN_DISTANCE);
+    expect(dist(result, HEAD)).toBeCloseTo(MENU_MIN_DISTANCE, 9);
+    const k = MENU_MIN_DISTANCE / dist(above, HEAD);
+    expect(result.x).toBeCloseTo(HEAD.x + (above.x - HEAD.x) * k, 9);
+    expect(result.y).toBeCloseTo(HEAD.y + (above.y - HEAD.y) * k, 9);
+    expect(result.z).toBeCloseTo(HEAD.z + (above.z - HEAD.z) * k, 9);
+    expect(panelConeAngleDeg(result, HEAD, forward, MENU_EXTENT)).toBeLessThanOrEqual(30);
   });
 
   it('handles a head that looks down at the model and a head that looks sideways', () => {
@@ -187,5 +195,56 @@ describe('fitPanelToCone', () => {
     const result = fitPanelToCone({ x: -0.25, y: 1.25, z: -0.2 }, HEAD, FORWARD, MENU_EXTENT, narrow, out());
     expect(Math.abs(result.x)).toBeLessThan(1e-6);
     expect(dist(result, HEAD)).toBeLessThanOrEqual(MENU_MAX_DISTANCE + 1e-9);
+  });
+});
+
+describe('clampDistanceFromHead', () => {
+  const clamp = (p: Vec3Like, min: number, max: number, forward: Vec3Like = FORWARD): Vec3Like =>
+    clampDistanceFromHead(p, HEAD, min, max, forward, out());
+
+  it('leaves a point inside [min, max] where it is', () => {
+    expect(clamp({ x: 0.1, y: 1.5, z: -0.55 }, 0.5, 0.6)).toEqual({ x: 0.1, y: 1.5, z: -0.55 });
+  });
+
+  it('pushes a near point out to the minimum and pulls a far point in to the maximum, along the line from the head', () => {
+    const near = { x: 0.1, y: 1.5, z: -0.3 };
+    const pushed = clamp(near, 0.5, 0.6);
+    expect(dist(pushed, HEAD)).toBeCloseTo(0.5, 9);
+    // Same direction seen from the head: the offset is a positive multiple of the original offset.
+    const k = 0.5 / dist(near, HEAD);
+    expect(pushed.x).toBeCloseTo((near.x - HEAD.x) * k, 9);
+    expect(pushed.y).toBeCloseTo(HEAD.y + (near.y - HEAD.y) * k, 9);
+    expect(pushed.z).toBeCloseTo((near.z - HEAD.z) * k, 9);
+    expect(dist(clamp({ x: 0, y: 1.6, z: -2 }, 0.5, 0.6), HEAD)).toBeCloseTo(0.6, 9);
+  });
+
+  it('an infinite maximum never pulls a point in', () => {
+    expect(dist(clamp({ x: 0, y: 1.6, z: -3 }, 0.5, Infinity), HEAD)).toBeCloseTo(3, 9);
+  });
+
+  it('a label above a piece stays above it as seen from the head (same horizontal direction, same elevation angle)', () => {
+    const above = { x: 0.12, y: 1.48, z: -0.4 };
+    const pushed = clamp(above, 0.5, 0.6);
+    const before = Math.atan2(above.x - HEAD.x, -(above.z - HEAD.z));
+    const after = Math.atan2(pushed.x - HEAD.x, -(pushed.z - HEAD.z));
+    expect(after).toBeCloseTo(before, 9);
+    const elevBefore = Math.atan2(above.y - HEAD.y, Math.hypot(above.x - HEAD.x, above.z - HEAD.z));
+    const elevAfter = Math.atan2(pushed.y - HEAD.y, Math.hypot(pushed.x - HEAD.x, pushed.z - HEAD.z));
+    expect(elevAfter).toBeCloseTo(elevBefore, 9);
+  });
+
+  it('a point at the head goes the minimum along the forward direction, or along -z for an unusable one', () => {
+    const ahead = clamp(HEAD, 0.5, 0.6, { x: 0, y: 0, z: -2 });
+    expect(ahead).toEqual({ x: 0, y: 1.6, z: -0.5 });
+    expect(clamp(HEAD, 0.5, 0.6, { x: 0, y: 0, z: 0 })).toEqual({ x: 0, y: 1.6, z: -0.5 });
+  });
+
+  it('writes into out, may alias the input, and passes a non-finite point through', () => {
+    const o = out();
+    expect(clampDistanceFromHead({ x: 0, y: 1.6, z: -0.2 }, HEAD, 0.5, 0.6, FORWARD, o)).toBe(o);
+    const same = { x: 0, y: 1.6, z: -0.2 };
+    clampDistanceFromHead(same, HEAD, 0.5, 0.6, FORWARD, same);
+    expect(same).toEqual(o);
+    expect(Number.isNaN(clamp({ x: NaN, y: 1, z: 1 }, 0.5, 0.6).x)).toBe(true);
   });
 });

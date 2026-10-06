@@ -4,10 +4,10 @@
 // opened for the first time (`prefs.menuOpened`); it never comes back after that. It stays inside the central
 // view cone and never covers the room label: it moves above or below the label, or is hidden if neither fits.
 
-import { HINT_LABEL_GAP, HINT_LIFT, MENU_MAX_DISTANCE, MENU_MIN_DISTANCE, VIEW_CONE_HALF_ANGLE_DEG } from './menu-thresholds';
+import { HINT_LABEL_GAP, HINT_LIFT, HINT_MIN_DISTANCE, MENU_MAX_DISTANCE, VIEW_CONE_HALF_ANGLE_DEG } from './menu-thresholds';
 import type { PanelExtent } from './menu';
 import type { OnboardingStep } from './state';
-import { fitPanelToCone, panelConeAngleDeg, type ConeFit, type Point3Like } from './view-fit';
+import { clampDistanceFromHead, fitPanelToCone, panelConeAngleDeg, type ConeFit, type Point3Like } from './view-fit';
 
 export { HINT_LIFT };
 
@@ -27,7 +27,7 @@ export const ROOM_LABEL_EXTENT: PanelExtent = { halfWidth: 0.23, bottom: -0.047,
 
 const HINT_FIT: ConeFit = {
   halfAngleDeg: VIEW_CONE_HALF_ANGLE_DEG,
-  minDistance: MENU_MIN_DISTANCE,
+  minDistance: HINT_MIN_DISTANCE,
   maxDistance: MENU_MAX_DISTANCE,
 };
 
@@ -88,10 +88,12 @@ export function placeHint(
   const baseZ = out.z;
   const above = label.y + ROOM_LABEL_EXTENT.top + HINT_LABEL_GAP - HINT_EXTENT.bottom;
   const below = label.y + ROOM_LABEL_EXTENT.bottom - HINT_LABEL_GAP - HINT_EXTENT.top;
-  for (const y of [above, below]) {
+  for (let i = 0; i < 2; i += 1) {
     scratch.x = baseX;
-    scratch.y = y;
+    scratch.y = i === 0 ? above : below;
     scratch.z = baseZ;
+    // Moving up or down changes the distance to the head: keep it at HINT_MIN_DISTANCE or more.
+    clampDistanceFromHead(scratch, head, HINT_FIT.minDistance, Infinity, forward, scratch);
     if (panelConeAngleDeg(scratch, head, forward, HINT_EXTENT) > HINT_FIT.halfAngleDeg) continue;
     if (panelsOverlap(scratch, HINT_EXTENT, label, ROOM_LABEL_EXTENT, head, forward, 0)) continue;
     out.x = scratch.x;

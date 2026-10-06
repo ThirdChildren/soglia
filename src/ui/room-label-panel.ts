@@ -2,7 +2,8 @@
 // then only shown and hidden. It is NOT a child of the miniature: it keeps a constant size in
 // metres, turns toward the head and floats ROOM_LABEL_LIFT metres above the centre of the
 // selected room (in world coordinates, so the scale and yaw of the model are accounted for).
-// It never goes farther than ROOM_LABEL_MAX_DISTANCE from the head: it slides along the line to the head.
+// It is kept between ROOM_LABEL_MIN_DISTANCE and ROOM_LABEL_MAX_DISTANCE from the head: it slides along the line
+// to the head, so it stays above the room as seen from the head.
 // The layout is public/ui/room-label.uikitml; the text comes from src/ui/strings.ts.
 
 import {
@@ -16,6 +17,8 @@ import {
 } from '@iwsdk/core';
 import { tagEntity } from '../components/tag-entity';
 import { stableId } from '../logic/ids';
+import { ROOM_LABEL_MIN_DISTANCE } from '../logic/menu-thresholds';
+import { clampDistanceFromHead, DEFAULT_FORWARD } from '../logic/view-fit';
 import { applyPanelFont } from './fonts';
 
 /** Manifest id of the layout (see src/assets.ts) and the id of its text element. */
@@ -104,11 +107,7 @@ export class RoomLabelPanel {
     head.getWorldPosition(this.headPosition);
     this.anchor.getWorldPosition(this.target);
     this.target.y += ROOM_LABEL_LIFT;
-    const distance = this.target.distanceTo(this.headPosition);
-    if (distance > ROOM_LABEL_MAX_DISTANCE) {
-      this.target.sub(this.headPosition).multiplyScalar(ROOM_LABEL_MAX_DISTANCE / distance);
-      this.target.add(this.headPosition);
-    }
+    clampDistanceFromHead(this.target, this.headPosition, ROOM_LABEL_MIN_DISTANCE, ROOM_LABEL_MAX_DISTANCE, DEFAULT_FORWARD, this.target);
     object.position.copy(this.target);
     object.updateMatrixWorld(true);
     // Panels face +Z, which is what Object3D.lookAt aims at the point for non-cameras.

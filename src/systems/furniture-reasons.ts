@@ -11,12 +11,16 @@ import { Furniture } from '../components/furniture';
 import { slog } from '../log';
 import type { CatalogItem } from '../logic/catalog';
 import { catalogIdOf, pickReasonLabels } from '../logic/furniture-label';
+import { REASON_LABEL_MIN_DISTANCE } from '../logic/menu-thresholds';
+import { clampDistanceFromHead, DEFAULT_FORWARD } from '../logic/view-fit';
 import { reasonLabelId, ReasonLabelPanel } from '../ui/reason-label-panel';
 import { strings } from '../ui/strings';
 import { currentReasons, reasonsVersion, type PieceReason } from './piece-reasons';
 
 /** The label floats this high above the top of the piece, in world metres (D27). */
 export const REASON_LABEL_LIFT = 0.04;
+/** The label is never nearer to the head than this, in metres (see `menu-thresholds.ts`). */
+export { REASON_LABEL_MIN_DISTANCE };
 /** The label is never farther than this from the head, in metres. */
 export const REASON_LABEL_MAX_DISTANCE = 0.6;
 /** At most this many labels at the same time. */
@@ -89,11 +93,8 @@ export class FurnitureReasonsSystem extends createSystem({
       piece.getWorldPosition(this.target);
       piece.getWorldScale(this.pieceScale);
       this.target.y += label.height * this.pieceScale.x + REASON_LABEL_LIFT;
-      const distance = this.target.distanceTo(this.headPosition);
-      if (distance > REASON_LABEL_MAX_DISTANCE) {
-        this.target.sub(this.headPosition).multiplyScalar(REASON_LABEL_MAX_DISTANCE / distance);
-        this.target.add(this.headPosition);
-      }
+      // Along the line from the head, so the label stays above the piece as seen from the head.
+      clampDistanceFromHead(this.target, this.headPosition, REASON_LABEL_MIN_DISTANCE, REASON_LABEL_MAX_DISTANCE, DEFAULT_FORWARD, this.target);
       object.position.copy(this.target);
       object.updateMatrixWorld(true);
       // Panels face +Z, which is what Object3D.lookAt aims at the point for non-cameras.

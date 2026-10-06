@@ -7,7 +7,7 @@ import {
   placeHint,
   shouldShowMenuHint,
 } from '../../src/logic/hint';
-import { HINT_LABEL_GAP, MENU_MAX_DISTANCE, VIEW_CONE_HALF_ANGLE_DEG } from '../../src/logic/menu-thresholds';
+import { HINT_LABEL_GAP, HINT_MIN_DISTANCE, MENU_MAX_DISTANCE, VIEW_CONE_HALF_ANGLE_DEG } from '../../src/logic/menu-thresholds';
 import { panelConeAngleDeg, type Point3Like } from '../../src/logic/view-fit';
 import { ONBOARDING_STEPS } from '../../src/logic/state';
 import { ANCHOR_DOWN, ANCHOR_FORWARD } from '../../src/logic/placement';
@@ -62,12 +62,33 @@ describe('hint placement (M2 gate W2: not over the room label, inside the view c
   /** Room label as the app places it: 0.12 m above the room floor (living room centre at 1:20, model at the origin above). */
   const livingLabel: Point3Like = { x: -0.145, y: 1.51, z: -0.515 };
 
-  it('without a label the hint is HINT_LIFT above the model, unchanged', () => {
+  it('without a label the hint is HINT_LIFT above the model, pushed out along the line from the head to HINT_MIN_DISTANCE', () => {
     const o = out();
     expect(placeHint(MODEL, HEAD, FORWARD, null, o)).toBe(true);
+    // The unpushed place (0, 1.5, -0.45) is 0.461 m from the head: too near.
+    const wanted = { x: 0, y: 1.35 + HINT_LIFT, z: -0.45 };
+    const wantedDistance = Math.hypot(wanted.x - HEAD.x, wanted.y - HEAD.y, wanted.z - HEAD.z);
+    expect(wantedDistance).toBeLessThan(HINT_MIN_DISTANCE);
+    expect(Math.hypot(o.x - HEAD.x, o.y - HEAD.y, o.z - HEAD.z)).toBeCloseTo(HINT_MIN_DISTANCE, 9);
+    const k = HINT_MIN_DISTANCE / wantedDistance;
     expect(o.x).toBeCloseTo(0, 9);
-    expect(o.y).toBeCloseTo(1.35 + HINT_LIFT, 9);
-    expect(o.z).toBeCloseTo(-0.45, 9);
+    expect(o.y).toBeCloseTo(HEAD.y + (wanted.y - HEAD.y) * k, 9);
+    expect(o.z).toBeCloseTo(HEAD.z + (wanted.z - HEAD.z) * k, 9);
+  });
+
+  it('is never nearer to the head than HINT_MIN_DISTANCE, with or without a label, for any model position', () => {
+    for (let x = -0.4; x <= 0.4; x += 0.1) {
+      for (let y = 1.0; y <= 1.7; y += 0.1) {
+        for (let z = -0.8; z <= -0.2; z += 0.1) {
+          for (const label of [null, { x: x + 0.05, y: y + 0.16, z }]) {
+            const o = out();
+            if (placeHint({ x, y, z }, HEAD, FORWARD, label, o)) {
+              expect(Math.hypot(o.x - HEAD.x, o.y - HEAD.y, o.z - HEAD.z)).toBeGreaterThanOrEqual(HINT_MIN_DISTANCE - 1e-9);
+            }
+          }
+        }
+      }
+    }
   });
 
   it('the preferred place does cover the living room label (the case of the M2 report)', () => {
@@ -91,7 +112,8 @@ describe('hint placement (M2 gate W2: not over the room label, inside the view c
     expect(panelConeAngleDeg({ x: 0, y: above, z: -0.45 }, HEAD, FORWARD, HINT_EXTENT)).toBeGreaterThan(VIEW_CONE_HALF_ANGLE_DEG);
     const o = out();
     expect(placeHint(anchor, HEAD, FORWARD, label, o)).toBe(true);
-    expect(o.y).toBeCloseTo(label.y + ROOM_LABEL_EXTENT.bottom - HINT_LABEL_GAP - HINT_EXTENT.top, 9);
+    // Right below the label; the push to HINT_MIN_DISTANCE along the head line moves it by less than 1 mm.
+    expect(o.y).toBeCloseTo(label.y + ROOM_LABEL_EXTENT.bottom - HINT_LABEL_GAP - HINT_EXTENT.top, 3);
     expect(panelsOverlap(o, HINT_EXTENT, label, ROOM_LABEL_EXTENT, HEAD, FORWARD)).toBe(false);
     expect(panelConeAngleDeg(o, HEAD, FORWARD, HINT_EXTENT)).toBeLessThanOrEqual(VIEW_CONE_HALF_ANGLE_DEG);
   });
@@ -138,8 +160,9 @@ describe('hint placement (M2 gate W2: not over the room label, inside the view c
     const far = { x: 0.5, y: 1.5, z: -0.45 };
     const o = out();
     expect(placeHint(MODEL, HEAD, FORWARD, far, o)).toBe(true);
-    expect(o.y).toBeCloseTo(1.35 + HINT_LIFT, 9);
-    expect(o.x).toBeCloseTo(0, 9);
+    const alone = out();
+    placeHint(MODEL, HEAD, FORWARD, null, alone);
+    expect(o).toEqual(alone);
   });
 
   it('panelsOverlap: symmetric, false when apart in either axis, true when they touch within the gap', () => {

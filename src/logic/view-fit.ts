@@ -13,6 +13,9 @@ export interface Point3Like {
   z: number;
 }
 
+/** Forward direction to use when the head orientation is not at hand (the default view direction, -z). */
+export const DEFAULT_FORWARD: Readonly<Point3Like> = { x: 0, y: 0, z: -1 };
+
 const RAD_TO_DEG = 180 / Math.PI;
 const EPS = 1e-9;
 const BISECTION_STEPS = 16;
@@ -73,10 +76,50 @@ export function panelConeAngleDeg(
   return Number.isFinite(worst) ? worst : 180;
 }
 
+/**
+ * Moves `point` along the line from the head until it is between `minDistance` and `maxDistance` from the head
+ * (`Infinity` for no maximum), and writes the result into `out` (which may be `point`). The direction seen from
+ * the head does not change, so a label anchored above a piece stays above that piece. A point at the head (or
+ * with a non-finite coordinate) goes `minDistance` along `forward`, or along -z when `forward` is unusable.
+ */
+export function clampDistanceFromHead(
+  point: Readonly<Point3Like>,
+  head: Readonly<Point3Like>,
+  minDistance: number,
+  maxDistance: number,
+  forward: Readonly<Point3Like>,
+  out: Point3Like,
+): Point3Like {
+  const dx = point.x - head.x;
+  const dy = point.y - head.y;
+  const dz = point.z - head.z;
+  const d = Math.hypot(dx, dy, dz);
+  if (!Number.isFinite(d)) {
+    out.x = point.x;
+    out.y = point.y;
+    out.z = point.z;
+    return out;
+  }
+  if (d < EPS) {
+    const fl = Math.hypot(forward.x, forward.y, forward.z);
+    const usable = fl > EPS && Number.isFinite(fl);
+    out.x = head.x + (usable ? forward.x / fl : 0) * minDistance;
+    out.y = head.y + (usable ? forward.y / fl : 0) * minDistance;
+    out.z = head.z + (usable ? forward.z / fl : -1) * minDistance;
+    return out;
+  }
+  const wanted = d < minDistance ? minDistance : d > maxDistance ? maxDistance : d;
+  const k = wanted / d;
+  out.x = head.x + dx * k;
+  out.y = head.y + dy * k;
+  out.z = head.z + dz * k;
+  return out;
+}
+
 export interface ConeFit {
   /** Half angle of the cone around the forward direction of the head, degrees. */
   readonly halfAngleDeg: number;
-  /** The panel is never nearer to the head than this when it is pulled toward the centre, metres. */
+  /** The panel is never nearer to the head than this, metres. */
   readonly minDistance: number;
   /** The panel is never farther from the head than this, metres. */
   readonly maxDistance: number;
@@ -99,15 +142,19 @@ export function fitPanelToCone(
   fit: Readonly<ConeFit>,
   out: Point3Like,
 ): Point3Like {
-  const dx = desired.x;
-  const dy = desired.y;
-  const dz = desired.z;
-  out.x = dx;
-  out.y = dy;
-  out.z = dz;
   const fl = Math.hypot(forward.x, forward.y, forward.z);
-  if (!(fl > EPS) || !Number.isFinite(dx + dy + dz)) return out;
-  if (panelConeAngleDeg(desired, head, forward, extent) <= fit.halfAngleDeg) return out;
+  if (!(fl > EPS) || !Number.isFinite(desired.x + desired.y + desired.z)) {
+    out.x = desired.x;
+    out.y = desired.y;
+    out.z = desired.z;
+    return out;
+  }
+  // A panel is never nearer to the head than `minDistance`: push it away along the line from the head first.
+  clampDistanceFromHead(desired, head, fit.minDistance, Infinity, forward, out);
+  const dx = out.x;
+  const dy = out.y;
+  const dz = out.z;
+  if (panelConeAngleDeg(out, head, forward, extent) <= fit.halfAngleDeg) return out;
 
   const fx = forward.x / fl;
   const fy = forward.y / fl;
@@ -145,11 +192,12 @@ export function fitPanelToCone(
     out.x = dx + (tx - dx) * mid;
     out.y = dy + (ty - dy) * mid;
     out.z = dz + (tz - dz) * mid;
+    clampDistanceFromHead(out, head, fit.minDistance, Infinity, forward, out);
     if (panelConeAngleDeg(out, head, forward, extent) <= fit.halfAngleDeg) hi = mid;
     else lo = mid;
   }
   out.x = dx + (tx - dx) * hi;
   out.y = dy + (ty - dy) * hi;
   out.z = dz + (tz - dz) * hi;
-  return out;
+  return clampDistanceFromHead(out, head, fit.minDistance, Infinity, forward, out);
 }
