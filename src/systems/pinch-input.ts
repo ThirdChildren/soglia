@@ -8,7 +8,7 @@
 // `pinchPoint`, `onPinchStart` and `onPinchEnd`. Nothing here allocates per frame.
 
 import { createSystem, type Vector3, type World } from '@iwsdk/core';
-import { slog } from '../log';
+import { slog, swarn } from '../log';
 import { createClaims, type Claims } from '../logic/pinch-claims';
 
 export type Hand = 'left' | 'right';
@@ -104,16 +104,30 @@ export class PinchInputSystem extends createSystem({}) {
     if (hand) setPinch(hand, false);
   };
 
+  init(): void {
+    // If the system is destroyed during a session its listeners must not stay on the session.
+    this.cleanupFuncs.push(() => this.detachSession());
+  }
+
+  /** Removes the listeners from the session they were added to (when the session can do that) and forgets it. */
+  private detachSession(): void {
+    const session = this.xrSession;
+    this.xrSession = null;
+    if (!session) return;
+    if (typeof session.removeEventListener === 'function') {
+      session.removeEventListener('selectstart', this.onSelectStart);
+      session.removeEventListener('selectend', this.onSelectEnd);
+    } else {
+      swarn('feature XRSession.removeEventListener unavailable');
+    }
+  }
+
   update(): void {
     const xr = this.world.renderer.xr;
     const current = xr.isPresenting ? xr.getSession() : null;
     if (current === this.xrSession) return;
 
-    const previous = this.xrSession;
-    if (previous) {
-      previous.removeEventListener('selectstart', this.onSelectStart);
-      previous.removeEventListener('selectend', this.onSelectEnd);
-    }
+    this.detachSession();
     // The session ended or changed: no hand is pinching any more.
     setPinch('left', false);
     setPinch('right', false);

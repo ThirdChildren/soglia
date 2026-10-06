@@ -12,7 +12,7 @@
 
 import { createSystem, Vector3, type Entity, type World } from '@iwsdk/core';
 import { StableId } from '../components/stable-id';
-import { slog } from '../log';
+import { slog, swarn } from '../log';
 import { MINIATURE_ROOT_ID } from '../logic/ids';
 import {
   ghostHandsFor,
@@ -78,7 +78,11 @@ export class OnboardingSystem extends createSystem({
   };
 
   init(): void {
-    this.cleanupFuncs.push(onMiniatureGestureStart(() => this.handle({ type: 'two-hand-gesture' })));
+    this.cleanupFuncs.push(
+      onMiniatureGestureStart(() => this.handle({ type: 'two-hand-gesture' })),
+      // If the system is destroyed during a session its pinch listener must not stay on the session.
+      () => this.detachSession(),
+    );
     const ctx = context;
     if (ctx) {
       // A room pinch with one hand proves the user can pinch, so step 2 (two hands) is skipped.
@@ -218,13 +222,25 @@ export class OnboardingSystem extends createSystem({
     const xr = this.world.renderer.xr;
     const current = xr.isPresenting ? xr.getSession() : null;
     if (current === this.xrSession) return;
-    this.xrSession?.removeEventListener('selectstart', this.onSelectStart);
+    this.detachSession();
     this.xrSession = current;
     if (!current) return;
     if (typeof current.addEventListener === 'function') {
       current.addEventListener('selectstart', this.onSelectStart);
     } else {
       slog('feature XRSession.addEventListener unavailable');
+    }
+  }
+
+  /** Removes the pinch listener from the session it was added to (when the session can do that) and forgets it. */
+  private detachSession(): void {
+    const session = this.xrSession;
+    this.xrSession = null;
+    if (!session) return;
+    if (typeof session.removeEventListener === 'function') {
+      session.removeEventListener('selectstart', this.onSelectStart);
+    } else {
+      swarn('feature XRSession.removeEventListener unavailable');
     }
   }
 
