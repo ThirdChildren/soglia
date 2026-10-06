@@ -41,12 +41,17 @@ export const MENU_MAX_DISTANCE = 0.6;
  * 0.5-0.8 m). A hand held close to the face pushes the menu away along the line from the head.
  */
 export const MENU_MIN_DISTANCE = 0.5;
+/**
+ * Margin over the 0.50 m of rule 8 for the labels and the hint, in metres: the clamp used to put them at exactly
+ * 0.5000 m, so a rounding of a pose could read 0.4999 m. They sit at 0.52 m or more (never beyond their maximum).
+ */
+export const LABEL_DISTANCE_MARGIN = 0.02;
 /** The "Palm up for the menu" hint is never nearer to the head than this, in metres. */
-export const HINT_MIN_DISTANCE = 0.5;
+export const HINT_MIN_DISTANCE = 0.5 + LABEL_DISTANCE_MARGIN;
 /** The room label is never nearer to the head than this (it slides along the line from the head), in metres. */
-export const ROOM_LABEL_MIN_DISTANCE = 0.5;
+export const ROOM_LABEL_MIN_DISTANCE = 0.5 + LABEL_DISTANCE_MARGIN;
 /** A reason label is never nearer to the head than this (it slides along the line from the head), in metres. */
-export const REASON_LABEL_MIN_DISTANCE = 0.5;
+export const REASON_LABEL_MIN_DISTANCE = 0.5 + LABEL_DISTANCE_MARGIN;
 /**
  * The WHOLE menu (title, items, bar) stays inside a cone of this half angle around the forward direction of
  * the head, in degrees (rule 8: nothing important near the edge of a narrow field of view). The menu is
