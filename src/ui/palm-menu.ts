@@ -26,6 +26,7 @@ import { menuAnchor, type Vec3Like } from '../logic/palm';
 import { fitPanelToCone, panelConeAngleDeg, type ConeFit } from '../logic/view-fit';
 import { slog } from '../log';
 import { applyPanelFont } from './fonts';
+import { disposePanelEntity } from './panel-lifecycle';
 
 export type PalmMenuMode = 'palm';
 
@@ -100,7 +101,7 @@ export class PalmMenuPanel {
 
   /** Disposes the panel entity. */
   close(): void {
-    this.entity?.dispose();
+    if (this.entity) disposePanelEntity(this.entity);
     this.entity = null;
     this.root = null;
     this.opacity = 1;

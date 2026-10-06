@@ -9,6 +9,7 @@ import { MenuItem } from '../components/menu-item';
 import { tagEntity } from '../components/tag-entity';
 import { swarn } from '../log';
 import { applyPanelFont } from './fonts';
+import { disposePanelEntity } from './panel-lifecycle';
 import { BUTTON_ICONS } from './menu-icons';
 import type { ButtonId } from '../logic/menu';
 
@@ -108,6 +109,6 @@ export class MenuControlPanel {
   }
 
   dispose(): void {
-    this.entity.dispose();
+    disposePanelEntity(this.entity);
   }
 }

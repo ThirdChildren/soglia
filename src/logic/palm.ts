@@ -79,12 +79,14 @@ export function createPalmDetector(clock: () => number): PalmDetector {
 /**
  * Updates the detector with the current palm normal (world Y component) and returns the new state.
  *
- * - `pinching`: this hand is pinching. It closes an open menu at once and keeps a closed one closed.
+ * - `pinching`: this hand is pinching. It only keeps a CLOSED menu closed (and restarts the hold timer); it
+ *   never closes an open one, so a pinch of the menu hand can use the menu (decision of the M2 rerun 2, F1).
  * - `mayOpen`: nothing else forbids the opening (see `createMenuGate`: a piece held, a two-hand gesture,
  *   a pinch that has just ended). While it is false a closed menu stays closed and the hold timer restarts.
+ *   It never closes an open menu either.
  *
  * A palm that faces up (angle below PALM_OPEN_DEG) with `mayOpen` and no pinch for PALM_OPEN_HOLD_SECONDS
- * opens it; an angle above PALM_CLOSE_DEG for PALM_CLOSE_HOLD_SECONDS closes it.
+ * opens it. The ONLY way to close an open menu is an angle above PALM_CLOSE_DEG for PALM_CLOSE_HOLD_SECONDS.
  */
 export function updatePalmDetector(
   detector: PalmDetector,
@@ -108,11 +110,6 @@ export function updatePalmDetector(
     return detector.state;
   }
 
-  if (pinching) {
-    detector.state = 'closed';
-    detector.since = null;
-    return detector.state;
-  }
   if (angle > PALM_CLOSE_DEG) {
     if (detector.since === null) detector.since = now;
     if (now - detector.since >= PALM_CLOSE_HOLD_SECONDS) {
@@ -135,7 +132,8 @@ export interface MenuGateInputs {
 }
 
 /**
- * Decides, hand by hand, whether the palm menu may open (decision of the M2 gate, finding F1). The menu
+ * Decides, hand by hand, whether the palm menu may OPEN (decision of the M2 gate, finding F1). The rules never
+ * close a menu that is already open. The menu
  * must not open while the same hand pinches, while any hand holds a piece, while a two-hand gesture or a
  * one-hand drag is active, nor within MENU_RELEASE_GUARD_SECONDS after the end of any of these.
  * Call `mayOpen` once per frame for each hand (the guard needs to see every frame to notice the end).

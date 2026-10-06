@@ -185,15 +185,28 @@ describe('updatePalmDetector', () => {
     }
   });
 
-  it('a pinch while open closes it at once and the palm must stay up again for the full hold', () => {
+  it('a pinch while open never closes it (F1, rerun 2): the palm up or at 50 degrees, however long the pinch lasts', () => {
     const f = fakeClock();
     const d = openDetector(f);
-    expect(updatePalmDetector(d, normalYAt(0), true)).toBe('closed');
-    expect(updatePalmDetector(d, normalYAt(0), false)).toBe('closed');
-    f.advance(0.3);
-    expect(updatePalmDetector(d, normalYAt(0), false)).toBe('closed');
-    f.advance(0.11);
-    expect(updatePalmDetector(d, normalYAt(0), false)).toBe('open');
+    for (let i = 0; i < 30; i += 1) {
+      expect(updatePalmDetector(d, normalYAt(i % 2 === 0 ? 0 : 50), true)).toBe('open');
+      f.advance(0.1);
+    }
+    // Even with `mayOpen` false and a pinch together (a piece taken from the menu by the same hand).
+    expect(updatePalmDetector(d, normalYAt(0), true, false)).toBe('open');
+    expect(updatePalmDetector(d, normalYAt(0), false, false)).toBe('open');
+  });
+
+  it('with the menu open, the only way to close it is the palm turned away for 0.25 s, pinching or not', () => {
+    for (const pinching of [false, true]) {
+      const f = fakeClock();
+      const d = openDetector(f);
+      expect(updatePalmDetector(d, normalYAt(90), pinching)).toBe('open'); // starts the 0.25 s
+      f.advance(0.2);
+      expect(updatePalmDetector(d, normalYAt(90), pinching)).toBe('open');
+      f.advance(0.06);
+      expect(updatePalmDetector(d, normalYAt(90), pinching)).toBe('closed');
+    }
   });
 
   it('a pinch that starts the opening timer cancels it', () => {
@@ -379,7 +392,7 @@ describe('palm menu opening sequences (detector + gate, M2 gate F1)', () => {
     expect(t).toBeNull();
   });
 
-  it('palm up long enough to open, then a pinch: opens (palm first), the system closes it on the pinch', () => {
+  it('palm up long enough to open, then a pinch: opens (palm first) and the pinch does not close it', () => {
     const f = fakeClock();
     const gate = createMenuGate(f.clock);
     const detector = createPalmDetector(f.clock);
@@ -388,22 +401,21 @@ describe('palm menu opening sequences (detector + gate, M2 gate F1)', () => {
       f.advance(0.016);
     }
     expect(detector.state).toBe('open');
-    updatePalmDetector(detector, normalYAt(0), true, gate.mayOpen('left', { ...idle, pinching: true }));
-    expect(detector.state).toBe('closed');
-    // The pinch ends: not before the guard and the hold.
-    let reopenedAfter: number | null = null;
-    let elapsed = 0;
-    while (elapsed < 2) {
-      const mayOpen = gate.mayOpen('left', idle);
-      if (updatePalmDetector(detector, normalYAt(0), false, mayOpen) === 'open') {
-        reopenedAfter = elapsed;
-        break;
+    // Every rule that forbids the OPENING runs over an already open menu: it stays open.
+    const blockers = [
+      { ...idle, pinching: true },
+      { ...idle, pieceHeld: true },
+      { ...idle, gestureActive: true },
+      { pinching: true, pieceHeld: true, gestureActive: true },
+      idle, // the release frame and the 0.3 s guard
+    ];
+    for (const inputs of blockers) {
+      for (let i = 0; i < 40; i += 1) {
+        const mayOpen = gate.mayOpen('left', inputs);
+        expect(updatePalmDetector(detector, normalYAt(0), inputs.pinching, mayOpen)).toBe('open');
+        f.advance(0.016);
       }
-      f.advance(0.016);
-      elapsed += 0.016;
     }
-    expect(reopenedAfter).not.toBeNull();
-    expect(reopenedAfter!).toBeGreaterThanOrEqual(MENU_RELEASE_GUARD_SECONDS + PALM_OPEN_HOLD_SECONDS - 0.02);
   });
 
   it('a piece released while the palm is up: opens only after the guard and the hold', () => {

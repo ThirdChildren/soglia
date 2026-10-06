@@ -1,5 +1,5 @@
 // Palm menu system (task T2.11, decision D18): opens `ui:palm-menu` when a palm faces up and
-// closes it when the palm turns away or the hand pinches. Works with both hands; if both are up,
+// closes it only when the palm turns away (a pinch never closes it, M2 rerun 2). Works with both hands; if both are up,
 // the first one wins. The maths is in src/logic/palm.ts; the pinch state comes from pinch-input.
 //
 // The palm normal is a local axis of the grip space of the hand (PALM_NORMAL_LOCAL, spike T2.11).
@@ -17,6 +17,7 @@ import {
 } from '../logic/palm';
 import { menuOpacity } from '../logic/menu-dim';
 import { markMenuOpened, type Store } from '../logic/state';
+import { flushPanelDisposals } from '../ui/panel-lifecycle';
 import { PalmMenuPanel } from '../ui/palm-menu';
 import { isMiniatureGestureActive } from './miniature-gesture';
 import { isPanActive, isPinching, pinchClaims } from './pinch-input';
@@ -52,6 +53,7 @@ export class PalmMenuSystem extends createSystem({}) {
   private readonly handPosition = new Vector3();
 
   update(): void {
+    flushPanelDisposals();
     const ctx = context;
     if (!ctx) return;
     const world = this.world;
@@ -77,8 +79,9 @@ export class PalmMenuSystem extends createSystem({}) {
     const rightPinch = isPinching('right');
     const rightOpen = updatePalmDetector(this.right, rightY, rightPinch, this.mayOpen('right', rightPinch, pieceHeld, gestureActive)) === 'open';
 
-    // A menu that is already open stays until the palm turns away, and closing it never drops the piece (the
-    // grab does not depend on the menu); a closed menu stays closed while a piece or a gesture is active.
+    // A menu that is already open stays until the palm turns away (no pinch, piece or gesture closes it) and
+    // closing it never drops the piece (the grab does not depend on the menu); a closed menu stays closed
+    // while a piece or a gesture is active.
     const blocked = this.owner === null && (pieceHeld || gestureActive);
     const next = blocked ? null : chooseMenuHand(this.owner, leftOpen, rightOpen);
     if (next !== this.owner) this.setOwner(ctx, next);
