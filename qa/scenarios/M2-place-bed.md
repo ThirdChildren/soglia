@@ -12,7 +12,7 @@ Prerequisiti di implementazione: T2.3, T2.5, T2.6, T2.7, T2.9, T2.10 – T2.13 (
   - Centro atteso del letto dopo l'aggancio: (6,80; 1,125) in pianta = `W` (0,065; 1,39; −0,574).
 
 ## Passi
-1. Aprire il menu (`xr_set_transform` `hand-left` a `L_MENU` con `Q_UP`, attesa 0,6 s). `ecs_find_entities` con `namePattern: "^furniture:"` (deve essere 0). `browser_get_console_logs` con `pattern: "furniture|undo"`.
+1. Aprire il menu (`xr_set_transform` `hand-left` a `L_MENU` con `Q_UP`, attesa 0,9 s). `ecs_find_entities` con `namePattern: "^furniture:"` (deve essere 0). `browser_get_console_logs` con `pattern: "furniture|undo"`.
 2. `ecs_query_entity` su `ui:menu-item-bed-double` con `components: ["Transform"]` → posizione `I`.
 3. **Prendere**: `xr_set_transform` `hand-right` a `I` con orientamento `(0, 0, 0, 1)`; `xr_set_select_value` `hand-right` = 1; attesa 0,3 s. `browser_get_console_logs` con `pattern: "furniture grabbed"`; `ecs_find_entities` con `^furniture:`; `ecs_query_entity` sull'entità trovata con `components: ["Furniture"]`.
 4. **Trasportare**: `xr_animate_to` `hand-right` a **P1** (0,8 s); attesa 1 s. `ecs_query_entity` con `["Furniture"]` (stato in volo) e `browser_get_console_logs` con `pattern: "furniture status"`. `browser_screenshot` → allegare (letto in mano sopra la camera, cornice verde sul pavimento).
@@ -38,3 +38,4 @@ Presa naturale con la mano vera, tremolii nel trasporto, comodità dell'aggancio
 
 ## Changelog
 - 2026-10-05: verifica 6 estesa: nessuna riga `pan start` né `miniature translated` e `miniature.offset` invariato — motivo: decisione dell'utente 2 (la traslazione del plastico, anche a una mano, non deve entrare in conflitto con la presa dei mobili; arbitraggio D15/D28).
+- 2026-10-06: passo 1, attesa dopo l'apertura del menu da 0,6 s a 0,9 s — motivo: il palmo deve restare su almeno 0,4 s (regola del gate, `src/logic/menu-thresholds.ts`); conseguenza dello stesso cambio di S2.1 V8.
