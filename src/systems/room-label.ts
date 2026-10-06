@@ -36,6 +36,11 @@ interface RoomLabelContext {
 // Shared with the system, which has no constructor arguments: set by `createRoomLabel`.
 let context: RoomLabelContext | null = null;
 
+/** Writes the centre of the room label into `out` and returns true while the label is on screen (the hint avoids it). */
+export function getRoomLabelPosition(out: { x: number; y: number; z: number }): boolean {
+  return context?.panel.getPosition(out) ?? false;
+}
+
 /** Wires the room selection to `store` for `house` and registers the system. */
 export function createRoomLabel(world: World, store: Store, house: House): void {
   context = { store, house, panel: new RoomLabelPanel(world) };

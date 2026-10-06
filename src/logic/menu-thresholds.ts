@@ -45,3 +45,10 @@ export const MENU_MIN_DISTANCE = 0.45;
  * only fits at 0.55 m or more; 30 degrees leaves room to keep the menu near the hand.
  */
 export const VIEW_CONE_HALF_ANGLE_DEG = 30;
+
+// --- The "Palm up for the menu" hint ---------------------------------------------------------
+
+/** The hint floats this far above the anchor of the model, in metres (about 0.5 m from the head). */
+export const HINT_LIFT = 0.15;
+/** Space left between the hint and the room label when the hint moves out of its way, in metres. */
+export const HINT_LABEL_GAP = 0.02;

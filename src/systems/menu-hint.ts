@@ -3,13 +3,14 @@
 // removes it for good once the menu is opened (`prefs.menuOpened`, set by the palm menu system). The
 // onboarding of M1 is not touched: this only reads its step from the store.
 
-import { createSystem, type World } from '@iwsdk/core';
+import { createSystem, Quaternion, Vector3, type World } from '@iwsdk/core';
 import { slog } from '../log';
-import { HINT_LIFT, shouldShowMenuHint } from '../logic/hint';
+import { placeHint, shouldShowMenuHint } from '../logic/hint';
 import type { Store } from '../logic/state';
 import { MenuHintPanel } from '../ui/menu-hint-panel';
 import { strings } from '../ui/strings';
 import { getMiniatureAnchor } from './miniature';
+import { getRoomLabelPosition } from './room-label';
 
 interface HintContext {
   store: Store;
@@ -27,6 +28,11 @@ export function createMenuHint(world: World, store: Store): void {
 
 export class MenuHintSystem extends createSystem({}) {
   private readonly anchor = { x: 0, y: 0, z: 0 };
+  private readonly place = { x: 0, y: 0, z: 0 };
+  private readonly label = { x: 0, y: 0, z: 0 };
+  private readonly headPosition = new Vector3();
+  private readonly headForward = new Vector3();
+  private readonly headQuaternion = new Quaternion();
 
   update(): void {
     const ctx = context;
@@ -45,7 +51,14 @@ export class MenuHintSystem extends createSystem({}) {
     if (!want) return;
 
     // In session the XR camera only gets the viewer pose after the systems run, so use the head group.
+    const head = this.world.player.head;
     getMiniatureAnchor(this.anchor);
-    ctx.panel.update(this.anchor.x, this.anchor.y + HINT_LIFT, this.anchor.z, this.world.player.head);
+    head.getWorldPosition(this.headPosition);
+    head.getWorldQuaternion(this.headQuaternion);
+    this.headForward.set(0, 0, -1).applyQuaternion(this.headQuaternion);
+    // Above the model, inside the central view cone, and never over the room label (M2 gate W2).
+    const labelShown = getRoomLabelPosition(this.label);
+    const visible = placeHint(this.anchor, this.headPosition, this.headForward, labelShown ? this.label : null, this.place);
+    ctx.panel.update(this.place.x, this.place.y, this.place.z, head, visible);
   }
 }

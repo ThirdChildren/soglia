@@ -54,11 +54,15 @@ export class MenuHintPanel {
   }
 
   /** Once per frame while the panel exists: fills it when its document has loaded, then places it. */
-  update(x: number, y: number, z: number, head: Object3D): void {
+  update(x: number, y: number, z: number, head: Object3D, visible = true): void {
     const object = this.entity?.object3D;
     if (!this.entity || !object) return;
     if (!this.applied) this.tryApply(this.entity);
     if (!this.applied) return;
+    if (!visible) {
+      object.visible = false; // no room for it right now (the room label has the place)
+      return;
+    }
 
     head.getWorldPosition(this.headPosition);
     object.position.set(x, y, z);

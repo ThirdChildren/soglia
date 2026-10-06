@@ -62,6 +62,16 @@ export class RoomLabelPanel {
     }
   }
 
+  /** Writes the centre of the label into `out` and returns true while the label is on screen, else returns false. */
+  getPosition(out: { x: number; y: number; z: number }): boolean {
+    const object = this.entity?.object3D;
+    if (!object || !object.visible) return false;
+    out.x = object.position.x;
+    out.y = object.position.y;
+    out.z = object.position.z;
+    return true;
+  }
+
   hide(): void {
     this.shown = false;
     this.anchor = null;
