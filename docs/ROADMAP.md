@@ -15,7 +15,7 @@ Legenda stato: ⬜ da fare · 🟨 in corso · ✅ PC-done · 🟩 Device-done
 | M0 Setup e strumenti | 30 set – 1 ott | ✅ PC-done (piano: `docs/plans/M0.md`) |
 | M1 Casa e plastico | 2 – 7 ott | ✅ PC-done 2026-10-05 (piano: `docs/plans/M1.md`; report: `qa/reports/M1-2026-10-05-rerun.md`; gate visore in debito) |
 | M2 Arredare con le mani | 8 – 14 ott (PC-done anticipato al 7 ott) | ✅ PC-done 2026-10-07 (piano: `docs/plans/M2.md`; report: `qa/reports/M2-2026-10-06-rerun3.md`; `contest-reviewer`: SUPERATO CON RISERVE, nessun bloccante; gate visore in debito, vedi `qa/device/DEBT.md`) |
-| M3 Dentro la casa e i miei mobili | 15 – 21 ott | ⬜ |
+| M3 Dentro la casa e i miei mobili | 15 – 21 ott (PC-done atteso 12–13 ott) | 🟨 piano consegnato 2026-10-09 (`docs/plans/M3.md`; scenari `qa/scenarios/M3-*.md`) |
 | M4 Segnalazioni e persistenza | 22 – 28 ott | ⬜ |
 | M5 Luce, agente, accessibilità, realtà mista | 29 ott – 4 nov | ⬜ |
 | M6 Integrazione con il visore | appena arriva il Quest (idealmente 2 – 10 nov) | ⬜ |
@@ -102,14 +102,34 @@ etichette, pizzico a due mani affidabile, fps ≥ 60.
 
 **Unit test**: snap alle pareti, collisioni tra rettangoli ruotati, porta bloccata, rotazione a scatti, store con annulla, catalogo, arbitraggio dei pizzichi, rilevamento del palmo, guardia dei glifi, traslazione del plastico (clamp, zone di pizzico disgiunte), preset di arredo valido, etichette dei motivi.
 **Calendario**: PC-done previsto entro l'**11 ottobre 2026** (cuscinetto 12–14 ott); **raggiunto il 7 ottobre 2026** (report `qa/reports/M2-2026-10-06-rerun3.md`, verdetto SUPERATO CON RISERVE, nessun bloccante; riserve e avvisi nel report). Ordine di esecuzione e stime in `docs/plans/M2.md`.
-**Gate visore (in debito, non ancora fatto)**: presa naturale, niente tremolii, rotazione col polso affidabile, palmo in su affidabile; voci M2 in `qa/device/DEBT.md`. Il budget di IWER (66 chiamate per vista a scala 0,05 e 53 a 0,12 nel caso peggiore, 30,7k triangoli) è un numero del PC, non del visore. Persistenza assente fino a M4 (regola 4): i mobili si perdono ricaricando.
+**Gate visore (in debito, non ancora fatto)**: presa naturale, niente tremolii, rotazione col polso affidabile, palmo in su affidabile; voci M2 in `qa/device/DEBT.md`. Il budget di IWER (66 chiamate per vista a scala 0,05 e 53 a 0,12 nel caso peggiore, 30,7k triangoli) è un numero del PC, non del visore. Persistenza assente in M2 (regola 4): i mobili si perdono ricaricando; la prima fetta (salvataggio in `localStorage`) arriva con i primi task di M3.
 
 ## M3 · Dentro la casa e i miei mobili
 
-**Obiettivo**: punti di vista, metro, i propri mobili e il controllo delle porte.
+**Obiettivo**: punti di vista, metro, i propri mobili e il controllo delle porte; in più la ripresa
+dopo una pausa (prima fetta della persistenza), il menu a una mano e la previsione dei draw call.
+Piano e decisioni D29–D38 in `docs/plans/M3.md`.
+
+**I primi quattro task, in quest'ordine e prima di ogni altro lavoro** (richiesta dell'utente):
+
+1. **Salvataggio minimo + ciclo di vita** (T3.1a/b): la disposizione dei mobili si salva in
+   `localStorage` (chiave `soglia:v1:state:<casa>`, `serialize/deserialize` di `src/logic/state.ts`,
+   cancellata da `reset=1`); è la **prima fetta di `Persistence` di M4**, non un sistema a parte (M4
+   riusa `storage.ts`, `persistence.ts` e il ciclo di vita e aggiunge solo i campi: ruolo,
+   segnalazioni). Sessione nascosta/ripresa con un pezzo in mano: la presa si chiude pulita, nessun
+   pezzo perso né duplicato.
+2. **Palmo in su e punto di pizzico dalle articolazioni** (T3.2a/b, spike di 45 min con ripiego
+   dichiarato): giunti `XRHand` via `fillPoses`, `gripSpace` solo come riserva.
+3. **Pulsante "Menu" fisso** sul bordo del plastico, apribile con un pizzico di UNA mano, con
+   menu `pinned` (Undo e Recenter inclusi) (T3.3a/b); chiude anche l'avviso F-A di M2.
+4. **Previsione dei draw call fino a M5** con tracciamento a ogni gate (T3.4).
+
+Poi: menu v2 (testi ≥ 2,4 cm, schede), etichetta della stanza nel cono, FitCheck, i propri mobili,
+punti di vista, metro (T3.5–T3.17).
 
 - `Viewpoint`: pizzico su V1/V2/V3 → dissolvenza → scala reale ad altezza occhi da seduti (1,2 m);
-  "Tabletop" dal menu per tornare. Presa a distanza nella stanza.
+  "Tabletop" dal menu per tornare. Presa a distanza nella stanza (T3.15, **tagliabile**: se salta,
+  in scala reale si prende solo a portata di braccio e lo si dichiara).
 - `Measure`: pizzico su due punti, aggancio a pareti e spigoli, misura in cm.
 - `FitCheck`: percorso dalla porta d'ingresso alla stanza (grafo delle porte), verifica di ogni
   porta; lo stesso per sedia a rotelle e passeggino. Messaggio in inglese che spiega il motivo.
@@ -120,10 +140,30 @@ etichette, pizzico a due mani affidabile, fps ≥ 60.
 | S3.2 Metro | misura la finestra dello studio → 140 cm (± 1) |
 | S3.3 Divano in A | "My sofa 230 × 95 × 85" verso il soggiorno → blocco su `door:d-living`, messaggio "Won't fit: the door is 80 cm wide, the sofa's shortest side is 85 cm" |
 | S3.4 Divano in B | stessa prova in `apartment-b` → passa |
-| S3.5 Sedia a rotelle | verso il bagno di A → blocco su `door:d-bathroom` (75 cm) |
+| S3.5 Sedia a rotelle | verso il bagno di A → blocco su `door:d-bathroom` (75 cm); il passeggino (60 cm) passa |
+| S3.0 Persistenza e pausa/ripresa (aggiunto dal piano M3) | `qa/scenarios/M3-persistence.md`: salva, ricarica (stessi pezzi, stessi id), `reset=1` cancella, una chiave per casa, sessione nascosta con un pezzo in mano (nessun duplicato, presa chiusa, stesso id alla ripresa) |
+| S3.6 Palmo e pizzico dalle articolazioni (aggiunto) | `qa/scenarios/M3-joints.md`: sorgente `joints`/`grip`, palmo in su dai giunti, punto di pizzico, `pinch=grip` come riserva |
+| S3.7 Pulsante Menu a una mano e F-A (aggiunto) | `qa/scenarios/M3-menu-button.md`: apertura, pagina, presa, Undo e Recenter con la sola destra; il pizzico in aria della mano del menu non seleziona la stanza |
+| S3.8 Menu v2 e etichette nel cono (aggiunto) | `qa/scenarios/M3-menu-v2.md`: testi ≥ 2,4 cm, schede, pannello ≤ 0,38 m e ≤ 30°, etichetta della stanza nel cono |
+| S3.9 Budget: previsione contro misura (aggiunto) | `qa/scenarios/M3-budget.md`: otto casi K1–K8; > 100 per vista blocca, caso peggiore ≥ 85 apre R-A in M4 |
+| S3.10 Presa a distanza (aggiunto, solo se T3.15) | `qa/scenarios/M3-distance-grab.md`: raggio dalla mano in scala reale; non applicabile se il task è tagliato |
 
-**Unit test**: grafo delle porte, percorso, regole di passaggio (vedi `docs/DATA_FORMATS.md`).
-**Gate visore**: dissolvenza senza nausea, scala reale credibile, metro preciso a mano libera.
+Il FitCheck non riusa `blocks-door` (zona libera davanti alla porta, M2): i codici sono
+`door-too-narrow`, `door-too-low`, `fits-disassembled`, `no-route`. Corridoi non verificati
+("Simplified check"). `sofa-3seat` del catalogo non passa da `d-living` di A (coerente: il preset non
+mostra mai l'etichetta finché il pezzo non è in mano); il caso demo resta `my-sofa` 230 × 95 × 85.
+
+**Unit test**: grafo delle porte, percorso, regole di passaggio (vedi `docs/DATA_FORMATS.md`),
+persistenza (chiavi, lista bianca, `localStorage` mancante/bloccato/pieno), ciclo di vita, giunti
+della mano, menu e pulsante, previsione dei gruppi di draw call, posa in scala reale, dissolvenza,
+aggancio del metro.
+**Calendario**: PC-done atteso **12–13 ottobre 2026** (cuscinetto fino al 15; finestra ufficiale
+15–21 ott come margine). Stima onesta in `docs/plans/M3.md` (≈ 7 h di orologio; ottimista 4,5 h,
+pessimista 11 h).
+**Gate visore**: dissolvenza senza nausea, scala reale credibile, metro preciso a mano libera;
+in più (voci in `qa/device/DEBT.md` a gate superato): ripresa dopo aver tolto il visore, `localStorage`
+nel Quest Browser, giunti reali, raggiungibilità dei pulsanti Menu, draw call e fps reali con il caso
+peggiore.
 
 ## M4 · Segnalazioni e persistenza
 
@@ -134,7 +174,13 @@ etichette, pizzico a due mani affidabile, fps ≥ 60.
   fixture), urgenza, testo con tastiera di sistema, nota vocale con MediaRecorder **solo se esiste**;
   stati open → in_progress → resolved → archived; conferma dell'inquilino; verbale d'ingresso (blu).
 - `Persistence`: salvataggio automatico (localStorage/IndexedDB con try/catch), ripresa su reload
-  e su `visibilitychange`.
+  e su `visibilitychange`. **La prima fetta è consegnata in M3** (T3.1a/b: chiave
+  `soglia:v1:state:<casa>`, lista bianca dei campi ripristinati, `reset=1`, ciclo di vita con presa
+  chiusa pulita); M4 riusa `src/data/storage.ts`, `src/logic/persistence.ts` e il ciclo di vita e
+  aggiunge solo `role` e le segnalazioni alla lista bianca, l'eventuale bump di versione e
+  IndexedDB se la quota lo richiede. Se il caso peggiore dei draw call di M3 misura ≥ 85, il primo
+  task di M4 è **R-A** (unire muri e soglie in due mesh, −16 chiamate per vista, ~2,5 h; vedi
+  `docs/plans/M3.md`, D33).
 
 | Scenario PC | Verifica |
 |---|---|
@@ -158,8 +204,8 @@ microfono nel Quest Browser (se c'è), ripresa dopo aver tolto il visore.
   etichetta "Sample data", domande ricevute.
 - Confronto di due disposizioni e di due case.
 - Accessibilità: modalità una mano, alto contrasto, testo grande.
-- **Onboarding completo del menu del palmo** (rimandato da M2/T2.16, dove resta solo un suggerimento): insegnare il palmo in su e la presa dal catalogo, con testo minimo in inglese; qui si sceglie anche il menu **ancorato** per la modalità a una mano (inclusi Undo e Recenter a una mano).
-- **Menu e Recenter usabili con una mano sola** (voce esplicita, decisione del gate M2 del 2026-10-06; regola 9 di `CLAUDE.md`): in modalità una mano il menu del palmo si **àncora** (`pinned`) in un punto fisso a 0,5–0,8 m, nel cono centrale di 30° della testa, e resta aperto senza tenere il palmo in su; **Undo e Recenter sono inclusi** (oggi il Recenter e l'Undo stanno nel menu e richiedono l'altra mano per tenerlo aperto, limite dichiarato in S2.9). Scenario PC: S5.4 esteso con "Recenter e Undo eseguiti con la sola mano destra, menu ancorato"; gate visore: raggiungibilità e comodità dell'ancoraggio.
+- **Onboarding completo del menu del palmo** (rimandato da M2/T2.16, dove resta solo un suggerimento): insegnare il palmo in su, il pulsante "Menu" e la presa dal catalogo, con testo minimo in inglese.
+- **Menu e Recenter usabili con una mano sola** (voce esplicita, decisione del gate M2 del 2026-10-06; regola 9 di `CLAUDE.md`) — **CONSEGNATA IN M3 (2026-10-09, T3.3a/b, S3.7)**: il pulsante "Menu" fisso sul bordo del plastico (`ui:menu-button-left`/`-right`) apre con un pizzico di UNA mano il menu `pinned` (0,55 m davanti, 0,20 m sotto gli occhi, nel cono di 30°), che resta aperto senza tenere il palmo in su e contiene **Undo e Recenter**; non dipende dal gesto del palmo. **Cosa resta a M5**: (a) l'onboarding del pulsante; (b) il pulsante **"Rotate"** per ruotare un pezzo con una mano sola (oggi il tocco dell'altra mano, il polso funziona con una mano); (c) alto contrasto e testo grande anche per il menu `pinned`; (d) la scelta di aprire il menu `pinned` di default in modalità una mano; (e) S5.4 esteso a tutte le azioni di S2–S4 con la sola mano destra, partendo dal pulsante (la parte "Recenter e Undo a una mano" è già in S3.7); (f) la prova di raggiungibilità sul visore (i pulsanti stanno a ~0,65 m e ~46°, fuori dal cono di 30°: avviso dichiarato, voce in `qa/device/DEBT.md`).
 - **T1.15 · Zoom e rotazione del plastico con una mano** (alternativa ai gesti a due mani di M1,
   che oggi sono l'unico modo per ruotare e ingrandire; regola 9). Proposta del piano M1: pizzico
   trascinato con una mano sul plastico = rotazione attorno a Y; due pulsanti piccoli sul bordo
@@ -208,5 +254,6 @@ leggibile, sessione completa di 10 minuti senza fastidio.
 
 ## Changelog
 
+- 2026-10-09: piano M3 consegnato (`docs/plans/M3.md`, scenari `qa/scenarios/M3-*.md`): **M3 ⬜ → 🟨**. Richiesta dell'utente: i primi quattro task sono salvataggio minimo in `localStorage` + ciclo di vita, palmo e pizzico dai giunti, pulsante "Menu" a una mano, previsione dei draw call fino a M5. Righe scenari aggiunte (S3.0, S3.6–S3.10). **M4**: `Persistence` ha già la prima fetta (nota). **M5**: la voce "menu e Recenter usabili con una mano sola" è riscritta come consegnata in M3, con l'elenco di ciò che resta a M5 (onboarding del pulsante, "Rotate", alto contrasto, default una mano, S5.4, prova sul visore). Nessun altro stato di milestone è cambiato.
 - 2026-10-07: M2 PC-done (report `qa/reports/M2-2026-10-06-rerun3.md`; `contest-reviewer`: SUPERATO CON RISERVE, nessun bloccante). Gate visore di M2 in debito: voci aggiunte o allineate in `qa/device/DEBT.md`. Stato di M3+ invariato (lo aggiorna il piano M3).
 - 2026-10-06: M5 ha ora la voce esplicita "menu e Recenter usabili con una mano sola" (menu `pinned`, Undo e Recenter inclusi) — decisione dell'utente sul gate di M2 (finding del report `qa/reports/M2-2026-10-06.md`). Nessuno stato di milestone è cambiato.
