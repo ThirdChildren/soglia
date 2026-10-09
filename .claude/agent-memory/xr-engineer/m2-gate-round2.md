@@ -1,0 +1,14 @@
+---
+name: m2-gate-round2
+description: M2 gate round 2 (2026-10-06) - min distances, dimmed menu, rectangle pick, allocation-free placement, licences in dist; measured numbers and traps
+metadata:
+  type: project
+---
+
+- Min distance from the head is `clampDistanceFromHead` (view-fit.ts): slides a point along the head->point line, so a label stays above its piece as seen from the head. `fitPanelToCone` pushes first and re-pushes inside the bisection. Constants (all 0.50) in `menu-thresholds.ts`. IWER numbers: hint 0.500, room label 0.500 (natural 0.345 with head moved), reason label 0.500, menu frame 0.50, title 0.594 (limit 0.65), max item angle 23.8 deg (cone 30).
+- Dimmed menu: `menu-dim.ts` (opacity 0.35, `menuSelectable`); UIKit `opacity` on the root container is inherited by text and Lucide icons (verified in screenshot). Reason label root: `depthTest:false`, `renderOrder:1002` (> menu 1000, controls 1001) so it reads on top. A tap of the free hand over Undo while holding now rotates the piece (no menu pick).
+- Menu pick: `pickRect` with the menu frame quaternion (conjugate rotation), depth tolerance `PICK_DEPTH` 0.05; IWER grip at selectstart = pose + (-0.0285, 0.0015, 0.045). A point 6.6 cm right of an item centre lands in the NEXT item (gap is 3 mm): test outside corners vertically.
+- Allocation-free placement: `prepareHouseCollision(house)` once, then `snapPoseInto` / `evaluatePlacementInto` / `evaluateHeldInto(input, collision, out)`; old API kept as wrappers. `satDepth` uses Float64Array scratch with the SAME arithmetic (bit-for-bit equal). The grab keeps `pendingResult` as a snapshot (`copyPlacementResult`): never keep a reference to the reused `ev.result`. Equivalence fixture `tests/fixtures/placement-golden.json` is a hash over `canonicalJson` (sorted keys: key insertion order differs between old and new details objects). Regenerate only from the OLD code (git worktree), never from the new one.
+- Licences: `public/licenses/` (ISC+Feather MIT text from `lucide-react` LICENSE, MIT of `@pmndrs/uikit-lucide`); hygiene test checks signatures and that CREDITS names every licence file.
+- Stats facts (IWER, house A, `furnish=scandinavian`, scale 0.05): menu closed 45 calls/view, menu open 77 (menu = +28..32), empty house menu open 63, + held piece and label 70. The 72 "worst case" of the rerun is at scale 0.12 (culled), not comparable.
+- Env traps: the auto-mode classifier denied `git checkout <old commit> -- src` (destructive over the working tree); use a git worktree in the scratchpad instead. `browser_interact` waits are `{action:'wait', durationMs}` with total budget ~6 s per call. Editing src reloads the page and ends the XR session. `console log` pattern `feature|visuals|pinch|onboarding` also matches `[soglia:state]` lines (6 KB each): use narrow patterns.

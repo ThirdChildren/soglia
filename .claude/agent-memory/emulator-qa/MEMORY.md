@@ -1,1 +1,3 @@
 - [Emulator workflow](reference_emulator_workflow.md) — verified start/stop, session, hand mode, console and stats gotchas for the IWER gate
+- [Hand pose sequences (M1)](reference_hand_pose_sequences.md) — two-hand zoom/rotate, room pinch, head/O height, console buffer tricks, JS-less network/texture probe recipe, hand orientation gotcha
+- [M2 furniture/menu sequences](reference_m2_furniture_sequences.md) — 3x2 menu grid coords, same-hand page flips (works, rerun 3), dimmed menu, budget numbers, grab/place/rotate/undo, pan/zoom, ui_inspect font sizes, F-A menu-hand pinch selects a room

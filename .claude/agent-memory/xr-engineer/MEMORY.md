@@ -1,0 +1,20 @@
+- [UIKit panels recipe](iwsdk-uikit-panels.md) — PanelUI/Follower/text traps verified in IWER (use world.camera, placeholder text)
+- [External hosts](iwsdk-external-hosts.md) — fonts are local; controller/hand models come from jsdelivr; how to probe network
+- [House build verified](iwsdk-house-build-verified.md) — floor/wall mesh recipe, entity dispose, MCP inspection tips
+- [XR head pose timing](iwsdk-xr-head-pose-timing.md) — camera is 1 frame stale in update(); use player.head; IWER session quirks
+- [Room label / hand select](iwsdk-room-label-select.md) — xr_select gives Pressed; Inter font lacks middle dot and m-squared; billboard panel recipe
+- [Two-hands spike](iwsdk-two-hands-grab-spike.md) — IWSDK TwoHandsGrabbable scales non-uniformly -> own system; MCP hand-gesture recipe
+- [Two-hand gesture impl](iwsdk-two-hand-gesture-impl.md) — T1.12: pinch via select events, grip poses, guard ordering trap, verified numbers
+- [Ghost hand onboarding](iwsdk-ghost-hand-onboarding.md) — T1.13: DoubleSide transparent = 2x draw calls, time in seconds, dispose pattern
+- [Debug stats facts](iwsdk-debug-stats.md) — T1.14: info.render counts both eyes; measured calls/triangles for A and B
+- [Onboarding one-hand skip](iwsdk-onboarding-one-hand-skip.md) — step 2 ends by room select / 9 s timeout; stale Vite module trap; room pinch recipe
+- [Local controllers](iwsdk-local-controllers.md) — controller visuals made local via adapter.assetLoader swap; probe tips
+- [Font atlas (T2.1/T2.2)](iwsdk-font-atlas.md) — extended Inter MSDF via TTFLoader+Playwright; fontFamilies replaces whole family; Unicode label
+- [M2 pure logic decisions](m2-pure-logic-decisions.md) — T2.3-T2.7 conventions: snap passes, hysteresis edges, history shape, D26 data fix
+- [Palm menu spike (T2.11)](iwsdk-palm-menu-spike.md) — IWER palm axis +X, Q_UP, pinch-input module, depthTest trap
+- [Furniture + menu (T2.9/T2.12)](iwsdk-furniture-menu-t29-t212.md) — glTF clones, local pose, IWER grip offset 5 cm, lucide icons, claims handoff
+- [Grab/place T2.13-T2.15](iwsdk-grab-place-t213-t215.md) — IWER grip shifts when pinching, capture-after-settle, QA hand formulas, reason labels
+- [Model drag T2.16-T2.18](iwsdk-miniature-drag-t217.md) — 150 ms capture, IWER grip vs pivot, claim order, UIKit draw calls, bold x trap
+- [M2 gate fixes](m2-gate-fixes.md) — thresholds file, menu gate, view cone, hint/label, move order, failmodels, F3 cause (scenario arithmetic)
+- [M2 gate round 2](m2-gate-round2.md) — min 0.50 m clamp, dimmed menu, rect pick, alloc-free placement, licences; measured numbers, traps
+- [M2 rerun 2 fixes](m2-rerun2-fixes.md) — pinch never closes menu, async panel dispose trap, one-panel menu + anchors, UIKit opacity inheritance, label cone
