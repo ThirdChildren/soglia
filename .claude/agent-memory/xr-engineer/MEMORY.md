@@ -1,4 +1,5 @@
 - [Environments: Fedora PC vs cloud](reference_environments.md) — READ FIRST: which setup notes apply on which machine (headless-only, CLI instead of MCP, no dnf/sudo/adb in the cloud)
+- [M3 persistence, lifecycle, hand joints](m3-lifecycle-and-joints.md) — T3.1/T3.2 verified facts: visibilityState rewritten each frame, fillPoses recipe and traps, pinch announcement wait, accented-letter guard
 - [UIKit panels recipe](iwsdk-uikit-panels.md) — PanelUI/Follower/text traps verified in IWER (use world.camera, placeholder text)
 - [External hosts](iwsdk-external-hosts.md) — fonts are local; controller/hand models come from jsdelivr; how to probe network
 - [House build verified](iwsdk-house-build-verified.md) — floor/wall mesh recipe, entity dispose, MCP inspection tips
