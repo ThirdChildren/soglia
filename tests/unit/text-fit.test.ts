@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { CatalogItem } from '../../src/logic/catalog';
+import { formatSize, formatSizeCompact } from '../../src/logic/furniture-label';
 import {
   ITEM_NAME_MAX_WIDTH,
   ITEM_NAME_MIN_SIZE,
   ITEM_NAME_SIZE,
   ITEM_PANEL,
+  ITEM_SIZE_MARGIN,
 } from '../../src/logic/menu';
 import { ASCII_ADVANCES, fitLine, fitName, textWidth, widestWord } from '../../src/logic/text-fit';
 import { loadJson } from '../helpers/load-json';
@@ -94,5 +96,90 @@ describe('fitLine (the measure line of a card)', () => {
     expect(fitLine([long, compact], 1, 2.4, 0.8)).toBe(compact);
     expect(fitLine([], 16, 2.4, 0.8)).toBe('');
     expect(fitLine(['abc'], 0, 2.4, 0)).toBe('abc');
+  });
+});
+
+describe('fitLine in detail (the measure line of a card)', () => {
+  const FONT = 2.4;
+  const w = (text: string): number => textWidth(text, FONT);
+
+  it('takes a text that fits, the first one when several fit (not the shortest)', () => {
+    expect(fitLine(['ab', 'a'], 100, FONT, 0)).toBe('ab');
+    expect(fitLine(['a', 'ab'], 100, FONT, 0)).toBe('a');
+    expect(fitLine(['one candidate'], 100, FONT, 0.8)).toBe('one candidate');
+  });
+
+  it('skips the candidates that do not fit and takes the first that does', () => {
+    const wide = 'WWWWWWWWWW';
+    const mid = 'mmmmmm';
+    const small = 'ii';
+    expect(w(wide)).toBeGreaterThan(w(mid));
+    expect(w(mid)).toBeGreaterThan(w(small));
+    expect(fitLine([wide, mid, small], w(mid) + 0.01, FONT, 0)).toBe(mid);
+    expect(fitLine([wide, mid, small], w(mid) - 0.01, FONT, 0)).toBe(small);
+    expect(fitLine([wide, small, mid], w(mid) + 0.01, FONT, 0)).toBe(small);
+  });
+
+  it('counts a candidate that is exactly as wide as the room minus the margin as fitting, and one hair wider as not', () => {
+    expect(fitLine(['abcd', 'a'], w('abcd'), FONT, 0)).toBe('abcd');
+    expect(fitLine(['abcd', 'a'], w('abcd') - 1e-9, FONT, 0)).toBe('a');
+    expect(fitLine(['abcd', 'a'], w('abcd') + 0.8, FONT, 0.8)).toBe('abcd');
+    expect(fitLine(['abcd', 'a'], w('abcd') + 0.8 - 1e-6, FONT, 0.8)).toBe('a');
+  });
+
+  it('gives the LAST candidate when none fits, even if it is not the shortest', () => {
+    expect(fitLine(['abc', 'abcdefgh'], 1, FONT, 0)).toBe('abcdefgh');
+    expect(fitLine(['abcdefgh', 'abc'], 1, FONT, 0)).toBe('abc');
+    expect(fitLine(['x'], 0, FONT, 0)).toBe('x');
+  });
+
+  it('gives the empty string for no candidate at all, and fits an empty candidate where there is any room', () => {
+    expect(fitLine([], 100, FONT, 0)).toBe('');
+    expect(fitLine([], 0, FONT, 0)).toBe('');
+    expect(fitLine(['', 'a'], 100, FONT, 0.8)).toBe('');
+    expect(fitLine(['', 'a'], 0, FONT, 0)).toBe('');
+    expect(fitLine(['a', ''], 0, FONT, 0)).toBe('');
+  });
+
+  it('copes with a room of zero, a negative room, an infinite room and a room that is not a number', () => {
+    expect(fitLine(['abc', 'ab'], 0, FONT, 0)).toBe('ab');
+    expect(fitLine(['abc', 'ab'], -5, FONT, 0)).toBe('ab');
+    expect(fitLine(['abc', 'ab'], Infinity, FONT, 100)).toBe('abc');
+    expect(fitLine(['abc', 'ab'], NaN, FONT, 0)).toBe('ab');
+    expect(fitLine(['abc', 'ab'], 100, FONT, NaN)).toBe('ab');
+    expect(fitLine(['abc', 'ab'], 100, NaN, 0)).toBe('ab');
+  });
+
+  it('lets a negative margin widen the room and a zero font size fit anything', () => {
+    expect(fitLine(['abcd', 'a'], w('abcd') - 0.5, FONT, -0.5)).toBe('abcd');
+    expect(fitLine(['a very long text indeed', 'a'], 1, 0, 0)).toBe('a very long text indeed');
+  });
+
+  it('judges a very long text as not fitting without trouble', () => {
+    const huge = 'm'.repeat(100000);
+    expect(fitLine([huge, 'm'], 16, FONT, 0.8)).toBe('m');
+    expect(fitLine([huge], 16, FONT, 0.8)).toBe(huge);
+  });
+
+  it('measures a letter the table does not have (the multiplication sign) as 0.65 em, close to the real 0.66', () => {
+    const times = '×';
+    expect(textWidth(times, 1)).toBeCloseTo(0.65, 9);
+    expect(textWidth(`0.35 ${times} 0.35 m`, FONT)).toBeGreaterThan(15.8);
+    expect(textWidth(`0.35 ${times} 0.35 m`, FONT)).toBeLessThan(16.0);
+  });
+
+  it('does not change the list of candidates', () => {
+    const candidates = Object.freeze(['abc', 'ab']);
+    expect(fitLine(candidates, 1, FONT, 0)).toBe('ab');
+    expect(candidates).toEqual(['abc', 'ab']);
+  });
+
+  it('is what the card does with real measures: the long form for most pieces, the short form only for the plant', () => {
+    const show = (width: number, depth: number): string =>
+      fitLine([formatSize(width, depth), formatSizeCompact(width, depth)], ITEM_NAME_MAX_WIDTH, ITEM_NAME_SIZE, ITEM_SIZE_MARGIN);
+    expect(show(0.35, 0.35)).toBe('0.35×0.35 m');
+    expect(show(0.45, 0.5)).toBe('0.45 × 0.5 m');
+    expect(show(1.6, 2.0)).toBe('1.6 × 2.0 m');
+    expect(show(2.3, 0.95)).toBe('2.3 × 0.95 m');
   });
 });
