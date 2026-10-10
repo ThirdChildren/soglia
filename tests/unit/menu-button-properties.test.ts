@@ -34,7 +34,7 @@ import {
   type MenuHandName,
   type RoomSelectionInputs,
 } from '../../src/logic/menu-button';
-import { BUTTON_HALF, BUTTON_SLOTS, ITEM_HALF, ITEM_SLOTS, PICK_DEPTH, pickRect } from '../../src/logic/menu';
+import { BUTTON_HALVES, BUTTON_SLOTS, BUTTONS, ITEM_HALF, ITEM_SLOTS, PICK_DEPTH, pickRect } from '../../src/logic/menu';
 import { pinnedMenuAnchor } from '../../src/logic/menu-anchor';
 import { BASE_ABOVE, isOnBase } from '../../src/logic/miniature-pan';
 import { computeAnchor } from '../../src/logic/placement';
@@ -866,7 +866,7 @@ describe('the buttons do not cover the controls of the pinned menu when the head
     });
     return [
       ...ITEM_SLOTS.map((o, i) => slot(`item-${i}`, o.dx, o.dy, ITEM_HALF)),
-      ...BUTTON_SLOTS.map((o, i) => slot(`bar-${i}`, o.dx, o.dy, BUTTON_HALF)),
+      ...BUTTON_SLOTS.map((o, i) => slot(`bar-${i}`, o.dx, o.dy, BUTTON_HALVES[BUTTONS[i]!])),
     ];
   }
 

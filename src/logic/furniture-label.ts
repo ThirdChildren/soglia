@@ -27,6 +27,14 @@ export function formatSize(width: number, depth: number, ascii = false): string 
   return `${formatMeters(width)} ${ascii ? 'x' : '×'} ${formatMeters(depth)} m`;
 }
 
+/**
+ * The short form of `formatSize` for a card that is too narrow for it: "0.35×0.35 m" (no spaces around the sign).
+ * The menu v2 cards use it only when the long form would come within `ITEM_SIZE_MARGIN` of the border (task T3.5, R25).
+ */
+export function formatSizeCompact(width: number, depth: number, ascii = false): string {
+  return `${formatMeters(width)}${ascii ? 'x' : '×'}${formatMeters(depth)} m`;
+}
+
 /** What a not valid piece is told, in priority order (D27): the first one that applies is shown. */
 export type ReasonKind = 'blocks-door' | 'overlaps-wall' | 'overlaps-furniture' | 'outside-house';
 

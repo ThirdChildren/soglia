@@ -64,3 +64,15 @@ export function fitName(name: string, maxWidth: number, baseSize: number, minSiz
   if (!(widest > maxWidth) || !(widest > 0)) return { text, fontSize: baseSize };
   return { text, fontSize: Math.max(minSize, (baseSize * maxWidth) / widest) };
 }
+
+/**
+ * The first of `candidates` (longest first) whose single line fits `maxWidth` with `margin` to spare, else the last
+ * one (the shortest). Used for the measure line of an item card: "0.35 × 0.35 m" is tried first, then "0.35×0.35 m".
+ * Empty `candidates` give the empty string.
+ */
+export function fitLine(candidates: readonly string[], maxWidth: number, fontSize: number, margin: number): string {
+  for (const candidate of candidates) {
+    if (textWidth(candidate, fontSize) <= maxWidth - margin) return candidate;
+  }
+  return candidates.length > 0 ? candidates[candidates.length - 1] : '';
+}

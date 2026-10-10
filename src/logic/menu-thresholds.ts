@@ -37,6 +37,16 @@ export const MENU_LIFT = 0.1;
 export const MENU_MAX_DISTANCE = 0.6;
 
 /**
+ * The FRAME of the menu (its bottom centre) is never farther than this from the head, in metres. Menu v2 (task T3.5,
+ * D37) is 0.376 m tall: with the frame at 0.52 m the farthest control (the first tab, 0.138 m to the side and 0.356 m
+ * above the frame) is at 0.645 m, inside the 0.65 m the QA scenario S3.8 allows for a control, and a menu centred on
+ * the gaze at 0.50 m still fits the 30 degree cone (the test `menu-v2-geometry` computes both). `MENU_MAX_DISTANCE` stays 0.6 for the hint, which is much smaller.
+ */
+export const MENU_FRAME_MAX_DISTANCE = 0.52;
+/** The menu is at most this wide, in metres (D37; the 36 cm of the layout leave a margin). */
+export const MENU_MAX_WIDTH = 0.38;
+
+/**
  * The menu (its frame, the bottom centre) is never nearer to the head than this, in metres (rule 8: panels at
  * 0.5-0.8 m). A hand held close to the face pushes the menu away along the line from the head.
  */
@@ -54,9 +64,9 @@ export const ROOM_LABEL_MIN_DISTANCE = 0.5 + LABEL_DISTANCE_MARGIN;
 export const REASON_LABEL_MIN_DISTANCE = 0.5 + LABEL_DISTANCE_MARGIN;
 /**
  * The WHOLE menu (title, items, bar) stays inside a cone of this half angle around the forward direction of
- * the head, in degrees (rule 8: nothing important near the edge of a narrow field of view). The menu is
- * 0.37 m wide and 0.35 m tall: at 0.5 m its corners are 27 degrees from its centre, so a 25 degree cone
- * only fits at 0.55 m or more; 30 degrees leaves room to keep the menu near the hand.
+ * the head, in degrees (rule 8: nothing important near the edge of a narrow field of view). Menu v2 is 0.36 m
+ * wide and 0.376 m tall: centred on the gaze at 0.5 m its corners are 28.5 degrees from the middle, so only a cone
+ * of about 30 degrees holds it (a 25 degree cone would need a distance of 0.6 m and more).
  */
 export const VIEW_CONE_HALF_ANGLE_DEG = 30;
 

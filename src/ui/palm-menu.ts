@@ -1,8 +1,9 @@
-// Palm menu panel (`ui:palm-menu`): ONE UIKit panel for the whole menu (title, six item cards and the bar
-// of four buttons, public/ui/palm-menu.uikitml), created when the menu opens and disposed when it closes. A
-// page change only rewrites the texts of the item cards in place (no panel is created or destroyed): that is
-// what keeps the cost of the menu low (M2 rerun 2, W1). It floats MENU_LIFT above the hand, never farther than
-// MENU_MAX_DISTANCE from the head, and turns toward the head. The text comes from src/ui/strings.ts.
+// Palm menu panel (`ui:palm-menu`): ONE UIKit panel for the whole menu (header, six item cards in a 2 x 3 grid and the
+// bar of four buttons, public/ui/palm-menu.uikitml), created when the menu opens and disposed when it closes. The
+// header is the tab row (two tabs or more) or the title (one tab). A page or tab change only rewrites the texts of
+// the item cards and the look of the tabs in place (no panel is created or destroyed): that is what keeps the cost
+// of the menu low (M2 rerun 2, W1). It floats MENU_LIFT above the hand, never farther than MENU_FRAME_MAX_DISTANCE
+// from the head, and turns toward the head. The text comes from src/ui/strings.ts and is at least 2.4 cm (D37).
 // The controls that can be picked are not rendered: they are light anchors (`ui:menu-item-<id>`,
 // `ui:menu-undo`, ...; src/ui/menu-anchor.ts) that the menu-items system places in the plane of the menu, which
 // follows `framePosition` and `frameOrientation`, the bottom centre of the menu.
@@ -29,11 +30,18 @@ import {
   ITEM_NAME_MIN_SIZE,
   ITEM_NAME_SIZE,
   MENU_EXTENT,
+  MENU_TABS,
   PANEL_CENTER,
   type ButtonId,
+  type MenuTabId,
 } from '../logic/menu';
 import { pinnedConeAngleDeg, pinnedMenuAnchor, yawOfForward } from '../logic/menu-anchor';
-import { MENU_MAX_DISTANCE, MENU_MIN_DISTANCE, VIEW_CONE_HALF_ANGLE_DEG } from '../logic/menu-thresholds';
+import {
+  MENU_FRAME_MAX_DISTANCE,
+  MENU_LIFT,
+  MENU_MIN_DISTANCE,
+  VIEW_CONE_HALF_ANGLE_DEG,
+} from '../logic/menu-thresholds';
 import { menuAnchor, type Vec3Like } from '../logic/palm';
 import { fitName } from '../logic/text-fit';
 import { fitPanelToCone, panelConeAngleDeg, type ConeFit } from '../logic/view-fit';
@@ -48,13 +56,15 @@ export type PalmMenuMode = 'palm' | 'pinned';
 
 const PANEL_ASSET = 'palm-menu';
 const TITLE_ELEMENT = 'palm-menu-title';
+const TITLE_BOX_ELEMENT = 'palm-menu-title-box';
+const TAB_ROW_ELEMENT = 'menu-tab-row';
 const ROOT_ELEMENT = 'palm-menu-root';
 /** Drawn after the scene (and its transparent parts) so it is never covered. */
 const MENU_RENDER_ORDER = 1000;
 /** Icons are drawn just above the panel. */
 const ICON_RENDER_ORDER = 1001;
 /** Icon size in UIKit units; an icon is scaled to fit its drawing, so the narrow chevrons are drawn smaller. */
-const ICON_SIZE: Readonly<Record<ButtonId, number>> = { undo: 2.8, prev: 2.2, next: 2.2, recenter: 2.8 };
+const ICON_SIZE: Readonly<Record<ButtonId, number>> = { undo: 2.4, prev: 2, next: 2, recenter: 2.4 };
 const ICON_COLOR = '#1a1a1a';
 const BUTTON_LABELS: Readonly<Record<ButtonId, string>> = {
   undo: strings.menu.undo,
@@ -62,8 +72,11 @@ const BUTTON_LABELS: Readonly<Record<ButtonId, string>> = {
   next: strings.menu.next,
   recenter: strings.menu.recenter,
 };
-/** Item cards of the panel (a 3 x 2 grid). */
+/** Item cards of the panel (a 2 x 3 grid: two columns, three rows). */
 const SLOT_COUNT = 6;
+/** The active tab is drawn dark with light text, the others light with dark text (both pass 7:1 contrast). */
+const TAB_ACTIVE = { backgroundColor: '#1a1a1a', color: '#ffffff' } as const;
+const TAB_IDLE = { backgroundColor: '#ffffff', color: '#1a1a1a' } as const;
 
 /** What an item card shows. */
 export interface MenuItemContent {
@@ -73,7 +86,7 @@ export interface MenuItemContent {
 const CONE_FIT: ConeFit = {
   halfAngleDeg: VIEW_CONE_HALF_ANGLE_DEG,
   minDistance: MENU_MIN_DISTANCE,
-  maxDistance: MENU_MAX_DISTANCE,
+  maxDistance: MENU_FRAME_MAX_DISTANCE,
 };
 
 interface UiDocument {
@@ -84,6 +97,11 @@ interface SlotElements {
   card: UIKit.Container | null;
   name: UIKit.Text | null;
   size: UIKit.Text | null;
+}
+
+interface TabElements {
+  tab: UIKit.Container | null;
+  label: UIKit.Text | null;
 }
 
 export class PalmMenuPanel {
@@ -106,6 +124,12 @@ export class PalmMenuPanel {
   private readonly centerOffset = new Vector3();
   private slotElements: SlotElements[] = [];
   private items: readonly MenuItemContent[] = [];
+  private titleBox: UIKit.Container | null = null;
+  private tabRow: UIKit.Container | null = null;
+  private tabElements = new Map<MenuTabId, TabElements>();
+  /** The tabs to draw and the active one; fewer than two tabs means the header is the title. */
+  private visibleTabs: readonly MenuTabId[] = [];
+  private activeTab: MenuTabId = 'items';
   /** Bottom centre of the menu (above the palm) and its orientation, for the item panels. */
   readonly framePosition = new Vector3();
   readonly frameOrientation = new Quaternion();
@@ -165,6 +189,19 @@ export class PalmMenuPanel {
     this.fitLogged = false;
     this.slotElements = [];
     this.items = [];
+    this.tabElements = new Map();
+    this.titleBox = null;
+    this.tabRow = null;
+  }
+
+  /**
+   * The tabs of the header: with two or more the tab row is drawn (the active one dark), with fewer the title is.
+   * Written in place; before the layout is loaded it is kept and written as soon as it is.
+   */
+  setTabs(visible: readonly MenuTabId[], active: MenuTabId): void {
+    this.visibleTabs = visible;
+    this.activeTab = active;
+    if (this.textApplied) this.writeTabs();
   }
 
   /**
@@ -195,6 +232,11 @@ export class PalmMenuPanel {
     this.modeValue = 'palm';
     this.slotElements = [];
     this.items = [];
+    this.tabElements = new Map();
+    this.titleBox = null;
+    this.tabRow = null;
+    this.visibleTabs = [];
+    this.activeTab = 'items';
   }
 
   /** Once per frame while open: fills the text when the document is ready, then follows the hand (`pinned`: stays put). */
@@ -221,7 +263,18 @@ export class PalmMenuPanel {
             size: doc?.getElementById<UIKit.Text>(`menu-slot-${i}-size`) ?? null,
           });
         }
+        this.titleBox = doc?.getElementById<UIKit.Container>(TITLE_BOX_ELEMENT) ?? null;
+        this.tabRow = doc?.getElementById<UIKit.Container>(TAB_ROW_ELEMENT) ?? null;
+        this.tabElements = new Map();
+        for (const tab of MENU_TABS) {
+          this.tabElements.set(tab, {
+            tab: doc?.getElementById<UIKit.Container>(`menu-tab-${tab}`) ?? null,
+            label: doc?.getElementById<UIKit.Text>(`menu-tab-${tab}-label`) ?? null,
+          });
+          this.tabElements.get(tab)?.label?.setProperties({ text: strings.menu.tabs[tab] });
+        }
         this.textApplied = true;
+        this.writeTabs();
         this.writeItems();
       }
     }
@@ -248,7 +301,7 @@ export class PalmMenuPanel {
   private followHand(object: Object3D, handPosition: Vector3): void {
     // Above the hand, then pulled toward the middle of the view only as far as needed so that the WHOLE menu
     // (title, items and bar) stays inside the central cone of the head (rule 8, M2 gate W3).
-    menuAnchor(handPosition, this.headPosition, this.handAnchor);
+    menuAnchor(handPosition, this.headPosition, this.handAnchor, MENU_LIFT, MENU_FRAME_MAX_DISTANCE);
     fitPanelToCone(this.handAnchor, this.headPosition, this.headForward, MENU_EXTENT, CONE_FIT, this.anchor);
     object.position.set(this.anchor.x, this.anchor.y, this.anchor.z);
     object.updateMatrixWorld(true);
@@ -300,6 +353,19 @@ export class PalmMenuPanel {
       } catch (error) {
         swarn(`menu icon ${button} unavailable: ${error instanceof Error ? error.message : String(error)}`);
       }
+    }
+  }
+
+  /** Shows the tab row (two tabs or more) or the title, hides the tabs without data and darkens the active one. */
+  private writeTabs(): void {
+    const showRow = this.visibleTabs.length >= 2;
+    this.titleBox?.setProperties({ display: showRow ? 'none' : 'flex' });
+    this.tabRow?.setProperties({ display: showRow ? 'flex' : 'none' });
+    for (const [id, elements] of this.tabElements) {
+      const visible = this.visibleTabs.includes(id);
+      const look = id === this.activeTab ? TAB_ACTIVE : TAB_IDLE;
+      elements.tab?.setProperties({ display: visible ? 'flex' : 'none', backgroundColor: look.backgroundColor });
+      elements.label?.setProperties({ color: look.color });
     }
   }
 

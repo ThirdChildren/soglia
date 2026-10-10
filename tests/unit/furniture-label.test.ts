@@ -4,6 +4,7 @@ import {
   catalogIdOf,
   formatMeters,
   formatSize,
+  formatSizeCompact,
   lowerName,
   pickReasonLabels,
   reasonKind,
@@ -33,6 +34,14 @@ describe('formatMeters', () => {
     expect(formatMeters(NaN)).toBe('0.0');
     expect(formatMeters(Infinity)).toBe('0.0');
     expect(formatMeters(-1)).toBe('0.0');
+  });
+});
+
+describe('formatSizeCompact', () => {
+  it('is the same without the spaces around the sign', () => {
+    expect(formatSizeCompact(0.35, 0.35)).toBe('0.35\u00d70.35 m');
+    expect(formatSizeCompact(1.6, 2)).toBe('1.6\u00d72.0 m');
+    expect(formatSizeCompact(1.6, 2, true)).toBe('1.6x2.0 m');
   });
 });
 

@@ -19,6 +19,7 @@ const catalogItems = (): CatalogFile['items'] => loadJson<CatalogFile>('public/c
 const SAMPLE_CALLS: Record<string, () => string[]> = {
   page: () => [strings.menu.page(1, 3), strings.menu.page(3, 3)],
   itemSize: () => catalogItems().map((item) => strings.menu.itemSize(item.size[0], item.size[1])),
+  itemSizeCompact: () => catalogItems().map((item) => strings.menu.itemSizeCompact(item.size[0], item.size[1])),
   overlapsFurniture: () => catalogItems().map((item) => strings.reason.overlapsFurniture(item.name)),
   reasonText: () => catalogItems().map((item) => strings.reasonText('overlaps-furniture', item.name)),
   roomLabel: () =>

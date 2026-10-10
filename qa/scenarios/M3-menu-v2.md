@@ -35,4 +35,5 @@ PASS se le verifiche 1-7 sono soddisfatte · FAIL altrimenti. Deviazioni numeric
 Voci "Menu v2" e "Etichetta della stanza nel cono" di M3 in `qa/device/DEBT.md`; sostituiscono le voci M2 su testi < 2,4 cm (W2) e A4.
 
 ## Changelog
+- 2026-10-10 (T3.5, nessun criterio cambiato): nota di lettura. Con **due schede o più** l'intestazione è la riga delle schede e **il titolo "Furniture" non è disegnato** (con una scheda sola, come prima di T3.8, è disegnato il titolo e non ci sono schede): al passo 4 il testo "titolo" si legge solo nel secondo caso. La cornice del menu del palmo sta a 0,50–0,52 m (`MENU_FRAME_MAX_DISTANCE`), dentro 0,50–0,60 della verifica 4. Per provare le schede prima di T3.8 e T3.14 con `debug=1`: tasto `F6` (`browser_interact` `press`), che accende `mine`, `fit` e `measure`; la scheda `measure` non scrive ancora `measure start`.
 - 2026-10-09: scenario creato dal piano M3 (D37, T3.6).

@@ -1,51 +1,67 @@
-<div id="palm-menu-root" style="display: flex; flex-direction: column; align-items: center; width: 37.2; height: 34.75;">
-  <div id="palm-menu-title-box" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 37; height: 6.5; background-color: #ffffff; border-radius: 2.5; border-width: 0.4; border-color: #1a1a1a;">
-    <span id="palm-menu-title" style="font-size: 2.6; font-weight: bold; color: #1a1a1a; line-height: 1.25; text-align: center;">-</span>
+<div id="palm-menu-root" style="display: flex; flex-direction: column; align-items: center; width: 36; height: 37.6;">
+  <div id="palm-menu-title-box" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 36; height: 4; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a;">
+    <span id="palm-menu-title" style="font-size: 2.6; font-weight: bold; color: #1a1a1a; line-height: 1.1; text-align: center;">-</span>
   </div>
-  <div id="menu-row-1" style="display: flex; flex-direction: row; justify-content: flex-start; width: 37.2; margin-top: 1.05; gap: 0.3;">
-    <div id="menu-slot-0" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 12.2; height: 9.4; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a;">
-      <span id="menu-slot-0-name" style="font-size: 2.4; font-weight: normal; color: #1a1a1a; line-height: 1.2; text-align: center;">-</span>
-      <span id="menu-slot-0-size" style="font-size: 1.6; font-weight: normal; color: #3a3f47; line-height: 1.2; text-align: center; margin-top: 0.6;">-</span>
+  <div id="menu-tab-row" style="display: none; flex-direction: row; justify-content: center; width: 36; height: 4; gap: 0.4;">
+    <div id="menu-tab-items" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 8.4; height: 4; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a;">
+      <span id="menu-tab-items-label" style="font-size: 2.4; font-weight: bold; color: #1a1a1a; line-height: 1.1; text-align: center;">-</span>
     </div>
-    <div id="menu-slot-1" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 12.2; height: 9.4; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a;">
-      <span id="menu-slot-1-name" style="font-size: 2.4; font-weight: normal; color: #1a1a1a; line-height: 1.2; text-align: center;">-</span>
-      <span id="menu-slot-1-size" style="font-size: 1.6; font-weight: normal; color: #3a3f47; line-height: 1.2; text-align: center; margin-top: 0.6;">-</span>
+    <div id="menu-tab-mine" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 7.8; height: 4; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a;">
+      <span id="menu-tab-mine-label" style="font-size: 2.4; font-weight: bold; color: #1a1a1a; line-height: 1.1; text-align: center;">-</span>
     </div>
-    <div id="menu-slot-2" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 12.2; height: 9.4; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a;">
-      <span id="menu-slot-2-name" style="font-size: 2.4; font-weight: normal; color: #1a1a1a; line-height: 1.2; text-align: center;">-</span>
-      <span id="menu-slot-2-size" style="font-size: 1.6; font-weight: normal; color: #3a3f47; line-height: 1.2; text-align: center; margin-top: 0.6;">-</span>
+    <div id="menu-tab-fit" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 6.4; height: 4; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a;">
+      <span id="menu-tab-fit-label" style="font-size: 2.4; font-weight: bold; color: #1a1a1a; line-height: 1.1; text-align: center;">-</span>
     </div>
-  </div>
-  <div id="menu-row-2" style="display: flex; flex-direction: row; justify-content: flex-start; width: 37.2; margin-top: 0.6; gap: 0.3;">
-    <div id="menu-slot-3" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 12.2; height: 9.4; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a;">
-      <span id="menu-slot-3-name" style="font-size: 2.4; font-weight: normal; color: #1a1a1a; line-height: 1.2; text-align: center;">-</span>
-      <span id="menu-slot-3-size" style="font-size: 1.6; font-weight: normal; color: #3a3f47; line-height: 1.2; text-align: center; margin-top: 0.6;">-</span>
-    </div>
-    <div id="menu-slot-4" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 12.2; height: 9.4; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a;">
-      <span id="menu-slot-4-name" style="font-size: 2.4; font-weight: normal; color: #1a1a1a; line-height: 1.2; text-align: center;">-</span>
-      <span id="menu-slot-4-size" style="font-size: 1.6; font-weight: normal; color: #3a3f47; line-height: 1.2; text-align: center; margin-top: 0.6;">-</span>
-    </div>
-    <div id="menu-slot-5" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 12.2; height: 9.4; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a;">
-      <span id="menu-slot-5-name" style="font-size: 2.4; font-weight: normal; color: #1a1a1a; line-height: 1.2; text-align: center;">-</span>
-      <span id="menu-slot-5-size" style="font-size: 1.6; font-weight: normal; color: #3a3f47; line-height: 1.2; text-align: center; margin-top: 0.6;">-</span>
+    <div id="menu-tab-measure" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 12.2; height: 4; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a;">
+      <span id="menu-tab-measure-label" style="font-size: 2.4; font-weight: bold; color: #1a1a1a; line-height: 1.1; text-align: center;">-</span>
     </div>
   </div>
-  <div id="menu-bar" style="display: flex; flex-direction: row; justify-content: center; width: 37.2; margin-top: 0.8; gap: 0.4;">
-    <div id="menu-btn-undo" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 8.8; height: 7; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a;">
-      <div id="menu-btn-undo-icon" style="display: flex; align-items: center; justify-content: center; width: 2.8; height: 2.8; margin-bottom: 0.4;"></div>
-      <span id="menu-btn-undo-label" style="font-size: 1.7; font-weight: bold; color: #1a1a1a; line-height: 1.2; text-align: center;">-</span>
+  <div id="menu-row-1" style="display: flex; flex-direction: row; justify-content: flex-start; width: 36; margin-top: 0.4; gap: 0.4;">
+    <div id="menu-slot-0" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 17.8; height: 8.6; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a;">
+      <span id="menu-slot-0-name" style="font-size: 2.4; font-weight: normal; color: #1a1a1a; line-height: 1.05; text-align: center;">-</span>
+      <span id="menu-slot-0-size" style="font-size: 2.4; font-weight: normal; color: #3a3f47; line-height: 1.05; text-align: center; margin-top: 0.2;">-</span>
     </div>
-    <div id="menu-btn-prev" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 8.8; height: 7; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a;">
-      <div id="menu-btn-prev-icon" style="display: flex; align-items: center; justify-content: center; width: 2.8; height: 2.8; margin-bottom: 0.4;"></div>
-      <span id="menu-btn-prev-label" style="font-size: 1.7; font-weight: bold; color: #1a1a1a; line-height: 1.2; text-align: center;">-</span>
+    <div id="menu-slot-1" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 17.8; height: 8.6; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a;">
+      <span id="menu-slot-1-name" style="font-size: 2.4; font-weight: normal; color: #1a1a1a; line-height: 1.05; text-align: center;">-</span>
+      <span id="menu-slot-1-size" style="font-size: 2.4; font-weight: normal; color: #3a3f47; line-height: 1.05; text-align: center; margin-top: 0.2;">-</span>
     </div>
-    <div id="menu-btn-next" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 8.8; height: 7; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a;">
-      <div id="menu-btn-next-icon" style="display: flex; align-items: center; justify-content: center; width: 2.8; height: 2.8; margin-bottom: 0.4;"></div>
-      <span id="menu-btn-next-label" style="font-size: 1.7; font-weight: bold; color: #1a1a1a; line-height: 1.2; text-align: center;">-</span>
+  </div>
+  <div id="menu-row-2" style="display: flex; flex-direction: row; justify-content: flex-start; width: 36; margin-top: 0.4; gap: 0.4;">
+    <div id="menu-slot-2" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 17.8; height: 8.6; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a;">
+      <span id="menu-slot-2-name" style="font-size: 2.4; font-weight: normal; color: #1a1a1a; line-height: 1.05; text-align: center;">-</span>
+      <span id="menu-slot-2-size" style="font-size: 2.4; font-weight: normal; color: #3a3f47; line-height: 1.05; text-align: center; margin-top: 0.2;">-</span>
     </div>
-    <div id="menu-btn-recenter" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 8.8; height: 7; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a;">
-      <div id="menu-btn-recenter-icon" style="display: flex; align-items: center; justify-content: center; width: 2.8; height: 2.8; margin-bottom: 0.4;"></div>
-      <span id="menu-btn-recenter-label" style="font-size: 1.7; font-weight: bold; color: #1a1a1a; line-height: 1.2; text-align: center;">-</span>
+    <div id="menu-slot-3" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 17.8; height: 8.6; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a;">
+      <span id="menu-slot-3-name" style="font-size: 2.4; font-weight: normal; color: #1a1a1a; line-height: 1.05; text-align: center;">-</span>
+      <span id="menu-slot-3-size" style="font-size: 2.4; font-weight: normal; color: #3a3f47; line-height: 1.05; text-align: center; margin-top: 0.2;">-</span>
+    </div>
+  </div>
+  <div id="menu-row-3" style="display: flex; flex-direction: row; justify-content: flex-start; width: 36; margin-top: 0.4; gap: 0.4;">
+    <div id="menu-slot-4" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 17.8; height: 8.6; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a;">
+      <span id="menu-slot-4-name" style="font-size: 2.4; font-weight: normal; color: #1a1a1a; line-height: 1.05; text-align: center;">-</span>
+      <span id="menu-slot-4-size" style="font-size: 2.4; font-weight: normal; color: #3a3f47; line-height: 1.05; text-align: center; margin-top: 0.2;">-</span>
+    </div>
+    <div id="menu-slot-5" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 17.8; height: 8.6; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a;">
+      <span id="menu-slot-5-name" style="font-size: 2.4; font-weight: normal; color: #1a1a1a; line-height: 1.05; text-align: center;">-</span>
+      <span id="menu-slot-5-size" style="font-size: 2.4; font-weight: normal; color: #3a3f47; line-height: 1.05; text-align: center; margin-top: 0.2;">-</span>
+    </div>
+  </div>
+  <div id="menu-bar" style="display: flex; flex-direction: row; justify-content: center; width: 36; margin-top: 0.4; gap: 0.4;">
+    <div id="menu-btn-undo" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 7.9; height: 6.2; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a;">
+      <div id="menu-btn-undo-icon" style="display: flex; align-items: center; justify-content: center; width: 2.4; height: 2.4; margin-bottom: 0.2;"></div>
+      <span id="menu-btn-undo-label" style="font-size: 2.4; font-weight: bold; color: #1a1a1a; line-height: 1.1; text-align: center;">-</span>
+    </div>
+    <div id="menu-btn-prev" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 7.4; height: 6.2; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a;">
+      <div id="menu-btn-prev-icon" style="display: flex; align-items: center; justify-content: center; width: 2.4; height: 2.4; margin-bottom: 0.2;"></div>
+      <span id="menu-btn-prev-label" style="font-size: 2.4; font-weight: bold; color: #1a1a1a; line-height: 1.1; text-align: center;">-</span>
+    </div>
+    <div id="menu-btn-next" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 7.2; height: 6.2; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a;">
+      <div id="menu-btn-next-icon" style="display: flex; align-items: center; justify-content: center; width: 2.4; height: 2.4; margin-bottom: 0.2;"></div>
+      <span id="menu-btn-next-label" style="font-size: 2.4; font-weight: bold; color: #1a1a1a; line-height: 1.1; text-align: center;">-</span>
+    </div>
+    <div id="menu-btn-recenter" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 12.3; height: 6.2; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a;">
+      <div id="menu-btn-recenter-icon" style="display: flex; align-items: center; justify-content: center; width: 2.4; height: 2.4; margin-bottom: 0.2;"></div>
+      <span id="menu-btn-recenter-label" style="font-size: 2.4; font-weight: bold; color: #1a1a1a; line-height: 1.1; text-align: center;">-</span>
     </div>
   </div>
 </div>

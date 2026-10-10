@@ -1,6 +1,6 @@
 // Every user-visible string of the app lives here (plain, short English).
 
-import { formatSize, lowerName, type ReasonKind } from '../logic/furniture-label';
+import { formatSize, formatSizeCompact, lowerName, type ReasonKind } from '../logic/furniture-label';
 import { formatRoomLabel } from '../logic/room-label';
 
 /** Why a piece is not valid (D27): short texts shown next to it. */
@@ -23,13 +23,25 @@ export const strings = {
     previous: 'Back',
     next: 'Next',
     recenter: 'Recenter',
-    catalogUnavailable: 'The catalog could not be loaded.',
+    /** The fourth button of the bar at real scale (T3.12); the menu does not use it before that task. */
+    tabletop: 'Tabletop',
+    /** Short on purpose: the four tabs share one row of the menu at 2.4 cm text (D37). */
+    tabs: {
+      items: 'Items',
+      mine: 'Mine',
+      fit: 'Fit',
+      measure: 'Measure',
+    },
+    /** Shown in the header when the catalog is missing; one line at 2.4 cm text. */
+    catalogUnavailable: 'Catalog not loaded',
     /** The fixed buttons beside the model (T3.3b): they open and close the pinned menu with one hand. */
     button: 'Menu',
     /** "1 / 3" */
     page: (page: number, total: number): string => `${page} / ${total}`,
     /** "1.6 × 2.0 m" (plain x when the local panel font is missing). */
     itemSize: (width: number, depth: number, ascii = false): string => formatSize(width, depth, ascii),
+    /** "0.35×0.35 m": the same without the spaces, for a measure that would touch the border of its card. */
+    itemSizeCompact: (width: number, depth: number, ascii = false): string => formatSizeCompact(width, depth, ascii),
   },
   /** Shown above the model until the palm menu has been opened once (T2.16); plain ASCII. */
   hint: {
