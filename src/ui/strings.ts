@@ -24,6 +24,8 @@ export const strings = {
     next: 'Next',
     recenter: 'Recenter',
     catalogUnavailable: 'The catalog could not be loaded.',
+    /** The fixed buttons beside the model (T3.3b): they open and close the pinned menu with one hand. */
+    button: 'Menu',
     /** "1 / 3" */
     page: (page: number, total: number): string => `${page} / ${total}`,
     /** "1.6 × 2.0 m" (plain x when the local panel font is missing). */

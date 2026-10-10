@@ -51,6 +51,14 @@ export function isPinching(hand: Hand): boolean {
 }
 
 /**
+ * True from the `selectstart` of `hand` (even before the pinch is announced, see `pending`) until its `selectend`.
+ * For guards that must see a pinch as soon as the browser reports it, such as the room selection (F-A).
+ */
+export function isPinchStarted(hand: Hand): boolean {
+  return pinching[hand] || pending[hand];
+}
+
+/**
  * Writes the world position of the pinch point of `hand` into `out` and returns it: the midpoint of the thumb and
  * index tips when the joints are tracked, otherwise the grip position (M2 behaviour, also `pinch=grip`).
  */

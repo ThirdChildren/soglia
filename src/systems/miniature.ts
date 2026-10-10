@@ -45,6 +45,14 @@ let placedListener: PlacedListener | null = null;
 /** Where the model was placed (world metres): the anchor that `miniature.offset` is measured from. */
 const anchor = { x: 0, y: 0, z: 0 };
 
+/** Heading of the user when the model was placed (radians, 0 looks along -z): the side of the anchor that faces them. */
+let anchorYawRad = 0;
+
+/** The heading the model was placed with (the Menu buttons are placed around the anchor with it, T3.3b). */
+export function getMiniatureAnchorYaw(): number {
+  return anchorYawRad;
+}
+
 /** Writes the anchor of the model into `out` and returns it. */
 export function getMiniatureAnchor(out: { x: number; y: number; z: number }): { x: number; y: number; z: number } {
   out.x = anchor.x;
@@ -83,6 +91,7 @@ function placeInFrontOf(source: Object3D, root: Entity): void {
   anchor.x = anchorPose.position[0];
   anchor.y = anchorPose.position[1];
   anchor.z = anchorPose.position[2];
+  anchorYawRad = yawRad;
   object.position.set(anchor.x, anchor.y, anchor.z);
   // rotation.y = yaw turns the plan's -z toward the head's forward, so the entrance side faces the user.
   object.rotation.set(0, yawRad, 0);

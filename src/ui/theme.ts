@@ -27,6 +27,18 @@ export const palette = {
   outlineInvalid: 0xe5322d,
 } as const;
 
+/**
+ * Colours of the flat UI panels, as CSS strings (UIKit takes strings, not numbers). Opaque on purpose: a panel must
+ * stay readable over the model and over the room. The same values are the defaults in public/ui/*.uikitml; the code
+ * applies these so the colour has ONE source (M5 adds the high-contrast set).
+ */
+export const uiColors = {
+  /** Background of a panel. */
+  surface: '#ffffff',
+  /** Border and text on a surface. */
+  ink: '#1a1a1a',
+} as const;
+
 export function floorColor(material: FloorMaterial | undefined): number {
   return palette.floor[material ?? 'concrete'];
 }

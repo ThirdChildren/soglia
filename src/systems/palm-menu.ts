@@ -59,6 +59,11 @@ export function closeMenu(via: 'button' | 'debug-key'): void {
   active?.closePinned(via);
 }
 
+/** The hand that holds the PALM menu open, or null when the menu is closed or pinned (the pinned menu belongs to no hand). */
+export function getPalmMenuHand(): PalmHand | null {
+  return active && !active.isPinned ? active.palmOwner : null;
+}
+
 /** The menu panel while it is open and placed (it has a frame: bottom centre and orientation), else null. */
 export function getPalmMenuPanel(): PalmMenuPanel | null {
   const panel = context?.panel;
@@ -97,6 +102,15 @@ export class PalmMenuSystem extends createSystem({}) {
   private suspended = false;
   /** The pinned menu is open (then `owner` is null: the two modes never coexist). */
   private pinned = false;
+
+  get isPinned(): boolean {
+    return this.pinned;
+  }
+
+  /** The hand that holds the palm menu open (null when none does). */
+  get palmOwner(): PalmHand | null {
+    return this.owner;
+  }
 
   init(): void {
     active = this;

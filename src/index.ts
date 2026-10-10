@@ -22,6 +22,7 @@ import { installLocalHands } from './systems/local-hands';
 import { createFurnitureGrab } from './systems/furniture-grab';
 import { installHandJoints } from './systems/hand-joints';
 import { createFurnitureReasons } from './systems/furniture-reasons';
+import { createMenuButton } from './systems/menu-button';
 import { createMenuItems } from './systems/menu-items';
 import { attachLifecycle } from './systems/lifecycle';
 import { attachPersistence, clearSavedState, restoreSavedState, type Persistence } from './systems/persistence';
@@ -99,8 +100,10 @@ async function start(): Promise<void> {
       syncMiniature(miniature.root, state.miniature.scale, state.miniature.offset);
     });
     // Without a catalog the house is still usable: no furniture (the menu will say so, T2.12).
+    if (catalogResult.ok) createMenuItems(world, store, furnitureItems(catalogResult.items));
+    // The Menu buttons (T3.3b) come after the menu items (a control of an open menu wins a pinch) and before the grab and the drag.
+    createMenuButton(world);
     if (catalogResult.ok) {
-      createMenuItems(world, store, furnitureItems(catalogResult.items));
       const visuals = new FurnitureVisuals(furnitureItems(catalogResult.items));
       await visuals.preload(params.failmodels);
       createFurniture(world, store, result.house, catalogResult.items, visuals, built.entity);
