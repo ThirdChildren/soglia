@@ -1,3 +1,4 @@
+- [Environments: Fedora PC vs cloud](reference_environments.md) — READ FIRST: which setup notes apply on which machine (headless-only, CLI instead of MCP, no dnf/sudo/adb in the cloud)
 - [UIKit panels recipe](iwsdk-uikit-panels.md) — PanelUI/Follower/text traps verified in IWER (use world.camera, placeholder text)
 - [External hosts](iwsdk-external-hosts.md) — fonts are local; controller/hand models come from jsdelivr; how to probe network
 - [House build verified](iwsdk-house-build-verified.md) — floor/wall mesh recipe, entity dispose, MCP inspection tips
