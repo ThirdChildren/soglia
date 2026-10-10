@@ -68,13 +68,16 @@ Il `contest-reviewer` lo ricontrolla a ogni gate.
 - **Chiarimento della regola 8 (campo visivo): gli ingressi di riserva possono stare fino a 45°
   (decisione dell'utente, 2026-10-10).** Un controllo che è solo un **ingresso di riserva** a una
   funzione già raggiungibile in altro modo può stare fino a **45°** dall'asse della vista invece
-  di 30°. Oggi è il solo pulsante "Menu" fisso sul plastico (T3.3b di `docs/plans/M3.md`): l'ingresso
-  principale al menu è il palmo in su, il pulsante serve a chi usa una mano sola (regola 9). Dove
-  sta: **al centro del bordo del plastico verso l'utente, leggermente sollevato e ruotato verso la
-  testa (solo yaw)**. **Non cambia nulla del resto**: tutto ciò che non è un ingresso di riserva
-  (menu aperto, etichette, avvisi, pannelli di lavoro) resta nel cono di 30°; la distanza dalla
-  testa resta 0,5–0,8 m, il testo ≥ 2,4 cm e nessun elemento critico sta ai bordi. Il caso di
-  geometria che non rispetta insieme posizione e distanza è registrato in `docs/plans/M3.md` (D32).
+  di 30°. Oggi sono i soli pulsanti "Menu" fissi sul plastico (T3.3b di `docs/plans/M3.md`):
+  l'ingresso principale al menu è il palmo in su, i pulsanti servono a chi usa una mano sola
+  (regola 9). Dove stanno: **due pulsanti, uno per lato, sul bordo laterale del plastico (a ±0,45 m
+  dall'ancora), sollevati sopra i pezzi e ruotati verso la testa (solo yaw)**, così che una mano
+  sola raggiunga il più vicino senza attraversare il modello. **Non cambia nulla del resto**: tutto
+  ciò che non è un ingresso di riserva (menu aperto, etichette, avvisi, pannelli di lavoro) resta
+  nel cono di 30°; la distanza dalla testa resta 0,5–0,8 m, il testo ≥ 2,4 cm e nessun elemento
+  critico sta ai bordi. (Prima scelta dell'utente, scartata il 2026-10-10 dopo il calcolo: un solo
+  pulsante al centro del bordo verso l'utente, che cadrebbe a ≈ 0,29 m dalla testa, sotto il minimo
+  di 0,5 m; vedi `docs/plans/M3.md`, D32.)
 - **Host esterni noti nel bundle di produzione** (default di `@iwsdk/core` / `@iwsdk/xr-input`,
   verificato su `@iwsdk/core` 1.0.1, nessuna opzione per cambiarli):
   `unpkg.com` (decoder Draco/KTX2, scatta solo caricando un glTF compresso, vietato sopra),

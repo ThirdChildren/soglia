@@ -5,7 +5,7 @@ Prerequisiti di implementazione: T3.3a (menu `pinned`), T3.3b (pulsante e F-A), 
 
 **Una mano sola**: in tutti i passi 2-6 si muove **solo `hand-right`** (la sinistra resta a riposo, `(−0,30; 1,10; 0,10)` con `(0, 0, 0, 1)` e select 0); lo scenario verifica che non compaia mai `pinch left`, né `menu opened hand=left`.
 
-> **Nota del 2026-10-10 (da risolvere in T3.3b).** L'utente ha deciso che il pulsante sta al **centro del bordo del plastico verso l'utente**, sollevato e rivolto alla testa, con deroga a **45°** (`docs/RULES.md`, chiarimento della regola 8): quindi **un solo** `ui:menu-button`. I passi e le verifiche qui sotto che citano `ui:menu-button-left`/`-right`, `BL`/`BR`, "±0,45" e "≈ 46°" (passi 1, 4 e verifiche 1, 4, più i riferimenti nei passi 2, 3, 5, 6) **si riscrivono con la geometria definitiva**, una volta risolto il conflitto di distanza di D32 in `docs/plans/M3.md`. La struttura (apertura con una mano, uso, chiusura, un solo menu, pezzo in mano, F-A) non cambia.
+> **Nota del 2026-10-10.** L'utente ha scelto i **due pulsanti laterali a ±0,45 m** (`docs/RULES.md`, chiarimento della regola 8: ingresso di riserva fino a **45°**, distanza 0,5–0,8 m invariata). Gli id e la struttura dello scenario restano validi. **Le cifre di posizione, distanza e angolo sotto (±0,45; 1,49; −0,45; ≈ 0,65 m; ≈ 46°) sono i valori di partenza**: T3.3b li ritocca per stare entro 45° (a 45,8° sono appena fuori) e li scrive nel test; lo scenario si aggiorna con i valori definitivi (verifica 1: angolo ≤ 45°, non più "≈ 46° avviso dichiarato").
 
 ## Precondizioni
 - `dev-params.local.txt` = `house=apartment-a&role=visitor&reset=1&seed=1&debug=1&pinch=grip`; preparazione standard; testa a (0; 1,6; 0); `O` = (0; 1,35; −0,45); scala 0,05; nessun offset.

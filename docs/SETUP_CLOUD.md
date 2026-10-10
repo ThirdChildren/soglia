@@ -69,6 +69,14 @@ Fermare il runtime: `npx @iwsdk/cli dev down`.
 - `.claude/settings.json` (tracciato) ha già i permessi `mcp__iwsdk-runtime__*` e
   `enabledMcpjsonServers`: basta che `.mcp.json` esista.
 
+- **Verificato il 2026-10-10 (riavvio del processo della sessione):** dopo un riavvio del worker, con
+  `.mcp.json` già presente sul disco, gli strumenti `mcp__iwsdk-runtime__*` e `mcp__iwsdk-reference__*`
+  **compaiono** (mentre `metavr` può restare in `CONNECTION_CLOSED`: non serve al lavoro sul PC). Il
+  riavvio **ferma però il runtime** (`dev status` → `running: false`): va rilanciato con
+  `npx @iwsdk/cli dev up --ai-mode agent --headless` (più rapido della prima volta: Chromium 1243 è già in
+  `/opt/pw-browsers`). Quindi dentro la stessa macchina il file persistente basta; il problema resta
+  una macchina **nuova**, dove il file non esiste ancora.
+
 **Opzioni per averlo già all'avvio nelle sessioni cloud future (decisione dell'utente, non ancora presa):**
 
 1. *Setup script dell'ambiente* (Edit → Setup script): `npm ci && npx @iwsdk/cli adapter sync && rm -rf .cursor opencode.json .codex .vscode`.
