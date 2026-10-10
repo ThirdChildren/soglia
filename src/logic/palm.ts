@@ -76,6 +76,12 @@ export function createPalmDetector(clock: () => number): PalmDetector {
   return { clock, state: 'closed', since: null };
 }
 
+/** Puts the detector back in the closed state with no timer running (the session was suspended, T3.1b). */
+export function resetPalmDetector(detector: PalmDetector): void {
+  detector.state = 'closed';
+  detector.since = null;
+}
+
 /**
  * Updates the detector with the current palm normal (world Y component) and returns the new state.
  *
@@ -140,6 +146,11 @@ export interface MenuGateInputs {
  */
 export interface MenuGate {
   mayOpen(hand: PalmHand, inputs: MenuGateInputs): boolean;
+  /**
+   * Starts the guard again for both hands (the session was suspended and resumed, T3.1b): the menu cannot open
+   * until MENU_RELEASE_GUARD_SECONDS after the next call to `mayOpen` with nothing active.
+   */
+  reset(): void;
 }
 
 /** Creates a gate. `clock` returns the time in seconds (injected for tests). */
@@ -158,6 +169,12 @@ export function createMenuGate(clock: () => number): MenuGate {
         unlockAt[hand] = now + MENU_RELEASE_GUARD_SECONDS;
       }
       return now >= unlockAt[hand];
+    },
+    reset() {
+      for (const hand of ['left', 'right'] as const) {
+        busy[hand] = true;
+        unlockAt[hand] = Number.NEGATIVE_INFINITY;
+      }
     },
   };
 }

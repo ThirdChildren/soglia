@@ -77,6 +77,17 @@ interface GrabContext {
 
 // Shared with the system, which has no constructor arguments: set by `createFurnitureGrab`.
 let context: GrabContext | null = null;
+let cancelHeldNow: ((reason: string) => boolean) | null = null;
+
+/**
+ * Cancels the piece in the hand, if any, without a store change (task T3.1b, D30: the session is hidden, blurred or
+ * ended). A menu piece goes back to the catalog (`nextInstance` is not used up); a piece of the model goes back to the
+ * pose it had when it was grabbed; the preview frame and the hand claim are released. Returns true when a piece was held.
+ * Call it BEFORE the pinch flags are cleared: the pinch-end listener would otherwise place the piece.
+ */
+export function cancelHeldFurniture(reason: string): boolean {
+  return cancelHeldNow?.(reason) ?? false;
+}
 
 /** Registers the grab system. Register it after `createMenuItems` (its pick listener runs after the menu claims the hand). */
 export function createFurnitureGrab(
@@ -193,7 +204,11 @@ export class FurnitureGrabSystem extends createSystem({}) {
     this.evalInput.handPlan = this.handPlan;
     this.evalInput.catalog = ctx.catalog;
 
+    cancelHeldNow = (reason) => this.cancelHeld(reason);
     this.cleanupFuncs.push(
+      () => {
+        cancelHeldNow = null;
+      },
       onMenuItemPick((catalogId, hand) => this.startFromMenu(ctx, catalogId, hand)),
       onPinchStart((hand) => this.onPinch(ctx, hand)),
       onPinchEnd((hand) => {
@@ -527,6 +542,13 @@ export class FurnitureGrabSystem extends createSystem({}) {
     const stored = evaluatePiece(ctx.house, piece, ctx.store.get().furniture, ctx.catalog);
     const status = stored && stored.status === 'valid' ? 'valid' : 'invalid';
     this.writeFinalPose(ctx, held, piece.x, piece.z, piece.rotationDeg, status);
+    // The component still holds the pose and reasons of the last evaluation of the hand: put the stored ones back.
+    const entity = held.entity;
+    entity.setValue(Furniture, 'x', piece.x);
+    entity.setValue(Furniture, 'z', piece.z);
+    entity.setValue(Furniture, 'rotationDeg', piece.rotationDeg);
+    entity.setValue(Furniture, 'roomId', piece.roomId);
+    entity.setValue(Furniture, 'reasons', stored && stored.reasons.length > 0 ? stored.reasons.join(',') : '-');
     if (stored) {
       logPieceStatus(piece.id, stored);
       publishReason(piece.id, stored, false);
@@ -552,6 +574,14 @@ export class FurnitureGrabSystem extends createSystem({}) {
       held.entity.setValue(Furniture, 'outline', outline);
       ctx.visuals.setOutline(held.object, outline);
     }
+  }
+
+  /** Cancels the piece in the hand (see `cancelHeldFurniture`). Returns true when there was one. */
+  cancelHeld(reason: string): boolean {
+    const ctx = context;
+    if (!ctx || !this.held) return false;
+    this.cancel(ctx, reason);
+    return true;
   }
 
   /** The grab ends without a store change (the session ended or the piece was removed under it). */

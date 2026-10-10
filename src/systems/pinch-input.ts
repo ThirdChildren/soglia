@@ -81,6 +81,30 @@ function setPinch(hand: Hand, value: boolean): void {
   }
 }
 
+let inputSuspended = false;
+
+/**
+ * Clears the input state: both pinch flags go to false (the pinch-end listeners run) and every claim is freed.
+ * Without it a `selectend` lost while the headset is off leaves the hand "pinching" for good (T3.1b, D30).
+ * Cancel what depends on a pinch (a held piece, a gesture) BEFORE calling it: the pinch-end listeners would place it.
+ */
+export function resetPinchInput(): void {
+  setPinch('left', false);
+  setPinch('right', false);
+  pinchClaims.endSession();
+}
+
+/** Suspends the input: resets it and ignores `selectstart` until `resumePinchInput` (or a new XR session). */
+export function suspendPinchInput(): void {
+  inputSuspended = true;
+  resetPinchInput();
+}
+
+/** Accepts `selectstart` again. A hand that is still pinched must pinch again. */
+export function resumePinchInput(): void {
+  inputSuspended = false;
+}
+
 function handOf(event: XRInputSourceEvent): Hand | null {
   const handedness = event.inputSource?.handedness;
   return handedness === 'left' || handedness === 'right' ? handedness : null;
@@ -96,6 +120,7 @@ export class PinchInputSystem extends createSystem({}) {
   private xrSession: XRSession | null = null;
 
   private readonly onSelectStart = (event: XRInputSourceEvent): void => {
+    if (inputSuspended) return;
     const hand = handOf(event);
     if (hand) setPinch(hand, true);
   };
@@ -129,11 +154,10 @@ export class PinchInputSystem extends createSystem({}) {
 
     this.detachSession();
     // The session ended or changed: no hand is pinching any more.
-    setPinch('left', false);
-    setPinch('right', false);
-    pinchClaims.endSession();
+    resetPinchInput();
     this.xrSession = current;
     if (current) {
+      inputSuspended = false; // a new session starts clean
       if (typeof current.addEventListener === 'function') {
         current.addEventListener('selectstart', this.onSelectStart);
         current.addEventListener('selectend', this.onSelectEnd);

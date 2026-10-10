@@ -47,6 +47,12 @@ interface GestureContext {
 let context: GestureContext | null = null;
 
 const shared = { active: false, bothPinching: false };
+let endGestureNow: (() => void) | null = null;
+
+/** Ends a running two-hand gesture with the values it has now (the session was suspended, T3.1b). */
+export function endMiniatureGesture(): void {
+  endGestureNow?.();
+}
 
 /**
  * True while a two-hand gesture runs, or as soon as both hands pinch (even before the gesture
@@ -106,7 +112,11 @@ export class MiniatureGestureSystem extends createSystem({
     const refresh = (): void => {
       shared.bothPinching = isPinching('left') && isPinching('right');
     };
+    endGestureNow = () => this.endNow();
     this.cleanupFuncs.push(
+      () => {
+        endGestureNow = null;
+      },
       onPinchStart(refresh),
       onPinchEnd(refresh),
       // A menu pick or a held piece taking a hand ends the gesture at once: whatever that owner does next

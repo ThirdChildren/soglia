@@ -12,6 +12,7 @@ import {
   createMenuGate,
   createPalmDetector,
   palmNormalY,
+  resetPalmDetector,
   updatePalmDetector,
   type PalmHand,
 } from '../logic/palm';
@@ -43,6 +44,19 @@ export function createPalmMenu(world: World, store: Store, title: string): void 
 
 const clock = (): number => performance.now() / 1000;
 
+// The running system, for the life cycle (T3.1b): set by `init`, cleared on teardown.
+let active: PalmMenuSystem | null = null;
+
+/** The session is suspended (hidden, blurred, ended): closes the menu and clears the palm detectors. */
+export function suspendPalmMenu(): void {
+  active?.suspend();
+}
+
+/** The session is back: nothing opens by itself; the guard of 300 ms and the 0.4 s of the palm start again. */
+export function resumePalmMenu(): void {
+  active?.resume();
+}
+
 export class PalmMenuSystem extends createSystem({}) {
   private readonly left = createPalmDetector(clock);
   private readonly right = createPalmDetector(clock);
@@ -51,6 +65,31 @@ export class PalmMenuSystem extends createSystem({}) {
   private owner: PalmHand | null = null;
   private readonly quat = new Quaternion();
   private readonly handPosition = new Vector3();
+  private suspended = false;
+
+  init(): void {
+    active = this;
+    this.cleanupFuncs.push(() => {
+      if (active === this) active = null;
+    });
+  }
+
+  suspend(): void {
+    this.suspended = true;
+    this.resetDetectors();
+    if (this.owner !== null && context) this.setOwner(context, null);
+  }
+
+  resume(): void {
+    this.suspended = false;
+    this.resetDetectors();
+  }
+
+  private resetDetectors(): void {
+    resetPalmDetector(this.left);
+    resetPalmDetector(this.right);
+    this.gate.reset();
+  }
 
   update(): void {
     flushPanelDisposals();
@@ -59,8 +98,8 @@ export class PalmMenuSystem extends createSystem({}) {
     const world = this.world;
     const xr = world.renderer.xr;
 
-    if (!xr.isPresenting) {
-      // No session: no hand is up. Close the menu if it was open.
+    if (!xr.isPresenting || this.suspended) {
+      // No session (or a suspended one): no hand is up. Close the menu if it was open.
       if (this.owner !== null) this.setOwner(ctx, null);
       return;
     }

@@ -1,6 +1,7 @@
 import { World } from '@iwsdk/core';
 import projectOptions from 'virtual:iwsdk-project';
 import { loadDevParams } from './data/dev-params';
+import { attachLifecycleKeys } from './debug/lifecycle-keys';
 import { attachStateLog } from './debug/state-log';
 import { showGlyphTest } from './debug/glyph-test';
 import { attachStats } from './debug/stats';
@@ -19,7 +20,8 @@ import { installLocalHands } from './systems/local-hands';
 import { createFurnitureGrab } from './systems/furniture-grab';
 import { createFurnitureReasons } from './systems/furniture-reasons';
 import { createMenuItems } from './systems/menu-items';
-import { attachPersistence, clearSavedState, restoreSavedState } from './systems/persistence';
+import { attachLifecycle } from './systems/lifecycle';
+import { attachPersistence, clearSavedState, restoreSavedState, type Persistence } from './systems/persistence';
 import { createMiniature, syncMiniature } from './systems/miniature';
 import { createMiniatureGesture } from './systems/miniature-gesture';
 import { createMiniaturePan } from './systems/miniature-pan';
@@ -65,9 +67,10 @@ async function start(): Promise<void> {
   if (result.ok) {
     // Put the saved furniture and preferences back before the systems start, so the first-use hints and the
     // furniture see the restored state. `furnish=` runs later and wins over the saved pieces (D29).
+    let persistence: Persistence = { flush: () => undefined, stop: () => undefined };
     if (catalogResult.ok) {
       restoreSavedState(store, storage, result.house, catalogResult.items, params.furnish !== 'none');
-      attachPersistence(store, storage);
+      persistence = attachPersistence(store, storage);
     }
     const miniature = createMiniature(world, (scale, yawDeg) => {
       store.dispatch(setMiniature(scale, yawDeg));
@@ -103,6 +106,9 @@ async function start(): Promise<void> {
     }
     // After the menu and the grab: their pinch listeners run first, so a pinch on a menu item or a piece is never a pan.
     createMiniaturePan(world, store, result.house);
+    // Last: it cancels what the systems above hold when the session is hidden, blurred or ended (D30).
+    const lifecycle = attachLifecycle(world, persistence);
+    if (params.debug) attachLifecycleKeys(lifecycle);
     return;
   }
   if (result.reason === 'not-found') {
