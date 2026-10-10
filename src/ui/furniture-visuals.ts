@@ -2,6 +2,9 @@
 // it loads, otherwise a procedural fallback block (a box of the catalog size plus a dark strip on the
 // front, the -z side). Plus the outline frame drawn on the floor around the footprint (D14).
 //
+// The fallback block is ONE mesh with vertex colours (reduction R-C of D33 in docs/plans/M3.md): the box and
+// the strip are merged into a single geometry, so a piece without a model costs one draw call, not two.
+//
 // Geometries and materials are shared: one set of materials for every piece, one block geometry per
 // catalog id, one frame geometry per footprint size, and the glTF clones share the cached geometry
 // and materials of the model. Pieces are therefore disposed with `disposeResources: false`.
@@ -12,6 +15,7 @@ import {
   BoxGeometry,
   BufferAttribute,
   BufferGeometry,
+  Color,
   DoubleSide,
   Group,
   Mesh,
@@ -41,12 +45,11 @@ interface PieceUserData {
 }
 
 export class FurnitureVisuals {
-  private readonly blockMaterial = new MeshStandardMaterial({ color: palette.furniture, roughness: 1, metalness: 0 });
-  private readonly stripMaterial = new MeshStandardMaterial({ color: palette.furnitureFront, roughness: 1, metalness: 0 });
+  /** Fallback blocks: white material, the body/strip colours are vertex colours (see `blockGeometry`). */
+  private readonly blockMaterial = new MeshStandardMaterial({ vertexColors: true, roughness: 1, metalness: 0 });
   private readonly greenMaterial = new MeshBasicMaterial({ color: palette.outlineValid, side: DoubleSide });
   private readonly redMaterial = new MeshBasicMaterial({ color: palette.outlineInvalid, side: DoubleSide });
   private readonly blockGeometry = new Map<string, BufferGeometry>();
-  private readonly stripGeometry = new Map<string, BufferGeometry>();
   private readonly frameGeometry = new Map<string, BufferGeometry>();
   private readonly itemById = new Map<string, CatalogItem>();
   /** Catalog ids whose model loaded: only these are instantiated from the AssetManager. */
@@ -129,13 +132,12 @@ export class FurnitureVisuals {
 
   /** Frees the shared geometries and materials (when the whole furniture system goes away). */
   dispose(): void {
-    for (const geometry of [...this.blockGeometry.values(), ...this.stripGeometry.values(), ...this.frameGeometry.values()]) {
+    for (const geometry of [...this.blockGeometry.values(), ...this.frameGeometry.values()]) {
       geometry.dispose();
     }
     this.blockGeometry.clear();
-    this.stripGeometry.clear();
     this.frameGeometry.clear();
-    for (const material of [this.blockMaterial, this.stripMaterial, this.greenMaterial, this.redMaterial]) {
+    for (const material of [this.blockMaterial, this.greenMaterial, this.redMaterial]) {
       material.dispose();
     }
   }
@@ -150,37 +152,14 @@ export class FurnitureVisuals {
   }
 
   private createBlock(item: CatalogItem): Group {
-    const [w, d, h] = item.size;
     const block = new Group();
-    const box = new Mesh(this.box(this.blockGeometry, item.id, w, h, d, 0, h / 2, 0), this.blockMaterial);
-    block.add(box);
-    // Front strip: on the -z face, sticking out by half its depth so it never z-fights with the box.
-    const stripHeight = Math.max(h * 0.6, 0.005);
-    const strip = new Mesh(
-      this.box(this.stripGeometry, item.id, w * 0.8, stripHeight, STRIP_DEPTH, 0, h / 2, -d / 2),
-      this.stripMaterial,
-    );
-    block.add(strip);
-    return block;
-  }
-
-  private box(
-    cache: Map<string, BufferGeometry>,
-    key: string,
-    w: number,
-    h: number,
-    d: number,
-    x: number,
-    y: number,
-    z: number,
-  ): BufferGeometry {
-    let geometry = cache.get(key);
+    let geometry = this.blockGeometry.get(item.id);
     if (!geometry) {
-      geometry = new BoxGeometry(w, h, d);
-      geometry.translate(x, y, z);
-      cache.set(key, geometry);
+      geometry = blockGeometry(item.size[0], item.size[1], item.size[2]);
+      this.blockGeometry.set(item.id, geometry);
     }
-    return geometry;
+    block.add(new Mesh(geometry, this.blockMaterial));
+    return block;
   }
 
   /** Frame geometry: a flat ring just outside the footprint `w` x `d`, OUTLINE_WIDTH thick. */
@@ -231,4 +210,68 @@ export function frameGeometry(w: number, d: number, width = OUTLINE_WIDTH): Buff
   geometry.setAttribute('position', new BufferAttribute(positions, 3));
   geometry.setIndex(indices);
   return geometry;
+}
+
+/**
+ * Fallback block of a `w` x `d` x `h` piece as ONE geometry with vertex colours: the body box (origin on the
+ * floor, centred on the footprint) and the dark front strip on the -z face, sticking out by half its depth so it
+ * never z-fights with the box. Same sizes and colours as the former two-mesh block.
+ */
+export function blockGeometry(w: number, d: number, h: number): BufferGeometry {
+  const body = new BoxGeometry(w, h, d);
+  body.translate(0, h / 2, 0);
+  const stripHeight = Math.max(h * 0.6, 0.005);
+  const strip = new BoxGeometry(w * 0.8, stripHeight, STRIP_DEPTH);
+  strip.translate(0, h / 2, -d / 2);
+  const merged = mergeColoured([
+    [body, new Color(palette.furniture)],
+    [strip, new Color(palette.furnitureFront)],
+  ]);
+  body.dispose();
+  strip.dispose();
+  return merged;
+}
+
+/** Concatenates indexed geometries (position, normal, index) and paints each part with one vertex colour. */
+function mergeColoured(parts: ReadonlyArray<readonly [BufferGeometry, Color]>): BufferGeometry {
+  let vertices = 0;
+  let indices = 0;
+  for (const [geometry] of parts) {
+    vertices += geometry.getAttribute('position').count;
+    indices += geometry.getIndex()?.count ?? 0;
+  }
+  const positions = new Float32Array(vertices * 3);
+  const normals = new Float32Array(vertices * 3);
+  const colors = new Float32Array(vertices * 3);
+  const index = new Uint16Array(indices);
+  let vertexOffset = 0;
+  let indexOffset = 0;
+  for (const [geometry, color] of parts) {
+    const position = geometry.getAttribute('position');
+    const normal = geometry.getAttribute('normal');
+    for (let i = 0; i < position.count; i++) {
+      const at = (vertexOffset + i) * 3;
+      positions[at] = position.getX(i);
+      positions[at + 1] = position.getY(i);
+      positions[at + 2] = position.getZ(i);
+      normals[at] = normal.getX(i);
+      normals[at + 1] = normal.getY(i);
+      normals[at + 2] = normal.getZ(i);
+      colors[at] = color.r;
+      colors[at + 1] = color.g;
+      colors[at + 2] = color.b;
+    }
+    const source = geometry.getIndex();
+    if (source) {
+      for (let i = 0; i < source.count; i++) index[indexOffset + i] = source.getX(i) + vertexOffset;
+      indexOffset += source.count;
+    }
+    vertexOffset += position.count;
+  }
+  const merged = new BufferGeometry();
+  merged.setAttribute('position', new BufferAttribute(positions, 3));
+  merged.setAttribute('normal', new BufferAttribute(normals, 3));
+  merged.setAttribute('color', new BufferAttribute(colors, 3));
+  merged.setIndex(new BufferAttribute(index, 1));
+  return merged;
 }
