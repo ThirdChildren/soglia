@@ -285,7 +285,8 @@ export class FurnitureGrabSystem extends createSystem({}) {
       Math.abs(planX - this.lastPlanX) > MOVE_EPSILON ||
       Math.abs(planZ - this.lastPlanZ) > MOVE_EPSILON ||
       held.last === null;
-    const overModel = isOverModel(this.worldTuple, this.rootPose, this.box, 0);
+    // At real scale (D35) the hand counts as over the model up to the ceiling, not only 0.25 m over the floor.
+    const overModel = isOverModel(this.worldTuple, this.rootPose, this.box, 0, ctx.house.ceilingHeight);
     if (!moved && !this.dirty && held.rotationDeg === this.lastRotation && held.last?.overModel === overModel) return;
     this.lastPlanX = planX;
     this.lastPlanZ = planZ;

@@ -47,6 +47,7 @@ export function restoreSavedState(
     houseId: store.get().houseId,
     catalogIds: new Set(catalog.map((item) => item.id)),
     roomIds: new Set(house.rooms.map((room) => room.id)),
+    viewpointIds: new Set(house.viewpoints.map((viewpoint) => viewpoint.id)),
     ignoreFurniture,
   });
   if (picked === null) {
@@ -66,13 +67,14 @@ export interface Persistence {
   stop(): void;
 }
 
-/** True when a change of `next` over `prev` is one that is saved (the model position and the selected room are not). */
+/** True when a change of `next` over `prev` is one that is saved (the model position and the selected room are not; the view is). */
 function savedPartChanged(prev: AppState, next: AppState): boolean {
   return (
     prev.furniture !== next.furniture ||
     prev.nextInstance !== next.nextInstance ||
     prev.history !== next.history ||
-    prev.prefs !== next.prefs
+    prev.prefs !== next.prefs ||
+    prev.view !== next.view
   );
 }
 

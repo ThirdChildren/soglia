@@ -37,6 +37,7 @@ import { setMiniatureOffset, type Store } from '../logic/state';
 import { isMiniatureGestureActive } from './miniature-gesture';
 import { getMiniatureAnchor } from './miniature';
 import { onPinchEnd, onPinchStart, pinchClaims, pinchPoint, type Hand } from './pinch-input';
+import { isTabletopLocked } from './view-mode';
 
 interface PanContext {
   store: Store;
@@ -123,6 +124,8 @@ export class MiniaturePanSystem extends createSystem({
   private onPinch(hand: Hand): void {
     const ctx = context;
     if (!ctx || this.active) return;
+    // No drag at real scale or while the view is changing (T3.12, D35).
+    if (isTabletopLocked()) return;
     // Someone with a higher priority (the menu, the grab) has this pinch already, or both hands pinch: the
     // two-hand gesture decides. A running two-hand gesture is never a pan.
     if (pinchClaims.ownerOf(hand) !== null || isMiniatureGestureActive()) return;

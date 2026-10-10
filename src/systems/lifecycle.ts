@@ -6,7 +6,8 @@
 // and `pagehide`. All of them end in the same `apply`, and the development keys of src/debug/lifecycle-keys.ts
 // call `applyVisibility`, the function the real signal calls, so they only SIMULATE the event.
 //
-// Suspending runs in this order (D30): (1) save at once; (2) cancel the piece in the hand (a menu piece goes back
+// Suspending runs in this order (D30): (1) save at once; (2) stop a fade between views (the scene is then unchanged or already
+// complete: the change happens in one call, T3.12) and cancel the piece in the hand (a menu piece goes back
 // to the catalog, a model piece back to the pose it was grabbed in: no store change); (3) end the two-hand gesture
 // and the drag with their current values; (4) close the menu and clear its detectors; (5) clear the pinch flags and
 // claims. Step 2 must come before step 5: the pinch-end listener of the grab would place the piece.
@@ -29,6 +30,7 @@ import { cancelHeldFurniture } from './furniture-grab';
 import { endMiniatureGesture } from './miniature-gesture';
 import { endMiniaturePan } from './miniature-pan';
 import { resumePalmMenu, suspendPalmMenu } from './palm-menu';
+import { cancelViewTransition } from './viewpoint';
 import { resumePinchInput, suspendPinchInput } from './pinch-input';
 import type { Persistence } from './persistence';
 
@@ -52,6 +54,7 @@ export function attachLifecycle(world: World, persistence: Persistence): Lifecyc
   let state: LifecycleState = createLifecycleState();
 
   const suspendInput = (): void => {
+    cancelViewTransition(); // (2) a fade stops; the scene is either unchanged or already complete (T3.12)
     cancelHeldFurniture('suspend'); // (2) before the pinch flags go down
     endMiniatureGesture(); // (3) `miniature gesture end` with the current values
     endMiniaturePan(); // (3) `pan end`

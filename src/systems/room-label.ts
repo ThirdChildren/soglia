@@ -28,7 +28,8 @@ import { RoomLabelPanel } from '../ui/room-label-panel';
 import { strings } from '../ui/strings';
 import { isMiniatureGestureActive } from './miniature-gesture';
 import { getMenuMode, getPalmMenuHand } from './palm-menu';
-import { isFurnitureInteractionActive, isPanActive, isPinchStarted } from './pinch-input';
+import { isFurnitureInteractionActive, isPanActive, isPinchStarted, pinchClaims } from './pinch-input';
+import { isTabletopLocked } from './view-mode';
 
 const ROOM_PREFIX = 'room:';
 
@@ -77,6 +78,8 @@ export class RoomLabelSystem extends createSystem({
           furnitureInteraction: isFurnitureInteractionActive(),
           panActive: isPanActive(),
           menuHandPinching: menuHandPinching(getMenuMode(), getPalmMenuHand(), this.pinches),
+          // No room selection at real scale, while the view changes, or for the pinch that picked a viewpoint marker.
+          viewpointActive: isTabletopLocked() || pinchClaims.anyClaimed('viewpoint'),
         });
         if (!allowed) return;
         const roomId = name.slice(ROOM_PREFIX.length);

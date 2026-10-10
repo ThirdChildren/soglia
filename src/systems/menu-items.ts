@@ -59,6 +59,8 @@ import { endMiniaturePan } from './miniature-pan';
 import { getPalmMenuPanel } from './palm-menu';
 import type { PalmMenuPanel } from '../ui/palm-menu';
 import { onPinchStart, pinchClaims, pinchPoint, type Hand } from './pinch-input';
+import { returnToTabletop } from './viewpoint';
+import { isRealScale } from './view-mode';
 
 /** What each tab lists. A tab with nothing to list is not shown. */
 export interface MenuTabData {
@@ -152,6 +154,8 @@ export class MenuItemsSystem extends createSystem({}) {
   private itemControls: Control[] = [];
   private tabControls: Control[] = [];
   private buttonControls: Control[] = [];
+  /** True when the bar was built with "Tabletop" as the fourth button (real scale). */
+  private barRealScale = false;
   private slots: Slot[] = [];
   private readonly spot = new Vector3();
   private readonly point = new Vector3();
@@ -177,9 +181,14 @@ export class MenuItemsSystem extends createSystem({}) {
       this.page = 0;
       this.tab = validTab('items', this.visibleTabs(ctx));
       this.appliedVersion = ctx.version;
-      this.buildButtons();
+      this.buildButtons(menu);
       this.buildTabs(ctx, menu);
       this.buildItems(ctx, menu, false);
+    } else if (isRealScale() !== this.barRealScale) {
+      // The view changed while the menu is open (a viewpoint was entered or left): the fourth button changes.
+      for (const control of this.buttonControls) control.anchor.dispose();
+      this.buildButtons(menu);
+      this.rebuildSlots();
     } else if (ctx.version !== this.appliedVersion) {
       // A tab got (or lost) its data while the menu is open: draw the tabs again, on the same tab if it still exists.
       this.appliedVersion = ctx.version;
@@ -216,9 +225,11 @@ export class MenuItemsSystem extends createSystem({}) {
     return menuTabs({ items: items.length, mine: mine.length, fit: fit.length, measure: measure ? 1 : 0 });
   }
 
-  /** The bar of four buttons; the fourth is "Recenter" (the tabletop view is the only one before T3.12). */
-  private buildButtons(): void {
-    this.buttonControls = barButtons(false).map((button, index) => ({
+  /** The bar of four buttons; the fourth is "Recenter" on the table-top model and "Tabletop" at real scale (T3.12). */
+  private buildButtons(menu: PalmMenuPanel): void {
+    this.barRealScale = isRealScale();
+    menu.setRealScale(this.barRealScale);
+    this.buttonControls = barButtons(this.barRealScale).map((button, index) => ({
       anchor: new MenuAnchor(this.world, stableId.ui(BUTTON_IDS[button])),
       offset: BUTTON_SLOTS[index],
       half: BUTTON_HALVES[button],
@@ -327,7 +338,7 @@ export class MenuItemsSystem extends createSystem({}) {
         this.turn(ctx, 1);
         break;
       case 'tabletop':
-        // Real scale arrives with T3.12; the bar never has this button before that.
+        returnToTabletop();
         break;
       case 'recenter':
         // A drag with the other hand would put the model back where it was on its next frame.

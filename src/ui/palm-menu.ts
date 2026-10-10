@@ -118,6 +118,8 @@ export class PalmMenuPanel {
   private root: UIKit.Container | null = null;
   private frameReady = false;
   private modeValue: PalmMenuMode = 'palm';
+  /** The fourth button of the bar says "Tabletop" instead of "Recenter" at real scale (T3.12). */
+  private realScale = false;
   /** The pinned placement, computed in `openPinned` and then fixed: anchor (bottom centre) and yaw of the panel. */
   private readonly pinnedAnchor: Vec3Like = { x: 0, y: 0, z: 0 };
   private pinnedYaw = 0;
@@ -212,6 +214,13 @@ export class PalmMenuPanel {
   setItems(items: readonly MenuItemContent[]): void {
     this.items = items;
     if (this.textApplied) this.writeItems();
+  }
+
+  /** The fourth button of the bar: "Recenter" on the table-top model, "Tabletop" at real scale (T3.12). Written in place. */
+  setRealScale(realScale: boolean): void {
+    if (realScale === this.realScale) return;
+    this.realScale = realScale;
+    if (this.textApplied) this.writeFourthButton();
   }
 
   /** Dims the menu panel (1 = normal): see `src/logic/menu-dim.ts`. */
@@ -333,11 +342,18 @@ export class PalmMenuPanel {
     this.frameReady = true;
   }
 
+  private writeFourthButton(): void {
+    const doc = this.entity?.getValue(PanelDocument, 'document') as UiDocument | undefined;
+    const label = this.realScale ? strings.menu.tabletop : BUTTON_LABELS.recenter;
+    doc?.getElementById<UIKit.Text>('menu-btn-recenter-label')?.setProperties({ text: label });
+  }
+
   /** Writes the text of the four bar buttons and adds their icons (once, when the layout is loaded). */
   private fillButtons(doc: UiDocument | undefined): void {
     if (!doc) return;
     for (const button of BUTTONS) {
-      doc.getElementById<UIKit.Text>(`menu-btn-${button}-label`)?.setProperties({ text: BUTTON_LABELS[button] });
+      const label = button === 'recenter' && this.realScale ? strings.menu.tabletop : BUTTON_LABELS[button];
+      doc.getElementById<UIKit.Text>(`menu-btn-${button}-label`)?.setProperties({ text: label });
       const slot = doc.getElementById<UIKit.Container>(`menu-btn-${button}-icon`);
       if (!slot) continue;
       try {

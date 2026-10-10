@@ -6,12 +6,12 @@ import {
   type RevokeReason,
 } from '../../src/logic/pinch-claims';
 
-const OWNERS: ClaimOwner[] = ['menu', 'furniture', 'two-hands', 'pan', 'room'];
+const OWNERS: ClaimOwner[] = ['menu', 'furniture', 'viewpoint', 'two-hands', 'pan', 'room'];
 
 describe('pinch claims: priority', () => {
-  it('orders the owners menu > furniture > two-hands > pan > room', () => {
+  it('orders the owners menu > furniture > viewpoint > two-hands > pan > room', () => {
     const ordered = [...OWNERS].sort((a, b) => CLAIM_PRIORITY[b] - CLAIM_PRIORITY[a]);
-    expect(ordered).toEqual(['menu', 'furniture', 'two-hands', 'pan', 'room']);
+    expect(ordered).toEqual(['menu', 'furniture', 'viewpoint', 'two-hands', 'pan', 'room']);
   });
 
   it('a free hand is granted to anyone', () => {
@@ -204,5 +204,97 @@ describe('pinch claims: claimBoth', () => {
     const claims = createClaims();
     expect(claims.claimBoth('two-hands')).toBe(true);
     expect(claims.anyClaimed('two-hands')).toBe(true);
+  });
+});
+
+describe('pinch claims: viewpoint (T3.12)', () => {
+  // The seven new pairs: viewpoint against each other owner, in both orders where it makes sense.
+  it('viewpoint takes a hand that two-hands holds, and two-hands is told', () => {
+    const claims = createClaims();
+    const told: string[] = [];
+    claims.onRevoked('two-hands', (hand, reason, by) => told.push(`${hand}:${reason}:${by}`));
+    expect(claims.claimBoth('two-hands')).toBe(true);
+    expect(claims.claim('right', 'viewpoint')).toBe(true);
+    expect(claims.ownerOf('right')).toBe('viewpoint');
+    expect(claims.ownerOf('left')).toBe('two-hands');
+    expect(told).toEqual(['right:taken:viewpoint']);
+  });
+
+  it('viewpoint takes a hand that pan holds, and pan is told', () => {
+    const claims = createClaims();
+    const told: string[] = [];
+    claims.onRevoked('pan', (hand, reason, by) => told.push(`${hand}:${reason}:${by}`));
+    claims.claim('left', 'pan');
+    expect(claims.claim('left', 'viewpoint')).toBe(true);
+    expect(claims.ownerOf('left')).toBe('viewpoint');
+    expect(told).toEqual(['left:taken:viewpoint']);
+  });
+
+  it('viewpoint takes a hand that room holds', () => {
+    const claims = createClaims();
+    claims.claim('right', 'room');
+    expect(claims.claim('right', 'viewpoint')).toBe(true);
+    expect(claims.ownerOf('right')).toBe('viewpoint');
+  });
+
+  it('viewpoint loses against menu on the same hand and leaves the menu in place', () => {
+    const claims = createClaims();
+    claims.claim('right', 'menu');
+    expect(claims.claim('right', 'viewpoint')).toBe(false);
+    expect(claims.ownerOf('right')).toBe('menu');
+  });
+
+  it('viewpoint loses against furniture on the same hand', () => {
+    const claims = createClaims();
+    claims.claim('right', 'furniture');
+    expect(claims.claim('right', 'viewpoint')).toBe(false);
+    expect(claims.ownerOf('right')).toBe('furniture');
+  });
+
+  it('menu and furniture take a hand from viewpoint and viewpoint is told', () => {
+    for (const owner of ['menu', 'furniture'] as const) {
+      const claims = createClaims();
+      let told = 0;
+      claims.onRevoked('viewpoint', () => (told += 1));
+      claims.claim('left', 'viewpoint');
+      expect(claims.claim('left', owner)).toBe(true);
+      expect(claims.ownerOf('left')).toBe(owner);
+      expect(told).toBe(1);
+    }
+  });
+
+  it('viewpoint is refused on either hand while a piece is held', () => {
+    const claims = createClaims();
+    claims.claim('right', 'furniture');
+    expect(claims.claim('left', 'viewpoint')).toBe(false);
+    expect(claims.claim('right', 'viewpoint')).toBe(false);
+    expect(claims.ownerOf('left')).toBeNull();
+    expect(claims.ownerOf('right')).toBe('furniture');
+  });
+
+  it('viewpoint is allowed again once the piece is released', () => {
+    const claims = createClaims();
+    claims.claim('right', 'furniture');
+    claims.release('right', 'furniture');
+    expect(claims.claim('left', 'viewpoint')).toBe(true);
+  });
+
+  it('a viewpoint claim blocks two-hands on that hand (claimBoth is all or nothing)', () => {
+    const claims = createClaims();
+    claims.claim('left', 'viewpoint');
+    expect(claims.claimBoth('two-hands')).toBe(false);
+    expect(claims.ownerOf('left')).toBe('viewpoint');
+    expect(claims.ownerOf('right')).toBeNull();
+    expect(claims.claim('right', 'pan')).toBe(true);
+  });
+
+  it('a viewpoint claim ends with the session like the others', () => {
+    const claims = createClaims();
+    const reasons: RevokeReason[] = [];
+    claims.onRevoked('viewpoint', (_hand, reason) => reasons.push(reason));
+    claims.claim('right', 'viewpoint');
+    claims.endSession();
+    expect(reasons).toEqual(['session-end']);
+    expect(claims.anyClaimed('viewpoint')).toBe(false);
   });
 });

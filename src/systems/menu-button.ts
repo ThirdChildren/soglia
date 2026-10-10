@@ -36,6 +36,7 @@ import { isMiniatureGestureActive } from './miniature-gesture';
 import { getMiniatureAnchor, getMiniatureAnchorYaw } from './miniature';
 import { closeMenu, getMenuMode, openPinnedMenu } from './palm-menu';
 import { onPinchStart, pinchClaims, pinchPoint, type Hand } from './pinch-input';
+import { isRealScale } from './view-mode';
 
 interface MenuButtonContext {
   panels: readonly [MenuButtonPanel, MenuButtonPanel];
@@ -85,7 +86,8 @@ export class MenuButtonSystem extends createSystem({
 
     const head = this.world.player.head;
     // The head group stays at the origin until the first viewer pose arrives (a real head is never there).
-    if (!this.world.renderer.xr.isPresenting || head.position.lengthSq() === 0) {
+    // At real scale the walls and the pieces are taller than the buttons: they are hidden (T3.12). The menu opens with the palm up.
+    if (!this.world.renderer.xr.isPresenting || head.position.lengthSq() === 0 || isRealScale()) {
       ctx.panels[0].place(0, 0, 0, 0, false);
       ctx.panels[1].place(0, 0, 0, 0, false);
       this.loggedScale = Number.NaN; // the next session logs its view again
@@ -117,7 +119,7 @@ export class MenuButtonSystem extends createSystem({
   }
 
   private onPinch(hand: Hand): void {
-    if (!context || !this.world.renderer.xr.isPresenting) return;
+    if (!context || !this.world.renderer.xr.isPresenting || isRealScale()) return;
     // A control of an open menu (or anyone else) has this pinch already: it is not a press on a button.
     if (pinchClaims.ownerOf(hand) !== null) return;
     pinchPoint(hand, this.point);

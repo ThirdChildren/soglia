@@ -234,14 +234,25 @@ export interface RoomSelectionInputs {
   panActive: boolean;
   /** The hand that holds the palm menu open is pinching (`menuHandPinching`). */
   menuHandPinching: boolean;
+  /**
+   * A viewpoint is entered, a change of view is running or a pinch has a viewpoint marker (T3.12, D35): rooms cannot be
+   * selected at real scale and a pinch that started a transition is not a selection. Absent = false.
+   */
+  viewpointActive?: boolean;
 }
 
 /**
  * True when a pinch that landed on a room may select it. The room has the lowest priority of all the owners of a pinch
- * (menu > furniture > two-hands > pan > room), and a pinch in the air of the hand that holds the palm menu is never a
+ * (menu > furniture > viewpoint > two-hands > pan > room), and a pinch in the air of the hand that holds the palm menu is never a
  * room selection (F-A: it was `room selected living area=23.9` in the third rerun of M2). Rotating a held piece with
  * that hand is not a room selection either; the guard only ignores the room, it never takes the hand.
  */
 export function roomSelectionAllowed(inputs: Readonly<RoomSelectionInputs>): boolean {
-  return !(inputs.gestureActive || inputs.furnitureInteraction || inputs.panActive || inputs.menuHandPinching);
+  return !(
+    inputs.gestureActive ||
+    inputs.furnitureInteraction ||
+    inputs.panActive ||
+    inputs.menuHandPinching ||
+    inputs.viewpointActive === true
+  );
 }

@@ -41,6 +41,19 @@ export type PlacedListener = (scale: number, yawDeg: number) => void;
 
 // Shared with the system, which has no constructor arguments: set by `createMiniature`.
 let placedListener: PlacedListener | null = null;
+const replacedListeners = new Set<() => void>();
+
+/**
+ * Calls `listener` after the model was placed again at the start of an XR session (after the store has the new yaw
+ * and offset). The Viewpoint system uses it to put the saved viewpoint back on top of the fresh placement (T3.12).
+ * Not called for the first placement, made with the preview camera before any session. Returns the unsubscribe function.
+ */
+export function onMiniatureReplaced(listener: () => void): () => void {
+  replacedListeners.add(listener);
+  return () => {
+    replacedListeners.delete(listener);
+  };
+}
 
 /** Where the model was placed (world metres): the anchor that `miniature.offset` is measured from. */
 const anchor = { x: 0, y: 0, z: 0 };
@@ -139,6 +152,7 @@ export class MiniaturePlacementSystem extends createSystem({
       if (entity.object3D?.name !== MINIATURE_ROOT_ID) continue;
       placeInFrontOf(head, entity);
       this.pending = false;
+      for (const listener of replacedListeners) listener();
       return;
     }
   }

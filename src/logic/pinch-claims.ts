@@ -6,21 +6,22 @@
 // claims a hand when it starts to use its pinch; only one owner holds a hand at a time. When two
 // owners want the same hand the one with the higher priority wins:
 //
-//   menu > furniture > two-hands > pan > room
+//   menu > furniture > viewpoint > two-hands > pan > room
 //
 // A claim on a hand that is free, or held by a lower priority owner, succeeds (the previous owner
 // is told that its claim was taken away). A claim on a hand held by an equal or higher priority
-// owner is refused. Two more rules keep a held piece safe: a hand can never start `two-hands` or
-// `pan` while a `furniture` claim exists on any hand (the second pinch is the tap that rotates the
-// piece, not a new gesture).
+// owner is refused. Two more rules keep a held piece safe: a hand can never start `viewpoint`,
+// `two-hands` or `pan` while a `furniture` claim exists on any hand (the second pinch is the tap that
+// rotates the piece, not a new gesture and not a change of view: T3.12).
 
 export type ClaimHand = 'left' | 'right';
-export type ClaimOwner = 'menu' | 'furniture' | 'two-hands' | 'pan' | 'room';
+export type ClaimOwner = 'menu' | 'furniture' | 'viewpoint' | 'two-hands' | 'pan' | 'room';
 
 /** Higher number = higher priority. */
 export const CLAIM_PRIORITY: Readonly<Record<ClaimOwner, number>> = {
-  menu: 5,
-  furniture: 4,
+  menu: 6,
+  furniture: 5,
+  viewpoint: 4,
   'two-hands': 3,
   pan: 2,
   room: 1,
@@ -36,8 +37,8 @@ export type RevokeListener = (hand: ClaimHand, reason: RevokeReason, by: ClaimOw
 export interface Claims {
   /**
    * Claims `hand` for `owner`. Returns true if the owner now holds it (also when it already did).
-   * Refused when the hand is held by an owner of equal or higher priority, or, for `two-hands` and
-   * `pan`, while a `furniture` claim exists on any hand.
+   * Refused when the hand is held by an owner of equal or higher priority, or, for `viewpoint`,
+   * `two-hands` and `pan`, while a `furniture` claim exists on any hand.
    */
   claim(hand: ClaimHand, owner: ClaimOwner): boolean;
   /** Claims both hands for `owner` or none (nothing changes when one of them is refused). */
@@ -58,6 +59,7 @@ export function createClaims(): Claims {
   const listeners: Record<ClaimOwner, Set<RevokeListener>> = {
     menu: new Set(),
     furniture: new Set(),
+    viewpoint: new Set(),
     'two-hands': new Set(),
     pan: new Set(),
     room: new Set(),
@@ -69,7 +71,7 @@ export function createClaims(): Claims {
   };
 
   const canClaim = (hand: ClaimHand, owner: ClaimOwner): boolean => {
-    if ((owner === 'two-hands' || owner === 'pan') && anyClaimed('furniture')) return false;
+    if ((owner === 'viewpoint' || owner === 'two-hands' || owner === 'pan') && anyClaimed('furniture')) return false;
     const current = held[hand];
     if (current === null || current === owner) return true;
     return CLAIM_PRIORITY[owner] > CLAIM_PRIORITY[current];

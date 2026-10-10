@@ -25,6 +25,8 @@ export const palette = {
   /** Outline of a piece on the floor: green = valid, red = not valid (D14). */
   outlineValid: 0x2ecc71,
   outlineInvalid: 0xe5322d,
+  /** Viewpoint markers on the table-top model (T3.12): blue, away from the red/green of the FitCheck and the orange doors. */
+  viewpoint: 0x2a5bd7,
 } as const;
 
 /**

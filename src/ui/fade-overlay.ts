@@ -31,9 +31,12 @@ export interface FadeOverlay {
   readonly active: boolean;
   /**
    * Starts a fade. `onSwap` runs once, in the frame where the screen is fully black. The promise resolves when
-   * the fade has ended, and also when it was cancelled. Returns null (and does nothing) while a fade is running.
+   * the fade has ended: with true when it ran to the end, with false when it was cancelled. Returns null (and does
+   * nothing) while a fade is running.
    */
-  run(onSwap: () => void): Promise<void> | null;
+  run(onSwap: () => void): Promise<boolean> | null;
+  /** Milliseconds from the first frame of the last fade that ran to the end to its last (0 until one has). */
+  readonly lastDurationMs: number;
   /** Stops at once and removes the overlay (suspend, end of session). `onSwap` is not called if it was still to come. */
   cancel(): void;
 }
@@ -47,7 +50,8 @@ class FadeOverlayImpl implements FadeOverlay {
   private entity: Entity | null = null;
   private mesh: Mesh<SphereGeometry, MeshBasicMaterial> | null = null;
   private onSwap: (() => void) | null = null;
-  private resolve: (() => void) | null = null;
+  private resolve: ((completed: boolean) => void) | null = null;
+  private durationMs = 0;
 
   constructor(private readonly world: World) {}
 
@@ -55,7 +59,11 @@ class FadeOverlayImpl implements FadeOverlay {
     return this.fade.active;
   }
 
-  run(onSwap: () => void): Promise<void> | null {
+  get lastDurationMs(): number {
+    return this.durationMs;
+  }
+
+  run(onSwap: () => void): Promise<boolean> | null {
     if (!this.fade.start()) return null;
     this.onSwap = onSwap;
     const geometry = new SphereGeometry(RADIUS, 16, 12);
@@ -75,7 +83,7 @@ class FadeOverlayImpl implements FadeOverlay {
     this.mesh = mesh;
     this.entity = this.world.createTransformEntity(mesh);
     tagEntity(this.entity, stableId.ui('fade-overlay'));
-    return new Promise<void>((resolve) => {
+    return new Promise<boolean>((resolve) => {
       this.resolve = resolve;
     });
   }
@@ -84,7 +92,7 @@ class FadeOverlayImpl implements FadeOverlay {
     if (!this.entity) return;
     this.fade.cancel();
     slog('viewpoint fade cancelled');
-    this.finish();
+    this.finish(false);
   }
 
   /** Called every frame by the system; does nothing when no fade runs. */
@@ -111,12 +119,13 @@ class FadeOverlayImpl implements FadeOverlay {
     }
     if (frame.entered && frame.phase !== 'idle') slog(`viewpoint fade phase=${frame.phase}`);
     if (frame.done) {
+      this.durationMs = frame.elapsedMs;
       slog(`viewpoint fade end durationMs=${Math.round(frame.elapsedMs)}`);
-      this.finish();
+      this.finish(true);
     }
   }
 
-  private finish(): void {
+  private finish(completed: boolean): void {
     const entity = this.entity;
     const mesh = this.mesh;
     this.entity = null;
@@ -129,7 +138,7 @@ class FadeOverlayImpl implements FadeOverlay {
     }
     const resolve = this.resolve;
     this.resolve = null;
-    resolve?.();
+    resolve?.(completed);
   }
 }
 

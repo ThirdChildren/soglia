@@ -1,7 +1,6 @@
 import { World } from '@iwsdk/core';
 import projectOptions from 'virtual:iwsdk-project';
 import { loadDevParams } from './data/dev-params';
-import { attachFadeKey } from './debug/fade-key';
 import { attachHandsLog } from './debug/hands-log';
 import { attachLifecycleKeys } from './debug/lifecycle-keys';
 import { attachMenuKey } from './debug/menu-key';
@@ -37,6 +36,8 @@ import { createOnboarding } from './systems/onboarding';
 import { createPalmMenu } from './systems/palm-menu';
 import { installPinchInput } from './systems/pinch-input';
 import { createRoomLabel } from './systems/room-label';
+import { createViewpoint } from './systems/viewpoint';
+import { isRealScale } from './systems/view-mode';
 import { createFadeOverlay } from './ui/fade-overlay';
 import { ErrorPanelSystem, showErrorPanel } from './ui/error-panel';
 import { loadPanelFonts } from './ui/fonts';
@@ -106,9 +107,11 @@ async function start(): Promise<void> {
     // Recenter changes the scale and the offset in the store: keep the model in step with them. Only a change of
     // the `miniature` part counts (the reducer keeps its identity otherwise), so a drag in progress is not disturbed.
     let appliedMiniature = store.get().miniature;
+    // At real scale the root is placed around the head and the stored table-top pose waits (T3.12): the return puts it back.
     store.subscribe((state) => {
       if (state.miniature === appliedMiniature) return;
       appliedMiniature = state.miniature;
+      if (isRealScale()) return;
       syncMiniature(miniature.root, state.miniature.scale, state.miniature.offset);
     });
     // Without a catalog the house is still usable: no furniture (the menu will say so, T2.12).
@@ -132,15 +135,17 @@ async function start(): Promise<void> {
         applyFurnish(store, result.house, merged.items, params.furnish);
       }
     }
-    // After the menu and the grab: their pinch listeners run first, so a pinch on a menu item or a piece is never a pan.
+    // The fade between two views is always there (T3.12): one sphere, created only while it fades. Viewpoint markers go
+    // after the menu and the grab (their pinch listeners run first) and before the drag (a marker is never a pan).
+    const fadeOverlay = createFadeOverlay(world);
+    createViewpoint(world, store, result.house, miniature.root, built.entity, fadeOverlay);
+    // After the menu, the grab and the markers: their pinch listeners run first, so a pinch on a menu item, a piece or a marker is never a pan.
     createMiniaturePan(world, store, result.house);
     // Last: it cancels what the systems above hold when the session is hidden, blurred or ended (D30).
     const lifecycle = attachLifecycle(world, persistence);
     if (params.debug) {
       attachLifecycleKeys(lifecycle);
       attachMenuKey();
-      // T3.11 only: F2 previews full-height walls, no base and the fade (the real transition is T3.12).
-      attachFadeKey(createFadeOverlay(world), result.house.ceilingHeight);
     }
     return;
   }
