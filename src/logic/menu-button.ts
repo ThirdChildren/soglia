@@ -157,7 +157,12 @@ export function buttonView(
     const dy = b.y - head.y;
     const dz = b.z - head.z;
     const d = Math.hypot(dx, dy, dz);
-    if (!(d > EPS) || !Number.isFinite(d)) return out;
+    if (!(d > EPS) || !Number.isFinite(d)) {
+      // Unusable button: report "cannot be used" for the pair, not the values already written for the first one.
+      out.distance = 0;
+      out.angleDeg = 180;
+      return out;
+    }
     const cos = Math.max(-1, Math.min(1, (dx * forward.x + dy * forward.y + dz * forward.z) / (d * fl)));
     const angle = Math.acos(cos) * RAD_TO_DEG;
     if (angle > worst) {
