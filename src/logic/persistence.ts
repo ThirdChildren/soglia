@@ -2,8 +2,8 @@
 // saved state, and when to save. No imports from @iwsdk/core or three, no browser APIs: the storage itself
 // is `src/data/storage.ts`, the wiring is `src/systems/persistence.ts`.
 
-import { serialize, deserialize, SCALE } from './state';
-import type { AppState, FurnitureSnapshot } from './state';
+import { serialize, deserialize, SCALE, TABLETOP_VIEW } from './state';
+import type { AppState, FurnitureSnapshot, ViewState } from './state';
 import type { PlacedPiece } from './placement-rules';
 
 /** Every key the project writes starts with this prefix; `reset=1` removes all of them. */
@@ -37,6 +37,11 @@ export interface RestoreContext {
   catalogIds: ReadonlySet<string>;
   /** Ids of the rooms (a piece in a room that is not here is dropped; the empty id means "outside" and stays). */
   roomIds: ReadonlySet<string>;
+  /**
+   * Ids of the viewpoints of the open house (D35). A saved `view` is restored only when its viewpoint is here;
+   * when this is missing the set is taken as empty, so the view is always the tabletop (the safe default).
+   */
+  viewpointIds?: ReadonlySet<string>;
   /** True when a staging preset (`furnish=`) will replace the furniture: pieces and undo history are not restored. */
   ignoreFurniture?: boolean;
 }
@@ -47,6 +52,8 @@ export interface Restorable {
   nextInstance: Record<string, number>;
   history: FurnitureSnapshot[];
   prefs: AppState['prefs'];
+  /** The saved view if its viewpoint exists in the open house, else the tabletop. */
+  view: ViewState;
   /** Pieces left out, with the reason (the caller logs them). */
   dropped: DroppedPiece[];
 }
@@ -61,8 +68,10 @@ function dropReasonOf(piece: PlacedPiece, ctx: RestoreContext): DropReason | nul
 
 /**
  * Reads a saved state (the JSON text) and returns only what may be restored: `furniture`, `nextInstance`,
- * `history`, `prefs.onboardingStep` and `prefs.menuOpened`. NOT `selectedRoomId` (its label would not exist),
- * `miniature` (the model is placed again every session, D3), `role` (the URL decides) nor `houseId`.
+ * `history`, `prefs.onboardingStep`, `prefs.menuOpened` and `view` (only a viewpoint that exists in the open
+ * house, `ctx.viewpointIds`; any other saved view becomes the tabletop). NOT `selectedRoomId` (its label
+ * would not exist), `miniature` (the model is placed again every session, D3), `role` (the URL decides)
+ * nor `houseId`.
  * Returns null for broken JSON, an invalid state or a state of another house.
  * Pieces of an unknown catalog item or of an unknown room are dropped; the undo history follows them
  * (steps that act on a dropped piece go away, dropped pieces are removed from the other steps).
@@ -74,8 +83,12 @@ export function pickRestorable(saved: string, ctx: RestoreContext): Restorable |
 
   const dropped: DroppedPiece[] = [];
   const nextInstance: Record<string, number> = { ...state.nextInstance };
+  const view: ViewState =
+    state.view.kind === 'viewpoint' && ctx.viewpointIds?.has(state.view.id) === true
+      ? { kind: 'viewpoint', id: state.view.id }
+      : TABLETOP_VIEW;
   if (ctx.ignoreFurniture === true) {
-    return { furniture: [], nextInstance: {}, history: [], prefs: { ...state.prefs }, dropped };
+    return { furniture: [], nextInstance: {}, history: [], prefs: { ...state.prefs }, view, dropped };
   }
 
   const furniture: PlacedPiece[] = [];
@@ -100,13 +113,13 @@ export function pickRestorable(saved: string, ctx: RestoreContext): Restorable |
     });
   }
 
-  return { furniture, nextInstance, history, prefs: { ...state.prefs }, dropped };
+  return { furniture, nextInstance, history, prefs: { ...state.prefs }, view, dropped };
 }
 
 /**
  * The state as it is saved: the same version-1 format as `serialize`, but with the parts that are never
- * restored at their defaults. So a change of the model position or of the selected room does not make
- * the saved text different, and does not cause a write.
+ * restored at their defaults (`view` is part of the saved text). So a change of the model position or of the
+ * selected room does not make the saved text different, and does not cause a write.
  */
 export function serializeForSave(state: AppState): string {
   return serialize({

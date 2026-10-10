@@ -64,6 +64,7 @@ describe('createInitialState', () => {
       furniture: [],
       nextInstance: {},
       history: [],
+      view: { kind: 'tabletop' },
     });
   });
 
@@ -98,6 +99,7 @@ describe('createInitialState', () => {
       'furniture',
       'nextInstance',
       'history',
+      'view',
     ]);
   });
 });
@@ -549,6 +551,7 @@ describe('serialize', () => {
       'furniture',
       'nextInstance',
       'history',
+      'view',
     ]);
     expect(Object.keys(parsed.miniature)).toEqual(['scale', 'yawDeg', 'offset']);
     expect(Object.keys(parsed.prefs)).toEqual(['onboardingStep', 'menuOpened']);
@@ -559,7 +562,7 @@ describe('serialize', () => {
       '{"version":1,"houseId":"apartment-a","role":"visitor",' +
         '"miniature":{"scale":0.05,"yawDeg":0,"offset":[0,0]},"selectedRoomId":null,' +
         '"prefs":{"onboardingStep":"pinch","menuOpened":false},' +
-        '"furniture":[],"nextInstance":{},"history":[]}',
+        '"furniture":[],"nextInstance":{},"history":[],"view":{"kind":"tabletop"}}',
     );
   });
 
@@ -590,6 +593,7 @@ describe('serialize', () => {
       'furniture',
       'nextInstance',
       'history',
+      'view',
     ]);
   });
 

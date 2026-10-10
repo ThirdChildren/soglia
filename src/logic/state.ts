@@ -31,6 +31,41 @@ export interface FurnitureSnapshot {
   readonly furniture: readonly PlacedPiece[];
 }
 
+/**
+ * What the user is looking at (D35): the tabletop model (the default), or the house at real scale from a
+ * viewpoint of the open house. It is applied only in a session; `miniature` stays in the store unchanged while
+ * a viewpoint is active, so going back to the tabletop puts the model back exactly as it was.
+ */
+export type ViewState =
+  | { readonly kind: 'tabletop' }
+  | { readonly kind: 'viewpoint'; readonly id: string };
+
+export const TABLETOP_VIEW: ViewState = { kind: 'tabletop' };
+
+const VIEWPOINT_ID_PATTERN = /^[A-Za-z0-9._-]+$/;
+
+/** A well-formed view: `tabletop`, or `viewpoint` with a non-empty id made of id characters (at most 64). */
+export function isViewState(v: unknown): v is ViewState {
+  if (!isRecord(v)) return false;
+  if (v.kind === 'tabletop') return true;
+  return (
+    v.kind === 'viewpoint' &&
+    typeof v.id === 'string' &&
+    v.id.length <= MAX_ROOM_ID_LENGTH &&
+    VIEWPOINT_ID_PATTERN.test(v.id)
+  );
+}
+
+/** True when both views are the tabletop, or the same viewpoint. */
+export function sameView(a: ViewState, b: ViewState): boolean {
+  return a.kind === 'tabletop' ? b.kind === 'tabletop' : b.kind === 'viewpoint' && a.id === b.id;
+}
+
+/** A view copy that keeps only the known keys (so an extra key in saved text never reaches the store). */
+function cleanView(v: ViewState): ViewState {
+  return v.kind === 'viewpoint' ? { kind: 'viewpoint', id: v.id } : TABLETOP_VIEW;
+}
+
 export interface AppState {
   readonly version: 1;
   readonly houseId: string;
@@ -55,6 +90,8 @@ export interface AppState {
   readonly nextInstance: Readonly<Record<string, number>>;
   /** Last HISTORY_LIMIT undoable furniture actions, oldest first. */
   readonly history: readonly FurnitureSnapshot[];
+  /** Tabletop model or a viewpoint at real scale (D35). Part of the saved state; restored only if the viewpoint exists. */
+  readonly view: ViewState;
 }
 
 export type Action =
@@ -63,6 +100,7 @@ export type Action =
   | { readonly type: 'recenterMiniature' }
   | { readonly type: 'selectRoom'; readonly roomId: string }
   | { readonly type: 'setOnboardingStep'; readonly step: OnboardingStep }
+  | { readonly type: 'setView'; readonly view: ViewState }
   | { readonly type: 'markMenuOpened' }
   | {
       readonly type: 'placeFurniture';
@@ -89,6 +127,8 @@ export type Action =
       readonly nextInstance: Readonly<Record<string, number>>;
       readonly history: readonly FurnitureSnapshot[];
       readonly prefs: AppState['prefs'];
+      /** Absent: the view stays as it is. */
+      readonly view?: ViewState;
     };
 
 /** Action creators. */
@@ -101,6 +141,13 @@ export function selectRoom(roomId: string): Action {
 }
 export function setOnboardingStep(step: OnboardingStep): Action {
   return { type: 'setOnboardingStep', step };
+}
+/**
+ * Enters a viewpoint of the open house or goes back to the tabletop (D35). The caller checks that the viewpoint
+ * exists in the house; an invalid view is ignored. `miniature` is not touched. Not an undoable action.
+ */
+export function setView(view: ViewState): Action {
+  return { type: 'setView', view };
 }
 /** Shifts the miniature from its anchor. The limit (0.30 m) is applied by the caller (`clampOffset`). */
 export function setMiniatureOffset(dx: number, dz: number): Action {
@@ -132,8 +179,9 @@ export function setFurniture(pieces: readonly PlacedPiece[]): Action {
   return { type: 'setFurniture', pieces };
 }
 /**
- * Puts back the saved part of a state (D29): furniture, instance counters, undo history and the preferences.
- * Nothing else changes (the model position, the selected room and the role stay as the session set them).
+ * Puts back the saved part of a state (D29): furniture, instance counters, undo history, the preferences and,
+ * when given, the view. Nothing else changes (the model position, the selected room and the role stay as the
+ * session set them).
  * Pieces are re-checked; counters never go below what the pieces need. Not an undoable action.
  */
 export function restoreSaved(saved: {
@@ -141,6 +189,7 @@ export function restoreSaved(saved: {
   nextInstance: Readonly<Record<string, number>>;
   history: readonly FurnitureSnapshot[];
   prefs: AppState['prefs'];
+  view?: ViewState;
 }): Action {
   return { type: 'restoreSaved', ...saved };
 }
@@ -161,6 +210,7 @@ export function createInitialState(params: Params): AppState {
     furniture: [],
     nextInstance: {},
     history: [],
+    view: TABLETOP_VIEW,
   };
 }
 
@@ -278,6 +328,12 @@ export function reduce(state: AppState, action: Action): AppState {
       if (action.step === state.prefs.onboardingStep) return state;
       return { ...state, prefs: { ...state.prefs, onboardingStep: action.step } };
     }
+    case 'setView': {
+      if (!isViewState(action.view)) return state;
+      const view = cleanView(action.view);
+      if (sameView(view, state.view)) return state;
+      return { ...state, view };
+    }
     case 'markMenuOpened': {
       if (state.prefs.menuOpened) return state;
       return { ...state, prefs: { ...state.prefs, menuOpened: true } };
@@ -346,12 +402,14 @@ export function reduce(state: AppState, action: Action): AppState {
       const furniture = sanitizePieces(action.furniture);
       const nextInstance = withInstancesOf({ ...action.nextInstance }, furniture);
       const history = action.history.slice(-HISTORY_LIMIT);
+      const view = action.view !== undefined && isViewState(action.view) ? cleanView(action.view) : state.view;
       return {
         ...state,
         furniture,
         nextInstance,
         history,
         prefs: { onboardingStep: prefs.onboardingStep, menuOpened: prefs.menuOpened },
+        view,
       };
     }
     default:
@@ -496,6 +554,10 @@ export function deserialize(json: string): AppState | null {
     if (history.length > HISTORY_LIMIT) history = history.slice(history.length - HISTORY_LIMIT);
   }
 
+  // Added after the first saved states: absent means the tabletop. A broken value also means the tabletop
+  // (it is a convenience, not worth losing the furniture of the whole saved state).
+  const view: ViewState = 'view' in data && isViewState(data.view) ? cleanView(data.view) : TABLETOP_VIEW;
+
   return {
     version: 1,
     houseId,
@@ -506,5 +568,6 @@ export function deserialize(json: string): AppState | null {
     furniture,
     nextInstance,
     history,
+    view,
   };
 }
