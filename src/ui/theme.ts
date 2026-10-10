@@ -39,6 +39,17 @@ export const uiColors = {
   ink: '#1a1a1a',
 } as const;
 
+/**
+ * Border colour of the FitCheck label by outcome (CSS strings), T3.9. The text says the same thing in words, so the
+ * colour is never the only signal. The markers on the doors use `palette.outlineValid` / `palette.outlineInvalid`.
+ */
+export const fitColors = {
+  fits: '#1e8e4e',
+  blocked: '#e5322d',
+  disassembled: '#d97706',
+  noRoute: '#6b6f76',
+} as const;
+
 export function floorColor(material: FloorMaterial | undefined): number {
   return palette.floor[material ?? 'concrete'];
 }

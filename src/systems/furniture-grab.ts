@@ -78,6 +78,33 @@ interface GrabContext {
 // Shared with the system, which has no constructor arguments: set by `createFurnitureGrab`.
 let context: GrabContext | null = null;
 let cancelHeldNow: ((reason: string) => boolean) | null = null;
+let heldNow: (() => HeldPiece | null) | null = null;
+const releaseListeners = new Set<(id: string) => void>();
+
+/** The piece in the hand, read-only (the FitCheck follows it; T3.9). */
+export interface HeldPiece {
+  readonly id: string;
+  readonly catalogId: string;
+  readonly entity: Entity;
+  readonly object: Object3D;
+}
+
+/** The piece in a hand now, or null. The object is the system's own: do not keep it. */
+export function getHeldFurniture(): HeldPiece | null {
+  return heldNow?.() ?? null;
+}
+
+/**
+ * Calls `listener(id)` when a piece is PUT DOWN in the model (a new piece placed or a piece of the model moved), after
+ * the store has the new pose. Not called when the piece goes back, is removed or the grab is cancelled. Returns the
+ * function that removes the listener.
+ */
+export function onFurnitureReleased(listener: (id: string) => void): () => void {
+  releaseListeners.add(listener);
+  return () => {
+    releaseListeners.delete(listener);
+  };
+}
 
 /**
  * Cancels the piece in the hand, if any, without a store change (task T3.1b, D30: the session is hidden, blurred or
@@ -205,9 +232,11 @@ export class FurnitureGrabSystem extends createSystem({}) {
     this.evalInput.catalog = ctx.catalog;
 
     cancelHeldNow = (reason) => this.cancelHeld(reason);
+    heldNow = () => this.held;
     this.cleanupFuncs.push(
       () => {
         cancelHeldNow = null;
+        heldNow = null;
       },
       onMenuItemPick((catalogId, hand) => this.startFromMenu(ctx, catalogId, hand)),
       onPinchStart((hand) => this.onPinch(ctx, hand)),
@@ -497,6 +526,7 @@ export class FurnitureGrabSystem extends createSystem({}) {
         const placed = ctx.store.get().furniture.find((p) => p.id === held.id);
         if (placed) {
           slog(formatPlacedLine(placed.id, placed.roomId, action.pose, action.status));
+          for (const listener of releaseListeners) listener(placed.id);
         } else {
           forgetPieceStatus(held.id);
           slog(`furniture not placed ${held.id}`);
@@ -508,6 +538,7 @@ export class FurnitureGrabSystem extends createSystem({}) {
         ctx.store.dispatch(moveFurniture(held.id, action.pose.x, action.pose.z, action.pose.rotationDeg, action.roomId));
         publishReason(held.id, ev.result, false); // the piece is placed now, even if the store did not change
         slog(formatPlacedLine(held.id, action.roomId, action.pose, action.status));
+        for (const listener of releaseListeners) listener(held.id);
         break;
       }
       case 'return': {

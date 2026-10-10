@@ -21,4 +21,11 @@ export const Furniture = createComponent('Furniture', {
   z: { type: Types.Float32, default: 0, label: 'Z' },
   rotationDeg: { type: Types.Int32, default: 0, label: 'Rotation' },
   roomId: { type: Types.String, default: '', label: 'Room' },
+  /**
+   * FitCheck outcome for the room the piece is in (T3.9, D34): `none` (not in a room), `fits`, `blocked`,
+   * `disassembled` or `no-route`. Derived from `roomId`, never saved.
+   */
+  fit: { type: Types.String, default: 'none', label: 'Fit' },
+  /** Stable id of the door that blocks the piece (`door:d-living`), empty when nothing blocks it. */
+  fitDoor: { type: Types.String, default: '', label: 'Fit door' },
 });
