@@ -82,7 +82,14 @@ export type Action =
     }
   | { readonly type: 'removeFurniture'; readonly id: string }
   | { readonly type: 'undo' }
-  | { readonly type: 'setFurniture'; readonly pieces: readonly PlacedPiece[] };
+  | { readonly type: 'setFurniture'; readonly pieces: readonly PlacedPiece[] }
+  | {
+      readonly type: 'restoreSaved';
+      readonly furniture: readonly PlacedPiece[];
+      readonly nextInstance: Readonly<Record<string, number>>;
+      readonly history: readonly FurnitureSnapshot[];
+      readonly prefs: AppState['prefs'];
+    };
 
 /** Action creators. */
 export function setMiniature(scale: number, yawDeg: number): Action {
@@ -123,6 +130,19 @@ export function undo(): Action {
 /** Replaces all furniture (a staging preset). Writes no history. Invalid or duplicate pieces are dropped. */
 export function setFurniture(pieces: readonly PlacedPiece[]): Action {
   return { type: 'setFurniture', pieces };
+}
+/**
+ * Puts back the saved part of a state (D29): furniture, instance counters, undo history and the preferences.
+ * Nothing else changes (the model position, the selected room and the role stay as the session set them).
+ * Pieces are re-checked; counters never go below what the pieces need. Not an undoable action.
+ */
+export function restoreSaved(saved: {
+  furniture: readonly PlacedPiece[];
+  nextInstance: Readonly<Record<string, number>>;
+  history: readonly FurnitureSnapshot[];
+  prefs: AppState['prefs'];
+}): Action {
+  return { type: 'restoreSaved', ...saved };
 }
 
 /** Clamps a finite scale to [ZOOM_MIN, ZOOM_MAX]. */
@@ -316,6 +336,23 @@ export function reduce(state: AppState, action: Action): AppState {
       const nextInstance = withInstancesOf(state.nextInstance, furniture);
       if (furniture.length === 0 && state.furniture.length === 0 && nextInstance === state.nextInstance) return state;
       return { ...state, furniture, nextInstance };
+    }
+    case 'restoreSaved': {
+      const { prefs } = action;
+      if (!Array.isArray(action.furniture) || !Array.isArray(action.history)) return state;
+      if (!(ONBOARDING_STEPS as readonly string[]).includes(prefs?.onboardingStep) || typeof prefs.menuOpened !== 'boolean') {
+        return state;
+      }
+      const furniture = sanitizePieces(action.furniture);
+      const nextInstance = withInstancesOf({ ...action.nextInstance }, furniture);
+      const history = action.history.slice(-HISTORY_LIMIT);
+      return {
+        ...state,
+        furniture,
+        nextInstance,
+        history,
+        prefs: { onboardingStep: prefs.onboardingStep, menuOpened: prefs.menuOpened },
+      };
     }
     default:
       return state;

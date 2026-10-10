@@ -6,6 +6,7 @@ import { showGlyphTest } from './debug/glyph-test';
 import { attachStats } from './debug/stats';
 import { loadCatalog } from './data/load-catalog';
 import { loadHouse } from './data/load-house';
+import { createSafeStorage } from './data/storage';
 import { slog, swarn } from './log';
 import { formatParamsLine, hasInvalidHouse, mergeParams, parseParams } from './logic/params';
 import { furnitureItems } from './logic/catalog';
@@ -18,6 +19,7 @@ import { installLocalHands } from './systems/local-hands';
 import { createFurnitureGrab } from './systems/furniture-grab';
 import { createFurnitureReasons } from './systems/furniture-reasons';
 import { createMenuItems } from './systems/menu-items';
+import { attachPersistence, clearSavedState, restoreSavedState } from './systems/persistence';
 import { createMiniature, syncMiniature } from './systems/miniature';
 import { createMiniatureGesture } from './systems/miniature-gesture';
 import { createMiniaturePan } from './systems/miniature-pan';
@@ -41,9 +43,11 @@ async function start(): Promise<void> {
   for (const warning of warnings) swarn(warning);
   if (hasInvalidHouse(warnings)) swarn('invalid house id ignored');
 
-  // In-memory only for now: nothing is saved to disk yet (persistence comes later).
   const store = createStore(createInitialState(params));
   if (params.debug) attachStateLog(store);
+  // Saved state lives in localStorage, one key per house (D29). `reset=1` removes all of it before anything is read.
+  const storage = createSafeStorage();
+  if (params.reset) clearSavedState(storage);
 
   const world = await World.create(
     document.getElementById('scene-container') as HTMLDivElement,
@@ -59,6 +63,12 @@ async function start(): Promise<void> {
 
   const [result, catalogResult] = await Promise.all([loadHouse(params.house), loadCatalog()]);
   if (result.ok) {
+    // Put the saved furniture and preferences back before the systems start, so the first-use hints and the
+    // furniture see the restored state. `furnish=` runs later and wins over the saved pieces (D29).
+    if (catalogResult.ok) {
+      restoreSavedState(store, storage, result.house, catalogResult.items, params.furnish !== 'none');
+      attachPersistence(store, storage);
+    }
     const miniature = createMiniature(world, (scale, yawDeg) => {
       store.dispatch(setMiniature(scale, yawDeg));
       // A new placement is a new anchor: the drag of the previous session is gone (decision D3).
