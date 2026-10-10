@@ -40,6 +40,12 @@ export interface BuiltHouse {
   /** The `house:<id>` entity. */
   entity: Entity;
   counts: { rooms: number; walls: number; doors: number; windows: number };
+  /**
+   * Rebuilds the geometry of every wall cut at `cut` metres (T3.11, D35): CUT_HEIGHT for the table-top model, the
+   * ceiling height at real scale. The `wall:*` entities, meshes and the shared material stay; the old geometry
+   * is disposed. Floors, thresholds, doors and windows are not touched. Does nothing when `cut` is the current one.
+   */
+  setWallCut(cut: number): void;
   /** Removes every entity of the house and disposes its geometries and materials. */
   dispose(): void;
 }
@@ -53,14 +59,15 @@ function floorGeometry(polygon: readonly [number, number][]): BufferGeometry {
   return geometry;
 }
 
-function wallGeometry(wall: Wall, height: number): BufferGeometry {
+/** Geometry of one wall cut at `cutHeight`, with x centred on the wall midpoint (the node sits there). */
+function wallGeometry(wall: Wall, height: number, cutHeight: number): BufferGeometry {
   const length = Math.hypot(wall.to[0] - wall.from[0], wall.to[1] - wall.from[1]);
   const boxes = buildWallBoxes({
     length,
     thickness: wall.thickness,
     height,
     openings: wall.openings,
-    cutHeight: CUT_HEIGHT,
+    cutHeight,
   });
   const buffers = boxesToBuffers(boxes);
   const geometry = new BufferGeometry();
@@ -68,13 +75,26 @@ function wallGeometry(wall: Wall, height: number): BufferGeometry {
   geometry.setAttribute('normal', new BufferAttribute(buffers.normals, 3));
   geometry.setIndex(new BufferAttribute(buffers.indices, 1));
   geometry.computeBoundingSphere();
+  // Wall-local x = 0 is the `from` end; the node sits at the midpoint, so shift the geometry.
+  geometry.translate(-length / 2, 0, 0);
   return geometry;
+}
+
+// The house that `setHouseWallCut` acts on (the Viewpoint system has no handle on it). One house at a time.
+let activeHouse: BuiltHouse | null = null;
+
+/** Rebuilds the walls of the loaded house cut at `cut` metres (see `BuiltHouse.setWallCut`). No house: no-op. */
+export function setHouseWallCut(cut: number): void {
+  activeHouse?.setWallCut(cut);
 }
 
 export function buildHouse(world: World, house: House, parent: Entity): BuiltHouse {
   const geometries: BufferGeometry[] = [];
   const materials: MeshStandardMaterial[] = [];
   const entities: Entity[] = []; // children first, the house node last in the end
+  // Walls: their geometry is owned by the mesh (not by `geometries`) because it is replaced by `setWallCut`.
+  const wallMeshes: { wall: Wall; mesh: Mesh }[] = [];
+  let wallCut = CUT_HEIGHT;
 
   const material = (color: number, extra?: Partial<MeshStandardMaterial>): MeshStandardMaterial => {
     const m = new MeshStandardMaterial({ color, roughness: 1, metalness: 0, ...extra });
@@ -122,16 +142,12 @@ export function buildHouse(world: World, house: House, parent: Entity): BuiltHou
   let doors = 0;
   let windows = 0;
   for (const wall of house.walls) {
-    const length = Math.hypot(wall.to[0] - wall.from[0], wall.to[1] - wall.from[1]);
     const angleRad = Math.atan2(wall.to[1] - wall.from[1], wall.to[0] - wall.from[0]);
-    const geometry = wallGeometry(wall, house.ceilingHeight);
-    geometries.push(geometry);
-    const mesh = new Mesh(geometry, wallMaterial);
-    // Wall-local x = 0 is the `from` end; the node sits at the midpoint, so shift the geometry.
+    const mesh = new Mesh(wallGeometry(wall, house.ceilingHeight, wallCut), wallMaterial);
     mesh.position.set((wall.from[0] + wall.to[0]) / 2, 0, (wall.from[1] + wall.to[1]) / 2);
     mesh.rotation.y = -angleRad;
-    geometry.translate(-length / 2, 0, 0);
     child(mesh, stableId.wall(wall.id));
+    wallMeshes.push({ wall, mesh });
 
     for (const opening of wall.openings) {
       const at = openingPlacement(wall, opening);
@@ -160,14 +176,28 @@ export function buildHouse(world: World, house: House, parent: Entity): BuiltHou
     `house loaded ${house.id} rooms=${counts.rooms} walls=${counts.walls} doors=${counts.doors} windows=${counts.windows}`,
   );
 
-  return {
+  const built: BuiltHouse = {
     entity: houseEntity,
     counts,
+    setWallCut(cut: number): void {
+      if (!(cut > 0) || cut === wallCut) return;
+      wallCut = cut;
+      for (const item of wallMeshes) {
+        const old = item.mesh.geometry;
+        item.mesh.geometry = wallGeometry(item.wall, house.ceilingHeight, cut);
+        old.dispose();
+      }
+      slog(`walls rebuilt cut=${cut.toFixed(2)}`);
+    },
     dispose(): void {
       for (const entity of entities.reverse()) entity.dispose({ disposeResources: false });
       houseEntity.dispose({ disposeResources: false });
       for (const g of geometries) g.dispose();
+      for (const item of wallMeshes) item.mesh.geometry.dispose();
       for (const m of materials) m.dispose();
+      if (activeHouse === built) activeHouse = null;
     },
   };
+  activeHouse = built;
+  return built;
 }

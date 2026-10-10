@@ -53,6 +53,20 @@ export function getMiniatureAnchorYaw(): number {
   return anchorYawRad;
 }
 
+// The base node, set by `createMiniature`; `setPlinthVisible` acts on it.
+let plinthNode: Entity | null = null;
+
+/**
+ * Shows or hides the base `table:plinth` and nothing else (T3.11: real scale has no table base). The entity stays,
+ * so ids and queries keep working; only its visibility changes.
+ */
+export function setPlinthVisible(visible: boolean): void {
+  const object = plinthNode?.object3D;
+  if (!object || object.visible === visible) return;
+  object.visible = visible;
+  slog(`plinth visible=${visible}`);
+}
+
 /** Writes the anchor of the model into `out` and returns it. */
 export function getMiniatureAnchor(out: { x: number; y: number; z: number }): { x: number; y: number; z: number } {
   out.x = anchor.x;
@@ -153,6 +167,7 @@ export function createMiniature(world: World, onPlaced?: PlacedListener): Miniat
   mesh.position.y = PLINTH_TOP - PLINTH_THICKNESS / SCALE / 2;
   const plinth = world.createTransformEntity(mesh, root);
   tagEntity(plinth, TABLE_PLINTH_ID);
+  plinthNode = plinth;
 
   world.registerSystem(MiniaturePlacementSystem);
   return { root, plinth };

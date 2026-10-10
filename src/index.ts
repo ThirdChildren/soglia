@@ -1,6 +1,7 @@
 import { World } from '@iwsdk/core';
 import projectOptions from 'virtual:iwsdk-project';
 import { loadDevParams } from './data/dev-params';
+import { attachFadeKey } from './debug/fade-key';
 import { attachHandsLog } from './debug/hands-log';
 import { attachLifecycleKeys } from './debug/lifecycle-keys';
 import { attachMenuKey } from './debug/menu-key';
@@ -36,6 +37,7 @@ import { createOnboarding } from './systems/onboarding';
 import { createPalmMenu } from './systems/palm-menu';
 import { installPinchInput } from './systems/pinch-input';
 import { createRoomLabel } from './systems/room-label';
+import { createFadeOverlay } from './ui/fade-overlay';
 import { ErrorPanelSystem, showErrorPanel } from './ui/error-panel';
 import { loadPanelFonts } from './ui/fonts';
 import { FurnitureVisuals } from './ui/furniture-visuals';
@@ -137,6 +139,8 @@ async function start(): Promise<void> {
     if (params.debug) {
       attachLifecycleKeys(lifecycle);
       attachMenuKey();
+      // T3.11 only: F2 previews full-height walls, no base and the fade (the real transition is T3.12).
+      attachFadeKey(createFadeOverlay(world), result.house.ceilingHeight);
     }
     return;
   }
