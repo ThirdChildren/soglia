@@ -42,6 +42,9 @@ import type { PlacedPiece } from '../../src/logic/placement-rules';
 import { SCALE, ZOOM_MAX, ZOOM_MIN } from '../../src/logic/state';
 import { loadJson } from '../helpers/load-json';
 
+/** Exhaustive point sweeps: about 2-6 s on a free CPU, so the default 5 s timeout is not enough under load. */
+const SLOW_TEST_MS = 60_000;
+
 const catalog = loadJson<{ items: CatalogItem[] }>('public/catalog', 'catalog.json').items;
 const mine = loadJson<{ items: CatalogItem[] }>('public/demo', 'my-furniture.json').items;
 const HOUSES: ReadonlyArray<readonly [string, House]> = [
@@ -834,7 +837,7 @@ describe.each(HOUSES)('pinch zones of %s, with every catalog piece in every room
       }
     }
     expect(checked).toBe(25920); // 10 scales x 2 headings x 3 rotations x 9 offsets x 2 buttons x 24 samples
-  });
+  }, SLOW_TEST_MS);
 
   it('the pick zone of the pieces and of the base ends below the lowest edge of the button volume at every scale', () => {
     for (let scale = ZOOM_MIN; scale <= ZOOM_MAX + 1e-9; scale += 0.005) {

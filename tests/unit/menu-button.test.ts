@@ -39,6 +39,9 @@ import { stagingToPieces } from '../../src/logic/staging';
 import { ZOOM_MAX, ZOOM_MIN } from '../../src/logic/state';
 import { loadJson } from '../helpers/load-json';
 
+/** Exhaustive point sweeps: about 2-6 s on a free CPU, so the default 5 s timeout is not enough under load. */
+const SLOW_TEST_MS = 60_000;
+
 const catalog = loadJson<{ items: CatalogItem[] }>('public/catalog', 'catalog.json').items;
 const mine = loadJson<{ items: CatalogItem[] }>('public/demo', 'my-furniture.json').items;
 const HOUSES = {
@@ -448,7 +451,7 @@ describe.each(Object.entries(HOUSES))('pinch zones of %s', (name, house) => {
     }
     expect(checked).toBeGreaterThan(10000);
     expect(name).toBeTruthy();
-  });
+  }, SLOW_TEST_MS);
 
   it('without the floor of 0.14 m a small model dragged under a button WOULD put the button in the drag zone (why the floor exists)', () => {
     const scale = 0.03;
