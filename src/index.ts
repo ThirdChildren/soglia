@@ -24,6 +24,7 @@ import { createFurnitureGrab } from './systems/furniture-grab';
 import { installHandJoints } from './systems/hand-joints';
 import { createFitCheck } from './systems/fit-check';
 import { createFurnitureReasons } from './systems/furniture-reasons';
+import { createMeasure } from './systems/measure';
 import { createMenuButton } from './systems/menu-button';
 import { createMenuItems, setMenuTabData } from './systems/menu-items';
 import { attachLifecycle } from './systems/lifecycle';
@@ -118,11 +119,13 @@ async function start(): Promise<void> {
     if (merged && catalogResult.ok) {
       const sections = menuSections(catalogResult.items, merged.mine);
       createMenuItems(world, store, sections.items);
-      // The tabs `mine` and `fit` appear only when their data arrived; `measure` comes with the tape measure (T3.14).
-      setMenuTabData({ mine: sections.mine, fit: sections.fit });
+      // The tabs `mine` and `fit` appear only when their data arrived; `measure` is there with the tape measure (T3.14).
+      setMenuTabData({ mine: sections.mine, fit: sections.fit, measure: true });
     }
     // The Menu buttons (T3.3b) come after the menu items (a control of an open menu wins a pinch) and before the grab and the drag.
     createMenuButton(world);
+    // The tape measure claims the pinch above the grab (and below the menu): register it after the menu, before the grab (T3.14).
+    createMeasure(world, store, result.house, merged ? merged.items : [], built.entity, miniature.root);
     if (merged) {
       const visuals = new FurnitureVisuals(merged.items);
       await visuals.preload(params.failmodels);

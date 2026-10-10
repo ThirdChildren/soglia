@@ -27,6 +27,9 @@ export const palette = {
   outlineInvalid: 0xe5322d,
   /** Viewpoint markers on the table-top model (T3.12): blue, away from the red/green of the FitCheck and the orange doors. */
   viewpoint: 0x2a5bd7,
+  /** The tape measure (T3.14): amber points over a dark tape, both readable on the light walls and on the dark base. */
+  measurePoint: 0xffc400,
+  measureTape: 0x1a1a1a,
 } as const;
 
 /**

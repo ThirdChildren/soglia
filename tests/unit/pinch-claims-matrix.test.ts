@@ -2,22 +2,23 @@ import { describe, expect, it } from 'vitest';
 import { roomSelectionAllowed, type RoomSelectionInputs } from '../../src/logic/menu-button';
 import { CLAIM_PRIORITY, createClaims, type ClaimHand, type ClaimOwner, type RevokeReason } from '../../src/logic/pinch-claims';
 
-const OWNERS: readonly ClaimOwner[] = ['menu', 'furniture', 'viewpoint', 'two-hands', 'pan', 'room'];
+const OWNERS: readonly ClaimOwner[] = ['menu', 'measure', 'furniture', 'viewpoint', 'two-hands', 'pan', 'room'];
 const HANDS: readonly ClaimHand[] = ['left', 'right'];
 const otherHand = (h: ClaimHand): ClaimHand => (h === 'left' ? 'right' : 'left');
 
 /**
  * Written by hand, not derived from CLAIM_PRIORITY. Row = owner that holds the hand, column = owner that claims the
- * SAME hand (order: menu, furniture, viewpoint, two-hands, pan, room). True = the claim is granted: a free pass for the
- * same owner and for any higher priority owner (menu > furniture > viewpoint > two-hands > pan > room).
+ * SAME hand (order: menu, measure, furniture, viewpoint, two-hands, pan, room). True = the claim is granted: a free pass for the
+ * same owner and for any higher priority owner (menu > measure > furniture > viewpoint > two-hands > pan > room).
  */
 const SAME_HAND: Readonly<Record<ClaimOwner, readonly boolean[]>> = {
-  menu: [true, false, false, false, false, false],
-  furniture: [true, true, false, false, false, false],
-  viewpoint: [true, true, true, false, false, false],
-  'two-hands': [true, true, true, true, false, false],
-  pan: [true, true, true, true, true, false],
-  room: [true, true, true, true, true, true],
+  menu: [true, false, false, false, false, false, false],
+  measure: [true, true, false, false, false, false, false],
+  furniture: [true, true, true, false, false, false, false],
+  viewpoint: [true, true, true, true, false, false, false],
+  'two-hands': [true, true, true, true, true, false, false],
+  pan: [true, true, true, true, true, true, false],
+  room: [true, true, true, true, true, true, true],
 };
 
 /**
@@ -25,17 +26,18 @@ const SAME_HAND: Readonly<Record<ClaimOwner, readonly boolean[]>> = {
  * viewpoint, two-hands and pan: the second pinch is the tap that rotates the piece.
  */
 const OTHER_HAND: Readonly<Record<ClaimOwner, readonly boolean[]>> = {
-  menu: [true, true, true, true, true, true],
-  furniture: [true, true, false, false, false, true],
-  viewpoint: [true, true, true, true, true, true],
-  'two-hands': [true, true, true, true, true, true],
-  pan: [true, true, true, true, true, true],
-  room: [true, true, true, true, true, true],
+  menu: [true, true, true, true, true, true, true],
+  measure: [true, true, true, true, true, true, true],
+  furniture: [true, true, true, false, false, false, true],
+  viewpoint: [true, true, true, true, true, true, true],
+  'two-hands': [true, true, true, true, true, true, true],
+  pan: [true, true, true, true, true, true, true],
+  room: [true, true, true, true, true, true, true],
 };
 
 describe('pinch claims: the table of the six owners (hand-written)', () => {
-  it('the priorities are 6 5 4 3 2 1', () => {
-    expect(OWNERS.map((o) => CLAIM_PRIORITY[o])).toEqual([6, 5, 4, 3, 2, 1]);
+  it('the priorities are 7 6 5 4 3 2 1', () => {
+    expect(OWNERS.map((o) => CLAIM_PRIORITY[o])).toEqual([7, 6, 5, 4, 3, 2, 1]);
   });
 
   it('the hand-written table is the one the priorities give (the table itself is consistent)', () => {

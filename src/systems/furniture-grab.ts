@@ -411,6 +411,7 @@ export class FurnitureGrabSystem extends createSystem({}) {
       return;
     }
     if (pinchClaims.ownerOf(hand) !== null) return; // the menu (or another owner) has this pinch
+    if (ctx.store.get().tool === 'measure') return; // the tape measure is on: pieces are not grabbed (T3.14, D36)
     if (isMiniatureGestureActive() || isPanActive()) return; // a drag of the model is running: no new grab
     this.readHand(ctx, hand);
     const id = pickPiece(this.planTuple, ctx.store.get().furniture, ctx.catalog, this.rootPose.scale);

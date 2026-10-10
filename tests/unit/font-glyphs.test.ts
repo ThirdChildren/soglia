@@ -40,6 +40,7 @@ const SAMPLE_CALLS: Record<string, () => string[]> = {
   overlapsFurniture: () => catalogItems().map((item) => strings.reason.overlapsFurniture(item.name)),
   reasonText: () => catalogItems().map((item) => strings.reasonText('overlaps-furniture', item.name)),
   message: fitMessages,
+  label: () => [0, 7, 58, 140, 308, 1234].map((cm) => strings.measure.label(cm)),
   wontFitNarrow: () => [strings.fit.wontFitNarrow(80, 'three-seat sofa', 85)],
   wontFitMobility: () => [strings.fit.wontFitMobility(75, 'wheelchair', 80)],
   wontFitLow: () => [strings.fit.wontFitLow(210, 'glass panel', 230)],

@@ -70,7 +70,7 @@ export class RoomLabelSystem extends createSystem({
       this.queries.pressed.subscribe('qualify', (entity) => {
         const name = entity.object3D?.name ?? '';
         if (!name.startsWith(ROOM_PREFIX)) return;
-        // The room has the lowest priority among the pinch owners (menu > furniture > two-hands > pan > room).
+        // The room has the lowest priority among the pinch owners (menu > measure > furniture > viewpoint > two-hands > pan > room).
         this.pinches.left = isPinchStarted('left');
         this.pinches.right = isPinchStarted('right');
         const allowed = roomSelectionAllowed({
@@ -80,6 +80,8 @@ export class RoomLabelSystem extends createSystem({
           menuHandPinching: menuHandPinching(getMenuMode(), getPalmMenuHand(), this.pinches),
           // No room selection at real scale, while the view changes, or for the pinch that picked a viewpoint marker.
           viewpointActive: isTabletopLocked() || pinchClaims.anyClaimed('viewpoint'),
+          // With the tape measure on, a pinch on the model is a point (T3.14).
+          measureActive: store.get().tool === 'measure',
         });
         if (!allowed) return;
         const roomId = name.slice(ROOM_PREFIX.length);

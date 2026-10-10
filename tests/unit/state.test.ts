@@ -65,6 +65,7 @@ describe('createInitialState', () => {
       nextInstance: {},
       history: [],
       view: { kind: 'tabletop' },
+      tool: 'furnish',
     });
   });
 
@@ -100,6 +101,7 @@ describe('createInitialState', () => {
       'nextInstance',
       'history',
       'view',
+      'tool',
     ]);
   });
 });

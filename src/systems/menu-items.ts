@@ -14,7 +14,8 @@
 //   item     -> listeners registered with `onMenuItemPick` (the grab, task T2.13). They may take the hand with
 //               `releaseMenuHand` and claim it as `furniture`; otherwise the claim lasts until the pinch ends.
 //   Undo     -> `undo()` on the store, with the `undo ...` log line.
-//   tab      -> shows that tab (`menu tab mine`, then its first page).
+//   tab      -> shows that tab (`menu tab mine`, then its first page). The tab `measure` also turns the tape measure on
+//               (`AppState.tool`, T3.14) and any other tab turns it off.
 //   Back/Next -> turn the page.
 //   Recenter -> `recenterMiniature()` on the store (offset and scale back to the start).
 //
@@ -49,7 +50,7 @@ import {
   type Offset,
 } from '../logic/menu';
 import { menuSelectable } from '../logic/menu-dim';
-import { recenterMiniature, undo, type Store } from '../logic/state';
+import { recenterMiniature, setTool, undo, type Store } from '../logic/state';
 import { stableId } from '../logic/ids';
 import { fitLine } from '../logic/text-fit';
 import { MenuAnchor } from '../ui/menu-anchor';
@@ -115,7 +116,7 @@ export function createMenuItems(world: World, store: Store, items: readonly Cata
 }
 
 /**
- * Gives the tabs their data (T3.8 for `mine` and `fit`, T3.14 for `measure`; the development key F6 for a preview).
+ * Gives the tabs their data (T3.8 for `mine` and `fit`, T3.14 for `measure`).
  * Only the fields passed change. A tab with an empty list (or `measure: false`) is not shown. An open menu updates.
  */
 export function setMenuTabData(data: Partial<MenuTabData>): void {
@@ -179,7 +180,8 @@ export class MenuItemsSystem extends createSystem({}) {
     if (!this.open) {
       this.open = true;
       this.page = 0;
-      this.tab = validTab('items', this.visibleTabs(ctx));
+      // With the tape measure on, the menu opens on its tab: the tool is left by changing tab (T3.14, D36).
+      this.tab = validTab(ctx.store.get().tool === 'measure' ? 'measure' : 'items', this.visibleTabs(ctx));
       this.appliedVersion = ctx.version;
       this.buildButtons(menu);
       this.buildTabs(ctx, menu);
@@ -188,7 +190,12 @@ export class MenuItemsSystem extends createSystem({}) {
       // The view changed while the menu is open (a viewpoint was entered or left): the fourth button changes.
       for (const control of this.buttonControls) control.anchor.dispose();
       this.buildButtons(menu);
-      this.rebuildSlots();
+      // The tape measure works on the table-top model only: its tab goes away at real scale and comes back (T3.14).
+      const tab = validTab(this.tab, this.visibleTabs(ctx));
+      if (tab !== this.tab) this.page = 0;
+      this.tab = tab;
+      this.buildTabs(ctx, menu);
+      this.buildItems(ctx, menu, false);
     } else if (ctx.version !== this.appliedVersion) {
       // A tab got (or lost) its data while the menu is open: draw the tabs again, on the same tab if it still exists.
       this.appliedVersion = ctx.version;
@@ -222,7 +229,8 @@ export class MenuItemsSystem extends createSystem({}) {
   /** The tabs that have something to show. */
   private visibleTabs(ctx: MenuItemsContext): MenuTabId[] {
     const { items, mine, fit, measure } = ctx.data;
-    return menuTabs({ items: items.length, mine: mine.length, fit: fit.length, measure: measure ? 1 : 0 });
+    // The tape measure works on the table-top model only (T3.14): at real scale its tab is not shown.
+    return menuTabs({ items: items.length, mine: mine.length, fit: fit.length, measure: measure && !isRealScale() ? 1 : 0 });
   }
 
   /** The bar of four buttons; the fourth is "Recenter" on the table-top model and "Tabletop" at real scale (T3.12). */
@@ -368,6 +376,8 @@ export class MenuItemsSystem extends createSystem({}) {
     slog(formatTabLine(tab));
     menu.setTabs(this.visibleTabs(ctx), tab);
     this.buildItems(ctx, menu, true);
+    // The tab "Measure" is the tape measure (`measure start`); any other tab is `furnish` again (`measure end`).
+    ctx.store.dispatch(setTool(tab === 'measure' ? 'measure' : 'furnish'));
   }
 
   private turn(ctx: MenuItemsContext, direction: -1 | 1): void {

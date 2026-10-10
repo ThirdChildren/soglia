@@ -2,6 +2,7 @@
 
 import { fitMessage, type FitItem, type FitResult, type FitTexts } from '../logic/fit-check';
 import { formatSize, formatSizeCompact, lowerName, type ReasonKind } from '../logic/furniture-label';
+import { measureLabelText } from '../logic/measure-tool';
 import { formatRoomLabel } from '../logic/room-label';
 
 /** Why a piece is not valid (D27): short texts shown next to it. */
@@ -63,6 +64,11 @@ export const strings = {
     palmMenu: 'Palm up for the menu',
   },
   reason,
+  /** The tape measure (T3.14, D36): the hint while it is on, and the label of a measure ("140 cm"). */
+  measure: {
+    hint: 'Pinch two points',
+    label: (cm: number): string => measureLabelText(cm),
+  },
   /** FitCheck texts (T3.7): `message` is the first line of the label, `note` the fixed second line. */
   fit: {
     ...fitTexts,

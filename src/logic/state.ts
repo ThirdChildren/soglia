@@ -66,6 +66,18 @@ function cleanView(v: ViewState): ViewState {
   return v.kind === 'viewpoint' ? { kind: 'viewpoint', id: v.id } : TABLETOP_VIEW;
 }
 
+/**
+ * The tool in the hands (D36): the default `furnish` (grab and place pieces, select rooms) or the tape `measure`.
+ * It is NOT saved: `serialize` leaves it out, `deserialize` and a restore give `furnish`, and a new session starts with it.
+ */
+export type ToolId = 'furnish' | 'measure';
+export const TOOLS: readonly ToolId[] = ['furnish', 'measure'];
+export const DEFAULT_TOOL: ToolId = 'furnish';
+
+export function isToolId(v: unknown): v is ToolId {
+  return typeof v === 'string' && (TOOLS as readonly string[]).includes(v);
+}
+
 export interface AppState {
   readonly version: 1;
   readonly houseId: string;
@@ -92,6 +104,8 @@ export interface AppState {
   readonly history: readonly FurnitureSnapshot[];
   /** Tabletop model or a viewpoint at real scale (D35). Part of the saved state; restored only if the viewpoint exists. */
   readonly view: ViewState;
+  /** The tool in the hands (D36). Never saved, never restored: every session starts with `furnish`. */
+  readonly tool: ToolId;
 }
 
 export type Action =
@@ -101,6 +115,7 @@ export type Action =
   | { readonly type: 'selectRoom'; readonly roomId: string }
   | { readonly type: 'setOnboardingStep'; readonly step: OnboardingStep }
   | { readonly type: 'setView'; readonly view: ViewState }
+  | { readonly type: 'setTool'; readonly tool: ToolId }
   | { readonly type: 'markMenuOpened' }
   | {
       readonly type: 'placeFurniture';
@@ -148,6 +163,10 @@ export function setOnboardingStep(step: OnboardingStep): Action {
  */
 export function setView(view: ViewState): Action {
   return { type: 'setView', view };
+}
+/** Chooses the tool in the hands (D36). An unknown tool is ignored; the same tool again changes nothing. Not undoable. */
+export function setTool(tool: ToolId): Action {
+  return { type: 'setTool', tool };
 }
 /** Shifts the miniature from its anchor. The limit (0.30 m) is applied by the caller (`clampOffset`). */
 export function setMiniatureOffset(dx: number, dz: number): Action {
@@ -211,6 +230,7 @@ export function createInitialState(params: Params): AppState {
     nextInstance: {},
     history: [],
     view: TABLETOP_VIEW,
+    tool: DEFAULT_TOOL,
   };
 }
 
@@ -334,6 +354,10 @@ export function reduce(state: AppState, action: Action): AppState {
       if (sameView(view, state.view)) return state;
       return { ...state, view };
     }
+    case 'setTool': {
+      if (!isToolId(action.tool) || action.tool === state.tool) return state;
+      return { ...state, tool: action.tool };
+    }
     case 'markMenuOpened': {
       if (state.prefs.menuOpened) return state;
       return { ...state, prefs: { ...state.prefs, menuOpened: true } };
@@ -450,8 +474,11 @@ export function createStore(initial: AppState): Store {
   };
 }
 
+/** The state as text. The tool in the hands is left out: it is never saved (D36). */
 export function serialize(state: AppState): string {
-  return JSON.stringify(state);
+  const saved: Record<string, unknown> = { ...state };
+  delete saved.tool;
+  return JSON.stringify(saved);
 }
 
 
@@ -569,5 +596,6 @@ export function deserialize(json: string): AppState | null {
     nextInstance,
     history,
     view,
+    tool: DEFAULT_TOOL,
   };
 }

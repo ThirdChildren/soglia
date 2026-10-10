@@ -209,6 +209,14 @@ describe('classifyGroup: every stable id the project generates (expected group w
   });
 });
 
+describe('classifyGroup: the tape measure (T3.14)', () => {
+  it('its instanced mesh is a marker; its label and its hint are panels', () => {
+    expect(classifyGroup('ui:measure-instances')).toBe('markers');
+    expect(classifyGroup('ui:measure-label')).toBe('ui');
+    expect(classifyGroup('ui:measure-hint')).toBe('ui');
+  });
+});
+
 describe('classifyGroup: precedence of the marker prefix over the generic ui kind', () => {
   it('ui:fit-marker-<door> is a marker although it also starts with ui:', () => {
     expect(classifyGroup('ui:fit-marker-d-living')).toBe('markers');

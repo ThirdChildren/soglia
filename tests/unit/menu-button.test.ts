@@ -566,6 +566,13 @@ describe('roomSelectionAllowed (F-A)', () => {
     expect(roomSelectionAllowed(inputs)).toBe(!busy);
   });
 
+  it('never selects a room while the tape measure is on (T3.14), whatever else is idle', () => {
+    const idle = { gestureActive: false, furnitureInteraction: false, panActive: false, menuHandPinching: false };
+    expect(roomSelectionAllowed({ ...idle, measureActive: true })).toBe(false);
+    expect(roomSelectionAllowed({ ...idle, measureActive: false })).toBe(true);
+    expect(roomSelectionAllowed({ ...idle })).toBe(true);
+  });
+
   it('allows a room only when nothing else owns the pinch', () => {
     expect(roomSelectionAllowed({ gestureActive: false, furnitureInteraction: false, panActive: false, menuHandPinching: false })).toBe(true);
     expect(roomSelectionAllowed({ gestureActive: false, furnitureInteraction: false, panActive: false, menuHandPinching: true })).toBe(false);
