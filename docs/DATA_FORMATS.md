@@ -31,19 +31,42 @@ Categorie (`category`): `plumbing`, `electrical`, `appliances`, `furniture`, `fl
 
 ## Regola di passaggio (FitCheck)
 
-Semplificata e dichiarata come tale nell'app ("Simplified check").
+Semplificata e dichiarata come tale nell'app (seconda riga fissa dell'etichetta: "Simplified check").
+Logica pura in `src/logic/door-graph.ts` e `src/logic/fit-check.ts` (D34 in `docs/plans/M3.md`).
 
 1. Percorso: dalla porta con `entrance: true` alla stanza di destinazione, sul grafo delle porte
-   (`connects`), cammino con meno porte.
-2. **Mobile** con dimensioni `w × d × h`: ordinate crescenti `a ≤ b ≤ c`. Passa da una porta se
-   `a ≤ width` e `b ≤ height` (lo si può inclinare), con 1 cm di tolleranza (`a ≤ width + 0.01`).
+   (`connects`; nodi = stanze + `outside`), cammino con meno porte (a parità, la prima in ordine
+   di file). Solo la porta d'ingresso può collegare `outside`. Stanza sconosciuta, casa senza
+   ingresso o stanza isolata: `no-route` ("No route from the entrance to this room").
+2. **Mobile** (`kind: "furniture"`) con dimensioni `w x d x h`: ordinate crescenti `a <= b <= c`.
+   Passa da una porta se `a <= width + 0.01` e `b <= height` (lo si può inclinare); la tolleranza
+   di 1 cm vale solo per i mobili.
 3. **Sedia a rotelle / passeggino** (`kind: "mobility"` nel catalogo): passa se
-   `width_item + 2 × clearance ≤ door.width`, con `clearance` = 0,05 m; nei corridoi serve
-   `width_item + 0,20 m`.
-4. Il risultato indica **la prima porta** che blocca e il motivo, in inglese.
+   `size[0] + 2 x 0.05 <= width`, **senza** tolleranza (solo 1e-9 per il rumore numerico dei
+   decimali: 0,70 + 0,10 passa da una porta di 0,80, non da una di 0,79). L'altezza della porta
+   non conta e un pezzo di mobilità non si smonta mai.
+4. **Corridoi non verificati**: il file della casa non ha alcun dato di corridoio (larghezza,
+   curve), quindi il FitCheck guarda solo le porte. Nelle case demo il corridoio di A è largo
+   1,6 m e non cambierebbe nessun esito. È la ragione del "Simplified check".
+5. Il risultato indica **la prima porta del percorso** che non passa e il motivo. Codici
+   **distinti** dai motivi di posa di M2: `door-too-narrow`, `door-too-low`, `fits-disassembled`,
+   `no-route` (più `fits`). **Non** si riusa mai `blocks-door`: è la zona libera di 0,30 m
+   davanti a una porta e resta un motivo di posa non valida. Un mobile con `disassemblable: true`
+   bloccato da una porta è `fits-disassembled` (mai "blocked").
+6. Testi (cm interi, nome corto in minuscolo senza "My " iniziale), in `strings.fit`:
+   `Won't fit: the door is 80 cm wide, the sofa's shortest side is 85 cm` /
+   `Won't fit: the door is 75 cm wide, the wheelchair needs 80 cm` /
+   `Won't fit: the door is 210 cm high, the sofa needs 230 cm` /
+   `Fits when disassembled: the door is 90 cm wide, the bed's shortest side is 95 cm` /
+   `Fits: the narrowest door on the way is 90 cm wide` /
+   `No route from the entrance to this room`.
 
-Esiti attesi sui dati demo: divano 230 × 95 × 85 → bloccato su `d-living` (80 cm) in A, passa in B;
-sedia a rotelle 70 cm → bloccata su `d-bathroom` (75 cm) in A.
+Esiti attesi sui dati demo (porte di A: `d-entrance` 0,90, `d-living`/`d-bedroom`/`d-study` 0,80,
+`d-bathroom` 0,75; di B: tutte 0,90 tranne `d-bathroom` 0,80):
+- divano 85 x 95 x 230 (`my-sofa`): bloccato su `d-living` (80 cm) in A, passa nel soggiorno di B;
+- letto `my-bed` (smontabile): `fits-disassembled` su `d-entrance` (90 cm) verso qualunque stanza;
+- sedia a rotelle 70 cm (servono 80): bloccata su `d-bathroom` (75 cm) in A, passa nel bagno di B;
+- passeggino 60 cm (servono 70): passa anche dal bagno di A.
 
 ## catalog (`public/catalog/catalog.json`)
 

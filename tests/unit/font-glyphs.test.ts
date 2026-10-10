@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { missingGlyphs, parseFontAtlas } from '../../src/logic/font-atlas';
+import type { CatalogItem } from '../../src/logic/catalog';
+import { checkFit } from '../../src/logic/fit-check';
 import { polygonArea } from '../../src/logic/geometry';
+import type { House } from '../../src/logic/house';
 import { strings } from '../../src/ui/strings';
 import { loadJson } from '../helpers/load-json';
 
@@ -16,12 +19,33 @@ const rooms = (file: string): Room[] => loadJson<{ rooms: Room[] }>('public/hous
 type CatalogFile = { items: { name: string; size: [number, number, number] }[] };
 const catalogItems = (): CatalogFile['items'] => loadJson<CatalogFile>('public/catalog', 'catalog.json').items;
 
+/** Every FitCheck sentence the demo data can produce: each piece (catalog and own) toward each room of each house. */
+const fitMessages = (): string[] => {
+  const pieces = [
+    ...loadJson<{ items: CatalogItem[] }>('public/catalog', 'catalog.json').items,
+    ...loadJson<{ items: CatalogItem[] }>('public/demo', 'my-furniture.json').items,
+  ];
+  return ['apartment-a.json', 'apartment-b.json'].flatMap((file) => {
+    const house = loadJson<House>('public/houses', file);
+    return pieces.flatMap((item) =>
+      [...house.rooms.map((room) => room.id), 'garage'].map((room) => strings.fit.message(checkFit(house, item, room), item)),
+    );
+  });
+};
+
 const SAMPLE_CALLS: Record<string, () => string[]> = {
   page: () => [strings.menu.page(1, 3), strings.menu.page(3, 3)],
   itemSize: () => catalogItems().map((item) => strings.menu.itemSize(item.size[0], item.size[1])),
   itemSizeCompact: () => catalogItems().map((item) => strings.menu.itemSizeCompact(item.size[0], item.size[1])),
   overlapsFurniture: () => catalogItems().map((item) => strings.reason.overlapsFurniture(item.name)),
   reasonText: () => catalogItems().map((item) => strings.reasonText('overlaps-furniture', item.name)),
+  message: fitMessages,
+  wontFitNarrow: () => [strings.fit.wontFitNarrow(80, 'three-seat sofa', 85)],
+  wontFitMobility: () => [strings.fit.wontFitMobility(75, 'wheelchair', 80)],
+  wontFitLow: () => [strings.fit.wontFitLow(210, 'glass panel', 230)],
+  disassembledNarrow: () => [strings.fit.disassembledNarrow(90, 'bed', 95)],
+  disassembledLow: () => [strings.fit.disassembledLow(210, 'bed', 230)],
+  fits: () => [strings.fit.fits(75), strings.fit.fits(90)],
   roomLabel: () =>
     ['apartment-a.json', 'apartment-b.json'].flatMap((file) =>
       rooms(file).map((room) => strings.roomLabel(room.name, polygonArea(room.polygon))),

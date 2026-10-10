@@ -8,6 +8,7 @@ import {
   lowerName,
   pickReasonLabels,
   reasonKind,
+  shortName,
 } from '../../src/logic/furniture-label';
 import { strings } from '../../src/ui/strings';
 import { loadJson } from '../helpers/load-json';
@@ -222,5 +223,31 @@ describe('formatSizeCompact in detail (the measure line of a narrow card)', () =
   it('is exactly the string of strings.menu.itemSizeCompact', () => {
     expect(strings.menu.itemSizeCompact(0.35, 0.35)).toBe(formatSizeCompact(0.35, 0.35));
     expect(strings.menu.itemSizeCompact(1.6, 2, true)).toBe('1.6x2.0 m');
+  });
+});
+
+describe('shortName', () => {
+  it('lower cases and drops a leading "My "', () => {
+    expect(shortName('My sofa')).toBe('sofa');
+    expect(shortName('My desk')).toBe('desk');
+    expect(shortName('my bed')).toBe('bed');
+    expect(shortName('MY  Bed')).toBe('bed');
+  });
+
+  it('only drops "My" as a whole first word', () => {
+    expect(shortName('Mystery box')).toBe('mystery box');
+    expect(shortName('Dummy sofa')).toBe('dummy sofa');
+  });
+
+  it('keeps other names as they are, in lower case', () => {
+    expect(shortName('Wheelchair')).toBe('wheelchair');
+    expect(shortName('Three-seat sofa')).toBe('three-seat sofa');
+    expect(shortName('  Double bed ')).toBe('double bed');
+  });
+
+  it('never returns an empty name', () => {
+    expect(shortName('')).toBe('piece');
+    expect(shortName('My ')).toBe('my');
+    expect(shortName(undefined as unknown as string)).toBe('piece');
   });
 });

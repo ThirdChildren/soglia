@@ -1,5 +1,6 @@
 // Every user-visible string of the app lives here (plain, short English).
 
+import { fitMessage, type FitItem, type FitResult, type FitTexts } from '../logic/fit-check';
 import { formatSize, formatSizeCompact, lowerName, type ReasonKind } from '../logic/furniture-label';
 import { formatRoomLabel } from '../logic/room-label';
 
@@ -10,6 +11,20 @@ const reason = {
   overlapsFurniture: (name: string): string => `Overlaps the ${lowerName(name)}`,
   outside: 'Outside the house',
 } as const;
+
+/** The sentences of the FitCheck (D34). Lengths are whole centimetres, `name` is the short lower case name. */
+const fitTexts: FitTexts = {
+  wontFitNarrow: (doorCm, name, sideCm) =>
+    `Won't fit: the door is ${doorCm} cm wide, the ${name}'s shortest side is ${sideCm} cm`,
+  wontFitMobility: (doorCm, name, needCm) => `Won't fit: the door is ${doorCm} cm wide, the ${name} needs ${needCm} cm`,
+  wontFitLow: (doorCm, name, needCm) => `Won't fit: the door is ${doorCm} cm high, the ${name} needs ${needCm} cm`,
+  disassembledNarrow: (doorCm, name, sideCm) =>
+    `Fits when disassembled: the door is ${doorCm} cm wide, the ${name}'s shortest side is ${sideCm} cm`,
+  disassembledLow: (doorCm, name, needCm) =>
+    `Fits when disassembled: the door is ${doorCm} cm high, the ${name} needs ${needCm} cm`,
+  fits: (narrowestCm) => `Fits: the narrowest door on the way is ${narrowestCm} cm wide`,
+  noRoute: 'No route from the entrance to this room',
+};
 
 export const strings = {
   errors: {
@@ -48,6 +63,13 @@ export const strings = {
     palmMenu: 'Palm up for the menu',
   },
   reason,
+  /** FitCheck texts (T3.7): `message` is the first line of the label, `note` the fixed second line. */
+  fit: {
+    ...fitTexts,
+    /** Corridors are not checked: the house file has no corridor data. */
+    note: 'Simplified check',
+    message: (result: FitResult, item: Pick<FitItem, 'name' | 'kind'>): string => fitMessage(result, item, fitTexts),
+  },
   /** The text of a reason; `withName` is the catalog name of the piece it overlaps (for `overlaps-furniture`). */
   reasonText: (kind: ReasonKind, withName?: string): string => {
     switch (kind) {

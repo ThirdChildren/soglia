@@ -59,6 +59,15 @@ export function lowerName(name: string): string {
   return name.toLowerCase();
 }
 
+/**
+ * A piece name as the short noun of a sentence: lower case and without a leading "My " ("My sofa" -> "sofa",
+ * "Three-seat sofa" -> "three-seat sofa"). Falls back to "piece" when nothing is left.
+ */
+export function shortName(name: string): string {
+  const short = lowerName(String(name ?? '').trim().replace(/^my\s+/i, '').trim());
+  return short === '' ? 'piece' : short;
+}
+
 /** A not valid piece that may get a reason label. */
 export interface ReasonCandidate {
   readonly id: string;
