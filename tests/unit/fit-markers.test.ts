@@ -101,3 +101,191 @@ describe('doorPlacements and markerPoseInto', () => {
     expect(MARKER_PASS_HEIGHT).toBeLessThan(MARKER_BLOCK_HEIGHT);
   });
 });
+
+// --- Route lengths, the cap of 4 and the colours --------------------------------------------------------------------
+
+const doorIds = (n: number): string[] => Array.from({ length: n }, (_, i) => `door:d-${i + 1}`);
+const result = (route: string[], status: FitResult['status'], blockingDoor?: string): FitResult => ({
+  status,
+  code: status === 'fits' ? 'fits' : status === 'disassembled' ? 'fits-disassembled' : status === 'no-route' ? 'no-route' : 'door-too-narrow',
+  route,
+  blockingDoor,
+  reason: status === 'fits' ? undefined : status === 'no-route' ? 'no-route' : 'door-too-narrow',
+  details: { narrowestWidth: route.length > 0 ? 0.9 : null, corridorsVerified: false },
+});
+const openings = (specs: ReturnType<typeof fitMarkerSpecs>): string[] => specs.map((s) => s.openingId);
+
+describe('fitMarkerSpecs: route of 1 to 8 doors', () => {
+  for (const n of [1, 2, 3, 4, 5, 6, 8]) {
+    it(`fits over ${n} door(s): green on the last ${Math.min(n, 4)}, in route order, never red`, () => {
+      const route = doorIds(n);
+      const specs = fitMarkerSpecs(result(route, 'fits'));
+      expect(openings(specs)).toEqual(route.slice(Math.max(0, n - 4)).map(openingIdOf));
+      expect(specs.every((s) => s.status === 'pass')).toBe(true);
+      expect(specs.map((s) => s.doorId)).toEqual(route.slice(Math.max(0, n - 4)));
+    });
+
+    for (let k = 0; k < n; k += 1) {
+      it(`blocked at door ${k + 1} of ${n}: red on it, the doors before it green (up to 3), nothing after it`, () => {
+        const route = doorIds(n);
+        const specs = fitMarkerSpecs(result(route, 'blocked', route[k]));
+        const start = Math.max(0, k + 1 - 4);
+        expect(openings(specs)).toEqual(route.slice(start, k + 1).map(openingIdOf));
+        expect(specs.length).toBe(Math.min(k + 1, 4));
+        expect(specs[specs.length - 1].status).toBe('block');
+        expect(specs.slice(0, -1).every((s) => s.status === 'pass')).toBe(true);
+        expect(specs.filter((s) => s.status === 'block').length).toBe(1);
+      });
+    }
+  }
+
+  it('disassembled is red on the blocking door like blocked', () => {
+    const route = doorIds(3);
+    const specs = fitMarkerSpecs(result(route, 'disassembled', route[0]));
+    expect(specs.map((s) => `${s.openingId}:${s.status}`)).toEqual(['d-1:block']);
+  });
+
+  it('no-route has no marker even when the result carries a route or a blocking door', () => {
+    const route = doorIds(2);
+    expect(fitMarkerSpecs(result(route, 'no-route', route[1]))).toEqual([]);
+    expect(fitMarkerSpecs(result([], 'no-route'))).toEqual([]);
+  });
+
+  it('an empty route has no marker, whatever the status', () => {
+    expect(fitMarkerSpecs(result([], 'fits'))).toEqual([]);
+    expect(fitMarkerSpecs(result([], 'blocked'))).toEqual([]);
+  });
+
+  it('a blocking door that is not on the route gives no red marker: the markers are all green (documented behaviour)', () => {
+    const route = doorIds(2);
+    const specs = fitMarkerSpecs(result(route, 'blocked', 'door:elsewhere'));
+    expect(specs.map((s) => `${s.openingId}:${s.status}`)).toEqual(['d-1:pass', 'd-2:pass']);
+  });
+
+  it('with 5 or more doors the doors NEAREST THE ROOM are kept (the entrance is dropped first)', () => {
+    const route = doorIds(6);
+    expect(openings(fitMarkerSpecs(result(route, 'fits')))).toEqual(['d-3', 'd-4', 'd-5', 'd-6']);
+  });
+
+  it('the cap is a parameter: 1 keeps only the blocking door, 0, negative and NaN give none, a fraction rounds down', () => {
+    const route = doorIds(4);
+    const blocked = result(route, 'blocked', route[2]);
+    expect(openings(fitMarkerSpecs(blocked, 1))).toEqual(['d-3']);
+    expect(openings(fitMarkerSpecs(blocked, 2.9))).toEqual(['d-2', 'd-3']);
+    expect(fitMarkerSpecs(blocked, 0)).toEqual([]);
+    expect(fitMarkerSpecs(blocked, -3)).toEqual([]);
+    expect(fitMarkerSpecs(blocked, Number.NaN)).toEqual([]);
+    expect(openings(fitMarkerSpecs(blocked, Infinity))).toEqual(['d-1', 'd-2', 'd-3']);
+    expect(FIT_MARKER_MAX).toBe(4);
+  });
+
+  it('does not change its input and returns a new array every call', () => {
+    const route = Object.freeze(doorIds(5)) as string[];
+    const input = Object.freeze({ ...result(route, 'blocked', route[4]), details: Object.freeze({ narrowestWidth: 0.7, corridorsVerified: false as const }) }) as FitResult;
+    const a = fitMarkerSpecs(input);
+    const b = fitMarkerSpecs(input);
+    expect(a).toEqual(b);
+    expect(a).not.toBe(b);
+    expect(route).toEqual(doorIds(5));
+  });
+});
+
+describe('ids of the markers', () => {
+  it('openingIdOf strips only a leading "door:" and leaves other ids alone', () => {
+    expect(openingIdOf('door:d-entrance')).toBe('d-entrance');
+    expect(openingIdOf('d-entrance')).toBe('d-entrance');
+    expect(openingIdOf('door:door:x')).toBe('door:x');
+    expect(openingIdOf('xdoor:d')).toBe('xdoor:d');
+  });
+
+  it('every door of both houses has a unique, valid marker id that is "ui:fit-marker-" plus the door id without "door:"', () => {
+    for (const house of [houseA, houseB]) {
+      const seen = new Set<string>();
+      for (const id of doorPlacements(house).keys()) {
+        const marker = fitMarkerId(id);
+        expect(marker).toBe(`ui:fit-marker-${id}`);
+        expect(isValidStableId(marker)).toBe(true);
+        expect(seen.has(marker)).toBe(false);
+        seen.add(marker);
+      }
+      expect(seen.size).toBeGreaterThan(0);
+    }
+  });
+
+  it('the id of a marker of a spec matches the door stable id', () => {
+    const [spec] = fitMarkerSpecs(fit(houseA, 'my-bed', 'bedroom'));
+    expect(fitMarkerId(spec.openingId)).toBe(`ui:fit-marker-${spec.doorId.slice('door:'.length)}`);
+  });
+
+  it('fitMarkerId rejects an id that is not a valid segment', () => {
+    expect(() => fitMarkerId('d living')).toThrow();
+    expect(() => fitMarkerId('d:living')).toThrow();
+  });
+});
+
+describe('markers on the real houses: every catalog piece in every room', () => {
+  for (const [name, house] of [['apartment-a', houseA], ['apartment-b', houseB]] as const) {
+    it(`${name}: at most 4 markers, red only on the blocking door and only last, doors of the house, finite poses`, () => {
+      const graph = buildDoorGraph(house);
+      const placements = doorPlacements(house);
+      const all = [...catalog, ...mine];
+      const roomIds = [...house.rooms.map((r) => r.id), 'ghost'];
+      const out: MarkerPose = { x: 0, y: 0, z: 0, yawRad: 0, sx: 1, sy: 1, sz: 1 };
+      const seenStatus = new Set<string>();
+      let checked = 0;
+      for (const item of all) {
+        for (const roomId of roomIds) {
+          const r = checkFitWithGraph(graph, item, roomId);
+          seenStatus.add(r.status);
+          const specs = fitMarkerSpecs(r);
+          const context = `${item.id} -> ${roomId} (${r.status})`;
+          expect(specs.length, context).toBeLessThanOrEqual(FIT_MARKER_MAX);
+          const reds = specs.filter((s) => s.status === 'block');
+          const blocks = r.status === 'blocked' || r.status === 'disassembled';
+          expect(reds.length, context).toBe(blocks && r.blockingDoor !== undefined ? 1 : 0);
+          if (reds.length === 1) {
+            expect(specs[specs.length - 1].status, context).toBe('block');
+            expect(reds[0].doorId, context).toBe(r.blockingDoor);
+          }
+          if (r.status === 'no-route' || r.route.length === 0) expect(specs, context).toEqual([]);
+          if (r.status === 'fits' && r.route.length > 0) expect(specs.length, context).toBe(Math.min(4, r.route.length));
+          expect(new Set(specs.map((s) => s.openingId)).size, context).toBe(specs.length);
+          for (const spec of specs) {
+            expect(placements.has(spec.openingId), context).toBe(true);
+            expect(isValidStableId(fitMarkerId(spec.openingId)), context).toBe(true);
+            expect(r.route, context).toContain(spec.doorId);
+            markerPoseInto(placements.get(spec.openingId)!, spec.status, out);
+            for (const v of Object.values(out)) expect(Number.isFinite(v), context).toBe(true);
+          }
+          checked += 1;
+        }
+      }
+      expect(checked).toBeGreaterThan(50);
+      // the corpus really has the outcomes the test talks about
+      for (const status of ['fits', 'blocked', 'disassembled', 'no-route']) expect(seenStatus.has(status), status).toBe(true);
+    });
+  }
+
+  it('the colour of the real outcomes: sofa in A is red on d-living, green on the entrance; in B no red at all in the living room', () => {
+    const a = fitMarkerSpecs(fit(houseA, 'my-sofa', 'living'));
+    expect(a.map((s) => s.status)).toEqual(['pass', 'block']);
+    expect(fitMarkerSpecs(fit(houseB, 'my-sofa', 'living')).some((s) => s.status === 'block')).toBe(false);
+  });
+});
+
+describe('markerPoseInto', () => {
+  it('writes into and returns the object it was given, for both statuses, with a red post taller than a green mat', () => {
+    const door = doorPlacements(houseA).get('d-entrance')!;
+    const out: MarkerPose = { x: 0, y: 0, z: 0, yawRad: 0, sx: 1, sy: 1, sz: 1 };
+    expect(markerPoseInto(door, 'pass', out)).toBe(out);
+    const green = { ...out };
+    markerPoseInto(door, 'block', out);
+    expect(out.sy).toBeGreaterThan(green.sy);
+    expect(out.y).toBeGreaterThan(green.y);
+    expect(out.x).toBe(green.x);
+    expect(out.z).toBe(green.z);
+    expect(out.sx).toBe(green.sx);
+    expect(out.sz).toBe(green.sz);
+    expect(out.y - out.sy / 2).toBeCloseTo(green.y - green.sy / 2, 12); // both rest on the same height
+  });
+});
