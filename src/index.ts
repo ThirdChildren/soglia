@@ -8,11 +8,12 @@ import { attachStateLog } from './debug/state-log';
 import { showGlyphTest } from './debug/glyph-test';
 import { attachStats } from './debug/stats';
 import { loadCatalog } from './data/load-catalog';
+import { loadMyFurniture } from './data/load-my-furniture';
 import { loadHouse } from './data/load-house';
 import { createSafeStorage } from './data/storage';
 import { slog, swarn } from './log';
 import { formatParamsLine, hasInvalidHouse, mergeParams, parseParams } from './logic/params';
-import { furnitureItems } from './logic/catalog';
+import { mergeCatalog, menuSections } from './logic/catalog';
 import { planRadius } from './logic/house-layout';
 import { createInitialState, createStore, setMiniature, setMiniatureOffset } from './logic/state';
 import { applyFurnish, createFurniture } from './systems/furniture';
@@ -23,7 +24,7 @@ import { createFurnitureGrab } from './systems/furniture-grab';
 import { installHandJoints } from './systems/hand-joints';
 import { createFurnitureReasons } from './systems/furniture-reasons';
 import { createMenuButton } from './systems/menu-button';
-import { createMenuItems } from './systems/menu-items';
+import { createMenuItems, setMenuTabData } from './systems/menu-items';
 import { attachLifecycle } from './systems/lifecycle';
 import { attachPersistence, clearSavedState, restoreSavedState, type Persistence } from './systems/persistence';
 import { createMiniature, syncMiniature } from './systems/miniature';
@@ -67,13 +68,21 @@ async function start(): Promise<void> {
   if (params.debug) attachStats(world);
   if (params.glyphs) showGlyphTest(world);
 
-  const [result, catalogResult] = await Promise.all([loadHouse(params.house), loadCatalog()]);
+  const [result, catalogResult, myResult] = await Promise.all([
+    loadHouse(params.house),
+    loadCatalog(),
+    loadMyFurniture(),
+  ]);
+  // The catalog the whole app works with: the catalog items plus the user's own pieces (T3.8, D34). A failed load of
+  // the own pieces only hides their tab; an own id that the catalog already uses is left out (the catalog wins).
+  const merged = catalogResult.ok ? mergeCatalog(catalogResult.items, myResult.ok ? myResult.items : []) : null;
+  if (merged) for (const id of merged.duplicates) swarn(`my furniture item discarded id=${id} reason=duplicate-id`);
   if (result.ok) {
     // Put the saved furniture and preferences back before the systems start, so the first-use hints and the
     // furniture see the restored state. `furnish=` runs later and wins over the saved pieces (D29).
     let persistence: Persistence = { flush: () => undefined, stop: () => undefined };
-    if (catalogResult.ok) {
-      restoreSavedState(store, storage, result.house, catalogResult.items, params.furnish !== 'none');
+    if (merged) {
+      restoreSavedState(store, storage, result.house, merged.items, params.furnish !== 'none');
       persistence = attachPersistence(store, storage);
     }
     const miniature = createMiniature(world, (scale, yawDeg) => {
@@ -90,7 +99,7 @@ async function start(): Promise<void> {
     createRoomLabel(world, store, result.house);
     createOnboarding(world, store);
     createMenuHint(world, store);
-    createPalmMenu(world, store, catalogResult.ok ? strings.menu.title : strings.menu.catalogUnavailable);
+    createPalmMenu(world, store, merged ? strings.menu.title : strings.menu.catalogUnavailable);
     // Recenter changes the scale and the offset in the store: keep the model in step with them. Only a change of
     // the `miniature` part counts (the reducer keeps its identity otherwise), so a drag in progress is not disturbed.
     let appliedMiniature = store.get().miniature;
@@ -100,17 +109,22 @@ async function start(): Promise<void> {
       syncMiniature(miniature.root, state.miniature.scale, state.miniature.offset);
     });
     // Without a catalog the house is still usable: no furniture (the menu will say so, T2.12).
-    if (catalogResult.ok) createMenuItems(world, store, furnitureItems(catalogResult.items));
+    if (merged && catalogResult.ok) {
+      const sections = menuSections(catalogResult.items, merged.mine);
+      createMenuItems(world, store, sections.items);
+      // The tabs `mine` and `fit` appear only when their data arrived; `measure` comes with the tape measure (T3.14).
+      setMenuTabData({ mine: sections.mine, fit: sections.fit });
+    }
     // The Menu buttons (T3.3b) come after the menu items (a control of an open menu wins a pinch) and before the grab and the drag.
     createMenuButton(world);
-    if (catalogResult.ok) {
-      const visuals = new FurnitureVisuals(furnitureItems(catalogResult.items));
+    if (merged) {
+      const visuals = new FurnitureVisuals(merged.items);
       await visuals.preload(params.failmodels);
-      createFurniture(world, store, result.house, catalogResult.items, visuals, built.entity);
-      createFurnitureReasons(world, catalogResult.items);
-      createFurnitureGrab(world, store, result.house, catalogResult.items, visuals, built.entity, miniature.root);
+      createFurniture(world, store, result.house, merged.items, visuals, built.entity);
+      createFurnitureReasons(world, merged.items);
+      createFurnitureGrab(world, store, result.house, merged.items, visuals, built.entity, miniature.root);
       if (params.furnish !== 'none') {
-        applyFurnish(store, result.house, catalogResult.items, params.furnish);
+        applyFurnish(store, result.house, merged.items, params.furnish);
       }
     }
     // After the menu and the grab: their pinch listeners run first, so a pinch on a menu item or a piece is never a pan.

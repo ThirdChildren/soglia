@@ -32,6 +32,7 @@ import {
   MENU_EXTENT,
   MENU_TABS,
   PANEL_CENTER,
+  tabRowVisible,
   type ButtonId,
   type MenuTabId,
 } from '../logic/menu';
@@ -358,7 +359,7 @@ export class PalmMenuPanel {
 
   /** Shows the tab row (two tabs or more) or the title, hides the tabs without data and darkens the active one. */
   private writeTabs(): void {
-    const showRow = this.visibleTabs.length >= 2;
+    const showRow = tabRowVisible(this.visibleTabs);
     this.titleBox?.setProperties({ display: showRow ? 'none' : 'flex' });
     this.tabRow?.setProperties({ display: showRow ? 'flex' : 'none' });
     for (const [id, elements] of this.tabElements) {

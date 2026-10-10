@@ -156,3 +156,94 @@ export function footprint(item: Pick<CatalogItem, 'size'>, rotationDeg: number):
 export function findItem(items: readonly CatalogItem[], id: string): CatalogItem | undefined {
   return items.find((item) => item.id === id);
 }
+
+// --- The user's own furniture (T3.8, D34) and the sections of the menu ------------------------------------------
+
+/** The result of reading `my-furniture.json`: the valid pieces, plus one line per piece that was left out. */
+export type OwnFurnitureCheck =
+  | { ok: true; items: CatalogItem[]; discarded: string[] }
+  | { ok: false; errors: string[] };
+
+/**
+ * Reads the user's own furniture (`my-furniture.json`, same format as the catalog). Unlike `checkCatalog`, which
+ * rejects the whole file, every entry is checked on its own and an invalid one is LEFT OUT with a line in `discarded`:
+ * the FitCheck needs a valid `size` (three finite numbers > 0) and must never see anything else. A repeated id inside
+ * the file leaves the later entry out. The entries come back as fresh copies without `model` and `credit` (own pieces
+ * never have a model: they are drawn as a block, R-C) and with `owner: 'me'`.
+ * Only a file that is not an object with an `items` array is rejected as a whole.
+ */
+export function checkOwnFurniture(data: unknown): OwnFurnitureCheck {
+  if (!isRecord(data)) return { ok: false, errors: [`(root): must be an object (got ${describe(data)})`] };
+  if (!Array.isArray(data.items)) {
+    return { ok: false, errors: [`items: must be an array (got ${describe(data.items)})`] };
+  }
+  const items: CatalogItem[] = [];
+  const discarded: string[] = [];
+  const seen = new Set<string>();
+  data.items.forEach((raw, i) => {
+    const check = checkCatalog({ items: [raw] });
+    if (!check.ok) {
+      const where = isRecord(raw) && typeof raw.id === 'string' ? ` "${raw.id}"` : '';
+      for (const error of check.errors) discarded.push(`items[${i}]${where} ${error.replace(/^items\[0\]\.?/, '').replace(/^: /, '')}`);
+      return;
+    }
+    const entry = check.items[0];
+    if (seen.has(entry.id)) {
+      discarded.push(`items[${i}] "${entry.id}": duplicate item id`);
+      return;
+    }
+    seen.add(entry.id);
+    items.push({
+      id: entry.id,
+      name: entry.name,
+      kind: entry.kind,
+      size: [entry.size[0], entry.size[1], entry.size[2]],
+      disassemblable: entry.disassemblable,
+      owner: 'me',
+    });
+  });
+  return { ok: true, items, discarded };
+}
+
+/**
+ * The catalog the whole app works with: the catalog items, then the user's own. An own item whose id the catalog
+ * already uses is left out (the catalog wins) and its id is reported in `duplicates`.
+ */
+export function mergeCatalog(
+  catalog: readonly CatalogItem[],
+  mine: readonly CatalogItem[],
+): { items: CatalogItem[]; mine: CatalogItem[]; duplicates: string[] } {
+  const taken = new Set(catalog.map((item) => item.id));
+  const kept: CatalogItem[] = [];
+  const duplicates: string[] = [];
+  for (const item of mine) {
+    if (taken.has(item.id)) duplicates.push(item.id);
+    else {
+      taken.add(item.id);
+      kept.push(item);
+    }
+  }
+  return { items: [...catalog, ...kept], mine: kept, duplicates };
+}
+
+/** What each pickable section of the menu lists. */
+export interface MenuSections {
+  /** The `furniture` items of the catalog (tab `items`). */
+  items: CatalogItem[];
+  /** The user's own pieces (tab `mine`). */
+  mine: CatalogItem[];
+  /** The `mobility` items of the catalog (tab `fit`). */
+  fit: CatalogItem[];
+}
+
+/**
+ * Splits what was loaded into the sections of the menu: `items` are the `furniture` items of the catalog, `fit` its
+ * `mobility` items, `mine` the user's own pieces (all of them, whatever their kind). File order is kept everywhere.
+ */
+export function menuSections(catalog: readonly CatalogItem[], mine: readonly CatalogItem[]): MenuSections {
+  return {
+    items: furnitureItems(catalog),
+    mine: [...mine],
+    fit: catalog.filter((item) => item.kind === 'mobility'),
+  };
+}

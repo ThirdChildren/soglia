@@ -1,11 +1,15 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { loadCatalog } from '../../src/data/load-catalog';
+import { loadMyFurniture } from '../../src/data/load-my-furniture';
 import {
   checkCatalog,
+  checkOwnFurniture,
   findItem,
   footprint,
   furnitureItems,
   isFlat,
+  menuSections,
+  mergeCatalog,
   normalizeRotation,
   type CatalogItem,
 } from '../../src/logic/catalog';
@@ -248,5 +252,184 @@ describe('loadCatalog', () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     vi.stubGlobal('fetch', undefined);
     expect((await loadCatalog()).ok).toBe(false);
+  });
+});
+
+describe('checkOwnFurniture (T3.8)', () => {
+  const own = (data: unknown) => {
+    const result = checkOwnFurniture(data);
+    if (!result.ok) throw new Error(result.errors.join('\n'));
+    return result;
+  };
+
+  it('accepts the real my-furniture.json: 3 pieces, none discarded, normalised', () => {
+    const result = own(myFurniture());
+    expect(result.items.map((i) => i.id)).toEqual(['my-sofa', 'my-desk', 'my-bed']);
+    expect(result.discarded).toEqual([]);
+    expect(result.items.every((i) => i.owner === 'me' && i.model === undefined && i.credit === undefined)).toBe(true);
+    expect(findItem(result.items, 'my-sofa')?.size).toEqual([2.3, 0.95, 0.85]);
+    expect(findItem(result.items, 'my-bed')?.disassemblable).toBe(true);
+  });
+
+  it('leaves out entries without a valid size, keeps the rest', () => {
+    const data = myFurniture();
+    delete data.items[0].size; // my-sofa: no size at all
+    data.items[1].size = [1.4, 0.7]; // my-desk: two numbers
+    const result = own(data);
+    expect(result.items.map((i) => i.id)).toEqual(['my-bed']);
+    expect(result.discarded).toHaveLength(2);
+    expect(result.discarded[0]).toMatch(/^items\[0\] "my-sofa" size: required field is missing/);
+    expect(result.discarded[1]).toMatch(/^items\[1\] "my-desk" size: must have exactly 3 numbers \(got 2\)/);
+  });
+
+  it.each([
+    ['zero', [1, 0, 1]],
+    ['negative', [1, -1, 1]],
+    ['NaN as null (JSON)', [1, null, 1]],
+    ['string', [1, '2', 1]],
+  ])('leaves out a size with a %s value', (_label, size) => {
+    const data = myFurniture();
+    data.items[0].size = size;
+    const result = own(data);
+    expect(result.items.map((i) => i.id)).toEqual(['my-desk', 'my-bed']);
+    expect(result.discarded).toHaveLength(1);
+  });
+
+  it('leaves out entries that are not objects, have a bad id, kind or flag, or no owner', () => {
+    const data = myFurniture();
+    data.items.push(42, null, { ...data.items[0], id: 'Bad Id' }, { ...data.items[0], id: 'x1', kind: 'chair' });
+    data.items.push({ ...data.items[0], id: 'x2', disassemblable: 'yes' }, { id: 'x3', name: 'No owner', kind: 'furniture', size: [1, 1, 1], disassemblable: false });
+    const result = own(data);
+    expect(result.items.map((i) => i.id)).toEqual(['my-sofa', 'my-desk', 'my-bed']);
+    expect(result.discarded).toHaveLength(6);
+  });
+
+  it('leaves out a repeated id inside the file (the first one stays)', () => {
+    const data = myFurniture();
+    data.items.push({ ...data.items[0], name: 'Other sofa' });
+    const result = own(data);
+    expect(result.items.map((i) => i.name)).toEqual(['My sofa', 'My desk', 'My bed']);
+    expect(result.discarded).toEqual(['items[3] "my-sofa": duplicate item id']);
+  });
+
+  it('drops a model and a credit: own pieces are always blocks', () => {
+    const data = myFurniture();
+    data.items[0].model = 'sofa.glb';
+    data.items[0].credit = 'someone';
+    const result = own(data);
+    expect(result.items[0].model).toBeUndefined();
+    expect(result.items[0].credit).toBeUndefined();
+  });
+
+  it('rejects only a file that is not an object with an items array', () => {
+    for (const bad of [null, 5, 'x', [], {}, { items: 'no' }, { items: null }]) {
+      expect(checkOwnFurniture(bad).ok).toBe(false);
+    }
+    expect(own({ items: [] }).items).toEqual([]);
+  });
+
+  it('never leaves a piece the FitCheck would choke on: every kept size is three finite numbers > 0', () => {
+    const data = myFurniture();
+    data.items.push({ ...data.items[0], id: 'a1', size: [Infinity, 1, 1] }, { ...data.items[0], id: 'a2', size: [1, 1, Number.NaN] });
+    for (const item of own(data).items) {
+      expect(item.size).toHaveLength(3);
+      expect(item.size.every((v) => Number.isFinite(v) && v > 0)).toBe(true);
+    }
+  });
+});
+
+describe('mergeCatalog and menuSections (T3.8)', () => {
+  const mine = (): CatalogItem[] => {
+    const result = checkOwnFurniture(myFurniture());
+    if (!result.ok) throw new Error('my-furniture.json rejected');
+    return result.items;
+  };
+
+  it('has unique ids across the catalog and the real own pieces', () => {
+    const merged = mergeCatalog(items(), mine());
+    expect(merged.duplicates).toEqual([]);
+    expect(merged.items).toHaveLength(19);
+    expect(new Set(merged.items.map((i) => i.id)).size).toBe(19);
+    expect(merged.mine.map((i) => i.id)).toEqual(['my-sofa', 'my-desk', 'my-bed']);
+  });
+
+  it('finds the own pieces with findItem in the merged catalog', () => {
+    const merged = mergeCatalog(items(), mine()).items;
+    expect(findItem(merged, 'my-sofa')?.name).toBe('My sofa');
+    expect(findItem(merged, 'wheelchair')?.kind).toBe('mobility');
+    expect(findItem(items(), 'my-sofa')).toBeUndefined();
+  });
+
+  it('drops an own piece whose id the catalog already uses, and reports it', () => {
+    const clash: CatalogItem = { ...mine()[0], id: 'sofa-3seat' };
+    const merged = mergeCatalog(items(), [clash, ...mine()]);
+    expect(merged.duplicates).toEqual(['sofa-3seat']);
+    expect(merged.items).toHaveLength(19);
+    expect(findItem(merged.items, 'sofa-3seat')?.owner).toBeUndefined();
+    expect(merged.mine).toHaveLength(3);
+  });
+
+  it('keeps the catalog alone when there are no own pieces', () => {
+    const merged = mergeCatalog(items(), []);
+    expect(merged.items).toHaveLength(16);
+    expect(merged.mine).toEqual([]);
+  });
+
+  it('splits the menu: items 14, mine 3, fit 2 (the mobility items of the catalog)', () => {
+    const sections = menuSections(items(), mine());
+    expect(sections.items).toHaveLength(14);
+    expect(sections.items.every((i) => i.kind === 'furniture' && i.owner === undefined)).toBe(true);
+    expect(sections.mine.map((i) => i.id)).toEqual(['my-sofa', 'my-desk', 'my-bed']);
+    expect(sections.fit.map((i) => i.id)).toEqual(['wheelchair', 'stroller']);
+  });
+
+  it('shows no mine section without own pieces', () => {
+    expect(menuSections(items(), []).mine).toEqual([]);
+  });
+});
+
+describe('loadMyFurniture (T3.8)', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+  const stubFetch = (body: string, ok = true, status = ok ? 200 : 404): void => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok, status, text: async () => body })));
+  };
+
+  it('returns the items and logs the count', async () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    stubFetch(JSON.stringify(myFurniture()));
+    const result = await loadMyFurniture();
+    expect(result.ok && result.items.map((i) => i.id)).toEqual(['my-sofa', 'my-desk', 'my-bed']);
+    expect(log).toHaveBeenCalledWith('[soglia] my furniture loaded items=3');
+  });
+
+  it('warns once per discarded entry and keeps the valid ones', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const data = myFurniture();
+    delete data.items[0].size;
+    stubFetch(JSON.stringify(data));
+    const result = await loadMyFurniture();
+    expect(result.ok && result.items.map((i) => i.id)).toEqual(['my-desk', 'my-bed']);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(String(warn.mock.calls[0][0])).toMatch(/^\[soglia\] my furniture item discarded items\[0\] "my-sofa" size:/);
+  });
+
+  it.each([
+    ['an HTTP 404', () => stubFetch('', false, 404), 'http-404'],
+    ['broken JSON', () => stubFetch('{not json'), 'invalid-json'],
+    ['a wrong root', () => stubFetch('[]'), 'invalid-file'],
+    ['no valid entry', () => stubFetch(JSON.stringify({ items: [{ id: 'a' }] })), 'no-valid-items'],
+    ['a throwing fetch', () => vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('offline'); })), 'network'],
+    ['no fetch', () => vi.stubGlobal('fetch', undefined), 'no-fetch'],
+  ])('fails without throwing on %s', async (_label, arrange, reason) => {
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    arrange();
+    const result = await loadMyFurniture();
+    expect(result.ok).toBe(false);
+    expect(warn.mock.calls.some((c) => String(c[0]).startsWith(`[soglia] my furniture unavailable reason=${reason}`))).toBe(true);
   });
 });

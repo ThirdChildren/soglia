@@ -113,6 +113,20 @@ describe('pickRestorable', () => {
     });
   });
 
+  it('restores a piece of the user\'s own furniture when the merged catalog knows it, drops it when it does not (T3.8)', () => {
+    const state = run(
+      initial(),
+      placeFurniture('my-sofa', 3, 3, 90, 'living'),
+      placeFurniture('armchair', 1.5, 3, 0, 'living'),
+    );
+    const withMine = pickRestorable(serialize(state), ctx({ catalogIds: new Set(['armchair', 'my-sofa', 'wheelchair']) }));
+    expect(withMine?.furniture.map((p) => p.id)).toEqual(['furniture:my-sofa#1', 'furniture:armchair#1']);
+    expect(withMine?.dropped).toEqual([]);
+    const without = pickRestorable(serialize(state), ctx({ catalogIds: new Set(['armchair']) }));
+    expect(without?.furniture.map((p) => p.id)).toEqual(['furniture:armchair#1']);
+    expect(without?.dropped).toEqual([{ id: 'furniture:my-sofa#1', reason: 'unknown-catalog' }]);
+  });
+
   it('returns null for another house, broken JSON, a wrong version and non-text', () => {
     expect(pickRestorable(serialize(initial('apartment-b')), ctx())).toBeNull();
     expect(pickRestorable('{not json', ctx())).toBeNull();

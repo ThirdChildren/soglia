@@ -183,7 +183,9 @@ export class MenuItemsSystem extends createSystem({}) {
     } else if (ctx.version !== this.appliedVersion) {
       // A tab got (or lost) its data while the menu is open: draw the tabs again, on the same tab if it still exists.
       this.appliedVersion = ctx.version;
-      this.tab = validTab(this.tab, this.visibleTabs(ctx));
+      const tab = validTab(this.tab, this.visibleTabs(ctx));
+      if (tab !== this.tab) this.page = 0;
+      this.tab = tab;
       this.buildTabs(ctx, menu);
       this.buildItems(ctx, menu, false);
     }

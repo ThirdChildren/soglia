@@ -84,7 +84,8 @@ export class FurnitureVisuals {
       }
     });
     const models = this.modelReady.size;
-    const fallbacks = this.itemById.size - models;
+    // Only items that HAVE a model can fall back to a block; own pieces and mobility items are always blocks (T3.8).
+    const fallbacks = withModel.length - models;
     slog(`furniture models loaded=${models} fallback=${fallbacks}`);
     return { models, fallbacks };
   }
