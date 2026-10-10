@@ -333,3 +333,93 @@ describe('roomSelectionAllowed with viewpointActive: the 2^5 table', () => {
     }
   });
 });
+
+describe('roomSelectionAllowed with measureActive: the 2^6 table', () => {
+  const fromMask = (mask: number): RoomSelectionInputs => ({
+    gestureActive: (mask & 1) !== 0,
+    furnitureInteraction: (mask & 2) !== 0,
+    panActive: (mask & 4) !== 0,
+    menuHandPinching: (mask & 8) !== 0,
+    viewpointActive: (mask & 16) !== 0,
+    measureActive: (mask & 32) !== 0,
+  });
+  const MASKS = Array.from({ length: 64 }, (_, i) => i);
+
+  it('exactly one of the 64 combinations allows the selection: all six blocks off', () => {
+    expect(MASKS.filter((m) => roomSelectionAllowed(fromMask(m)))).toEqual([0]);
+  });
+
+  it.each(MASKS)('mask %i is allowed only when it is 0', (mask) => {
+    expect(roomSelectionAllowed(fromMask(mask))).toBe(mask === 0);
+  });
+
+  it('measureActive alone forbids it, and an absent or undefined one is the same as false', () => {
+    const free: RoomSelectionInputs = { gestureActive: false, furnitureInteraction: false, panActive: false, menuHandPinching: false };
+    expect(roomSelectionAllowed({ ...free, measureActive: true })).toBe(false);
+    expect(roomSelectionAllowed({ ...free, measureActive: false })).toBe(true);
+    expect(roomSelectionAllowed({ ...free, measureActive: undefined })).toBe(true);
+    expect(roomSelectionAllowed(free)).toBe(true);
+  });
+});
+
+describe('pinch claims: the tape measure (measure) in the flow of a pinch', () => {
+  it('a point pinch waiting for its settle time: a second hand cannot start the zoom until measure gives its hand up', () => {
+    const claims = createClaims();
+    expect(claims.claim('right', 'measure')).toBe(true);
+    expect(claims.claimBoth('two-hands')).toBe(false);
+    expect(claims.ownerOf('right')).toBe('measure');
+    expect(claims.ownerOf('left')).toBeNull();
+    claims.release('right', 'measure');
+    expect(claims.claimBoth('two-hands')).toBe(true);
+  });
+
+  it('measure keeps its hand against furniture, viewpoint, two-hands, pan and room, and loses it only to the menu', () => {
+    for (const hand of HANDS) {
+      for (const other of ['furniture', 'viewpoint', 'two-hands', 'pan', 'room'] as const) {
+        const claims = createClaims();
+        claims.claim(hand, 'measure');
+        expect(claims.claim(hand, other), other).toBe(false);
+        expect(claims.ownerOf(hand)).toBe('measure');
+      }
+      const claims = createClaims();
+      const told: string[] = [];
+      claims.onRevoked('measure', (h, reason, by) => told.push(`${h}:${reason}:${by}`));
+      claims.claim(hand, 'measure');
+      expect(claims.claim(hand, 'menu')).toBe(true);
+      expect(told).toEqual([`${hand}:taken:menu`]);
+      expect(claims.claim(hand, 'measure')).toBe(false);
+    }
+  });
+
+  it('measure takes the hand from a room, a pan, a two-hands, a viewpoint and a piece, telling each one', () => {
+    for (const hand of HANDS) {
+      for (const lower of ['furniture', 'viewpoint', 'two-hands', 'pan', 'room'] as const) {
+        const claims = createClaims();
+        const told: string[] = [];
+        claims.onRevoked(lower, (h, reason, by) => told.push(`${h}:${reason}:${by}`));
+        claims.claim(hand, lower);
+        expect(claims.claim(hand, 'measure'), lower).toBe(true);
+        expect(told).toEqual([`${hand}:taken:measure`]);
+      }
+    }
+  });
+
+  it('a measure in one hand is not blocked by a piece in the other, and does not block a piece there', () => {
+    const claims = createClaims();
+    claims.claim('left', 'furniture');
+    expect(claims.claim('right', 'measure')).toBe(true);
+    const other = createClaims();
+    other.claim('left', 'measure');
+    expect(other.claim('right', 'furniture')).toBe(true);
+  });
+
+  it('endSession tells a measure that held a hand, with reason session-end', () => {
+    const claims = createClaims();
+    const told: string[] = [];
+    claims.onRevoked('measure', (h, reason, by) => told.push(`${h}:${reason}:${by}`));
+    claims.claim('left', 'measure');
+    claims.endSession();
+    expect(told).toEqual(['left:session-end:null']);
+    expect(claims.anyClaimed('measure')).toBe(false);
+  });
+});

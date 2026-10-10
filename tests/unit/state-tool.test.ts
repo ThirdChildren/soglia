@@ -123,3 +123,58 @@ describe('the tool is never saved or restored', () => {
     expect(after.furniture).toHaveLength(1);
   });
 });
+
+describe('the tool never reaches the saved text, whatever the state', () => {
+  const states = (): AppState[] => [
+    initial(),
+    run(initial(), placeFurniture('chair', 3, 3, 0, 'living')),
+    run(initial(), placeFurniture('chair', 3, 3, 0, 'living'), setMiniature(0.07, 30)),
+  ];
+
+  it('serialize, serializeForSave and the picked restorable have no tool key, with the tool on or off', () => {
+    const ctx = { houseId: 'apartment-a', catalogIds: new Set(['chair']), roomIds: new Set(['living']) };
+    for (const s of states()) {
+      for (const tool of TOOLS) {
+        const withTool = reduce(s, setTool(tool));
+        expect(Object.keys(JSON.parse(serialize(withTool)) as object)).not.toContain('tool');
+        expect(Object.keys(JSON.parse(serializeForSave(withTool)) as object)).not.toContain('tool');
+        const picked = pickRestorable(serialize(withTool), ctx);
+        expect(picked).not.toBeNull();
+        expect(Object.keys(picked ?? {})).not.toContain('tool');
+        expect(serialize(withTool)).toBe(serialize(s));
+        expect(serializeForSave(withTool)).toBe(serializeForSave(s));
+      }
+    }
+  });
+
+  it('round trip with the tool on: serialize then deserialize gives the same state with the tool back to furnish', () => {
+    for (const s of states()) {
+      const on = reduce(s, setTool('measure'));
+      expect(deserialize(serialize(on))).toEqual({ ...on, tool: 'furnish' });
+      expect(deserialize(serialize(deserialize(serialize(on)) as AppState))).toEqual({ ...on, tool: 'furnish' });
+    }
+  });
+
+  it('a saved text with a tool field is read without it, and every invalid tool value does no harm', () => {
+    const base = JSON.parse(serialize(initial())) as Record<string, unknown>;
+    for (const tool of ['measure', 'ruler', '', null, 3, {}, ['measure']]) {
+      expect(deserialize(JSON.stringify({ ...base, tool }))?.tool).toBe('furnish');
+    }
+  });
+
+  it('restoreSaved never takes a tool from its payload', () => {
+    const s = reduce(initial(), setTool('measure'));
+    const payload = { furniture: [], nextInstance: {}, history: [], prefs: s.prefs, tool: 'furnish' };
+    expect(reduce(s, restoreSaved(payload)).tool).toBe('measure');
+    const f = initial();
+    expect(reduce(f, restoreSaved(Object.assign({}, payload, { tool: 'measure' }))).tool).toBe('furnish');
+  });
+
+  it('setTool keeps the other tool-like state: selected room, view and miniature stay', () => {
+    const s = run(initial(), setMiniature(0.09, 45));
+    const on = reduce(s, setTool('measure'));
+    expect(on.miniature).toBe(s.miniature);
+    expect(on.view).toBe(s.view);
+    expect(on.selectedRoomId).toBe(s.selectedRoomId);
+  });
+});

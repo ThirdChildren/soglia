@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   DRAW_GROUPS,
@@ -8,6 +9,7 @@ import {
   resetGroupCounts,
   totalGroupCalls,
 } from '../../src/logic/draw-groups';
+import { repoPath } from '../helpers/load-json';
 import { MINIATURE_ROOT_ID, TABLE_PLINTH_ID, stableId } from '../../src/logic/ids';
 
 // Names taken from a live traversal of the scene in the emulator (T3.4, `scene runtime-hierarchy`, house A with
@@ -679,5 +681,29 @@ describe('regression: object names read from the emulator', () => {
   it('the table has no duplicate names', () => {
     const names = emulatorNames.map(([name]) => name);
     expect(new Set(names).size).toBe(names.length);
+  });
+});
+
+describe('classifyGroup: the real names of the tape measure in the source', () => {
+  const visuals = readFileSync(repoPath('src', 'ui', 'measure-visuals.ts'), 'utf8');
+
+  it('the instanced mesh the visuals really create (MESH_NAME) is a marker', () => {
+    const match = /const MESH_NAME = '([^']+)'/.exec(visuals);
+    expect(match).not.toBeNull();
+    expect(classifyGroup(match?.[1])).toBe('markers');
+  });
+
+  it('the anchors (empty objects with no draw call) and the panels stay in ui, never in markers by accident', () => {
+    for (const name of ['ui:measure-point-1', 'ui:measure-point-2', 'ui:measure-tape', 'ui:measure-label', 'ui:measure-hint']) {
+      expect(classifyGroup(name), name).toBe('ui');
+    }
+  });
+
+  it('only the exact mesh name is a marker: look-alikes with another ending are checked on purpose', () => {
+    expect(classifyGroup('ui:measure-instances')).toBe('markers');
+    expect(classifyGroup('ui:measure-instance')).toBe('ui');
+    expect(classifyGroup('ui:measure')).toBe('ui');
+    expect(classifyGroup('measure-instances')).toBe('other');
+    expect(classifyGroup('furniture:measure-instances#1')).toBe('furniture');
   });
 });
