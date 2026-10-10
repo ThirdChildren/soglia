@@ -60,6 +60,19 @@ export const REASON_LABEL_MIN_DISTANCE = 0.5 + LABEL_DISTANCE_MARGIN;
  */
 export const VIEW_CONE_HALF_ANGLE_DEG = 30;
 
+// --- The pinned menu (task T3.3a, decision D32) ----------------------------------------------------
+
+/**
+ * The pinned menu (one-hand mode) is placed this far in FRONT of the head, along the horizontal direction of the
+ * gaze, in metres (rule 8: panels at 0.5-0.8 m). It is the bottom centre of the menu (its frame).
+ */
+export const PINNED_DISTANCE = 0.55;
+/**
+ * The bottom centre of the pinned menu is this far BELOW the eyes, in metres, so the 0.35 m tall menu sits between
+ * about -20 and +15 degrees vertically and below the far edge of the model.
+ */
+export const PINNED_DROP = 0.2;
+
 // --- The "Palm up for the menu" hint ---------------------------------------------------------
 
 /** The hint floats this far above the anchor of the model, in metres (about 0.5 m from the head). */

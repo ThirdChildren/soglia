@@ -7,8 +7,9 @@
 // `ui:menu-undo`, ...; src/ui/menu-anchor.ts) that the menu-items system places in the plane of the menu, which
 // follows `framePosition` and `frameOrientation`, the bottom centre of the menu.
 //
-// Modes (D18): only `palm` exists now (anchored above the hand). M5 adds `pinned`, which anchors
-// the same panel in space for one-hand use: the mode only changes where `update` gets the anchor.
+// Modes (D18, D32): `palm` is anchored above the hand and follows it; `pinned` (one-hand use, task T3.3a) is the same
+// panel placed ONCE when it opens, 0.55 m in front of the head and 0.20 m below the eyes (src/logic/menu-anchor.ts),
+// upright and facing the user, and then fixed in space. The mode only changes where `update` gets the anchor.
 
 import {
   PanelDocument,
@@ -31,6 +32,7 @@ import {
   PANEL_CENTER,
   type ButtonId,
 } from '../logic/menu';
+import { pinnedConeAngleDeg, pinnedMenuAnchor, yawOfForward } from '../logic/menu-anchor';
 import { MENU_MAX_DISTANCE, MENU_MIN_DISTANCE, VIEW_CONE_HALF_ANGLE_DEG } from '../logic/menu-thresholds';
 import { menuAnchor, type Vec3Like } from '../logic/palm';
 import { fitName } from '../logic/text-fit';
@@ -42,7 +44,7 @@ import { BUTTON_ICONS } from './menu-icons';
 import { disposePanelEntity } from './panel-lifecycle';
 import { strings } from './strings';
 
-export type PalmMenuMode = 'palm';
+export type PalmMenuMode = 'palm' | 'pinned';
 
 const PANEL_ASSET = 'palm-menu';
 const TITLE_ELEMENT = 'palm-menu-title';
@@ -96,6 +98,11 @@ export class PalmMenuPanel {
   private opacity = 1;
   private root: UIKit.Container | null = null;
   private frameReady = false;
+  private modeValue: PalmMenuMode = 'palm';
+  /** The pinned placement, computed in `openPinned` and then fixed: anchor (bottom centre) and yaw of the panel. */
+  private readonly pinnedAnchor: Vec3Like = { x: 0, y: 0, z: 0 };
+  private pinnedYaw = 0;
+  private pinnedPlaced = false;
   private readonly centerOffset = new Vector3();
   private slotElements: SlotElements[] = [];
   private items: readonly MenuItemContent[] = [];
@@ -107,8 +114,12 @@ export class PalmMenuPanel {
     private readonly world: World,
     /** The heading of the menu ("Furniture", or the message when the catalog could not be loaded). */
     private readonly title: string,
-    readonly mode: PalmMenuMode = 'palm',
   ) {}
+
+  /** How the open menu is anchored (`palm` while it is closed). */
+  get mode(): PalmMenuMode {
+    return this.modeValue;
+  }
 
   /** True while the panel entity exists. */
   get isOpen(): boolean {
@@ -120,9 +131,30 @@ export class PalmMenuPanel {
     return this.entity !== null && this.frameReady;
   }
 
-  /** Creates the panel (hidden until its text is in). */
+  /** Creates the panel above the hand (hidden until its text is in). Does nothing when it is already open. */
   open(): void {
     if (this.entity) return;
+    this.modeValue = 'palm';
+    this.create();
+  }
+
+  /**
+   * Creates the panel pinned in space (task T3.3a): the anchor is computed NOW from the head (position and yaw of
+   * its gaze, no pitch) and never changes while the menu is open. Does nothing when it is already open.
+   */
+  openPinned(head: Object3D): void {
+    if (this.entity) return;
+    this.modeValue = 'pinned';
+    head.getWorldPosition(this.headPosition);
+    head.getWorldQuaternion(this.headQuaternion);
+    this.headForward.set(0, 0, -1).applyQuaternion(this.headQuaternion);
+    this.pinnedYaw = yawOfForward(this.headForward.x, this.headForward.z);
+    pinnedMenuAnchor(this.headPosition, this.pinnedYaw, this.pinnedAnchor);
+    this.pinnedPlaced = false;
+    this.create();
+  }
+
+  private create(): void {
     const entity = this.world.createTransformEntity();
     tagEntity(entity, stableId.ui('palm-menu'));
     entity.addComponent(PanelUI, { config: PANEL_ASSET });
@@ -159,11 +191,13 @@ export class PalmMenuPanel {
     this.opacity = 1;
     this.textApplied = false;
     this.frameReady = false;
+    this.pinnedPlaced = false;
+    this.modeValue = 'palm';
     this.slotElements = [];
     this.items = [];
   }
 
-  /** Once per frame while open: fills the text when the document is ready, then follows the hand. */
+  /** Once per frame while open: fills the text when the document is ready, then follows the hand (`pinned`: stays put). */
   update(handPosition: Vector3, head: Object3D): void {
     const entity = this.entity;
     const object = entity?.object3D;
@@ -194,11 +228,27 @@ export class PalmMenuPanel {
     if (!this.textApplied) return;
 
     head.getWorldPosition(this.headPosition);
+    head.getWorldQuaternion(this.headQuaternion);
+    this.headForward.set(0, 0, -1).applyQuaternion(this.headQuaternion);
+    if (this.modeValue === 'pinned') this.placePinned(object);
+    else this.followHand(object, handPosition);
+    if (!this.fitLogged) {
+      this.fitLogged = true;
+      const angle =
+        this.modeValue === 'pinned'
+          ? pinnedConeAngleDeg(this.pinnedAnchor, this.pinnedYaw, this.headPosition, this.headForward, MENU_EXTENT)
+          : panelConeAngleDeg(this.anchor, this.headPosition, this.headForward, MENU_EXTENT);
+      slog(
+        `menu view maxAngleDeg=${angle.toFixed(1)} distance=${this.headPosition.distanceTo(this.framePosition).toFixed(2)}`,
+      );
+    }
+  }
+
+  /** `palm`: above the hand, pulled toward the middle of the view only as far as needed (whole menu in the cone). */
+  private followHand(object: Object3D, handPosition: Vector3): void {
     // Above the hand, then pulled toward the middle of the view only as far as needed so that the WHOLE menu
     // (title, items and bar) stays inside the central cone of the head (rule 8, M2 gate W3).
     menuAnchor(handPosition, this.headPosition, this.handAnchor);
-    head.getWorldQuaternion(this.headQuaternion);
-    this.headForward.set(0, 0, -1).applyQuaternion(this.headQuaternion);
     fitPanelToCone(this.handAnchor, this.headPosition, this.headForward, MENU_EXTENT, CONE_FIT, this.anchor);
     object.position.set(this.anchor.x, this.anchor.y, this.anchor.z);
     object.updateMatrixWorld(true);
@@ -211,14 +261,24 @@ export class PalmMenuPanel {
     object.position.add(this.centerOffset);
     object.visible = true;
     this.frameReady = true;
-    if (!this.fitLogged) {
-      this.fitLogged = true;
-      const angle = panelConeAngleDeg(this.anchor, this.headPosition, this.headForward, MENU_EXTENT);
-      slog(
-        `menu view maxAngleDeg=${angle.toFixed(1)} distance=${this.headPosition.distanceTo(this.framePosition).toFixed(2)}`,
-      );
-    }
   }
+
+  /** `pinned`: placed once from the anchor computed at opening (upright, facing back toward the gaze), then left alone. */
+  private placePinned(object: Object3D): void {
+    if (this.pinnedPlaced) return;
+    this.pinnedPlaced = true;
+    // A panel faces +Z: turning it by the yaw of the gaze makes +Z point back at the user, and keeps it vertical.
+    object.rotation.set(0, this.pinnedYaw, 0);
+    object.position.set(this.pinnedAnchor.x, this.pinnedAnchor.y, this.pinnedAnchor.z);
+    this.framePosition.copy(object.position);
+    this.frameOrientation.copy(object.quaternion);
+    this.centerOffset.set(PANEL_CENTER.dx, PANEL_CENTER.dy, 0).applyQuaternion(this.frameOrientation);
+    object.position.add(this.centerOffset);
+    object.updateMatrixWorld(true);
+    object.visible = true;
+    this.frameReady = true;
+  }
+
   /** Writes the text of the four bar buttons and adds their icons (once, when the layout is loaded). */
   private fillButtons(doc: UiDocument | undefined): void {
     if (!doc) return;

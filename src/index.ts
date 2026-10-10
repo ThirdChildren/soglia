@@ -3,6 +3,7 @@ import projectOptions from 'virtual:iwsdk-project';
 import { loadDevParams } from './data/dev-params';
 import { attachHandsLog } from './debug/hands-log';
 import { attachLifecycleKeys } from './debug/lifecycle-keys';
+import { attachMenuKey } from './debug/menu-key';
 import { attachStateLog } from './debug/state-log';
 import { showGlyphTest } from './debug/glyph-test';
 import { attachStats } from './debug/stats';
@@ -113,7 +114,10 @@ async function start(): Promise<void> {
     createMiniaturePan(world, store, result.house);
     // Last: it cancels what the systems above hold when the session is hidden, blurred or ended (D30).
     const lifecycle = attachLifecycle(world, persistence);
-    if (params.debug) attachLifecycleKeys(lifecycle);
+    if (params.debug) {
+      attachLifecycleKeys(lifecycle);
+      attachMenuKey();
+    }
     return;
   }
   if (result.reason === 'not-found') {
