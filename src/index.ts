@@ -1,6 +1,7 @@
 import { World } from '@iwsdk/core';
 import projectOptions from 'virtual:iwsdk-project';
 import { loadDevParams } from './data/dev-params';
+import { attachHandsLog } from './debug/hands-log';
 import { attachLifecycleKeys } from './debug/lifecycle-keys';
 import { attachStateLog } from './debug/state-log';
 import { showGlyphTest } from './debug/glyph-test';
@@ -18,6 +19,7 @@ import { buildHouse } from './systems/house-builder';
 import { installLocalControllers } from './systems/local-controllers';
 import { installLocalHands } from './systems/local-hands';
 import { createFurnitureGrab } from './systems/furniture-grab';
+import { installHandJoints } from './systems/hand-joints';
 import { createFurnitureReasons } from './systems/furniture-reasons';
 import { createMenuItems } from './systems/menu-items';
 import { attachLifecycle } from './systems/lifecycle';
@@ -78,7 +80,10 @@ async function start(): Promise<void> {
       store.dispatch(setMiniatureOffset(0, 0));
     });
     const built = buildHouse(world, result.house, miniature.root);
+    // The joints first: pinch input and the palm menu read their sample in the same frame.
+    installHandJoints(world, params.pinch);
     installPinchInput(world);
+    if (params.debug) attachHandsLog(world);
     createMiniatureGesture(world, store, planRadius(result.house));
     createRoomLabel(world, store, result.house);
     createOnboarding(world, store);

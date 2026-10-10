@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   DEFAULT_PARAMS,
+  PINCH_MODES,
   ROLES,
   formatParamsLine,
   isQueryString,
@@ -37,6 +38,7 @@ describe('parseParams defaults', () => {
       glyphs: false,
       furnish: 'none',
       failmodels: false,
+      pinch: 'auto',
     });
   });
 
@@ -246,7 +248,7 @@ describe('parseParams time', () => {
 
 describe('parseParams multiple keys', () => {
   it('parses every key in one query string', () => {
-    const r = parseParams('house=apartment-b&role=landlord&reset=1&seed=7&time=2026-12-21T10:00&debug=1&mr=1&glyphs=1&furnish=scandinavian&failmodels=1');
+    const r = parseParams('house=apartment-b&role=landlord&reset=1&seed=7&time=2026-12-21T10:00&debug=1&mr=1&glyphs=1&furnish=scandinavian&failmodels=1&pinch=grip');
     expect(r.params).toEqual({
       house: 'apartment-b',
       role: 'landlord',
@@ -258,8 +260,9 @@ describe('parseParams multiple keys', () => {
       glyphs: true,
       furnish: 'scandinavian',
       failmodels: true,
+      pinch: 'grip',
     });
-    expect([...r.present].sort()).toEqual(['debug', 'failmodels', 'furnish', 'glyphs', 'house', 'mr', 'reset', 'role', 'seed', 'time']);
+    expect([...r.present].sort()).toEqual(['debug', 'failmodels', 'furnish', 'glyphs', 'house', 'mr', 'pinch', 'reset', 'role', 'seed', 'time']);
     expect(r.warnings).toEqual([]);
   });
 
@@ -288,7 +291,7 @@ describe('parseParams multiple keys', () => {
     expect(r.params.house).toBe('apartment-b');
     expect(r.present).toEqual(['house']);
     expect(r.warnings).toEqual([]);
-    expect(Object.keys(r.params).sort()).toEqual(['debug', 'failmodels', 'furnish', 'glyphs', 'house', 'mr', 'reset', 'role', 'seed', 'time']);
+    expect(Object.keys(r.params).sort()).toEqual(['debug', 'failmodels', 'furnish', 'glyphs', 'house', 'mr', 'pinch', 'reset', 'role', 'seed', 'time']);
   });
 
   it('ignores key names that differ only by case', () => {
@@ -299,9 +302,9 @@ describe('parseParams multiple keys', () => {
   });
 
   it('emits one warning per rejected key, in the fixed key order and not in URL order', () => {
-    const r = parseParams('failmodels=2&time=bad&seed=x&furnish=x&glyphs=2&mr=2&debug=2&reset=2&role=boss&house=../x');
+    const r = parseParams('pinch=x&failmodels=2&time=bad&seed=x&furnish=x&glyphs=2&mr=2&debug=2&reset=2&role=boss&house=../x');
     const keys = r.warnings.map((w) => /^param (\w+)=/u.exec(w)?.[1]);
-    expect(keys).toEqual(['house', 'role', 'reset', 'debug', 'mr', 'glyphs', 'furnish', 'seed', 'time', 'failmodels']);
+    expect(keys).toEqual(['house', 'role', 'reset', 'debug', 'mr', 'glyphs', 'furnish', 'seed', 'time', 'failmodels', 'pinch']);
   });
 
   it('formats a warning as: param key="value" ignored: reason', () => {
@@ -449,6 +452,7 @@ describe('mergeParams', () => {
     ['glyphs', 'glyphs=1'],
     ['furnish', 'furnish=scandinavian'],
     ['failmodels', 'failmodels=1&debug=1'],
+    ['pinch', 'pinch=grip'],
   ])('takes %s from the dev file', (key, query) => {
     const m = mergeParams(none, parseParams(query));
     expect(m.params[key]).toEqual(parseParams(query).params[key]);
@@ -469,6 +473,7 @@ describe('formatParamsLine', () => {
       glyphs: false,
       furnish: 'none',
       failmodels: false,
+      pinch: 'auto',
     });
     expect(line).toBe('params source=dev-file house=apartment-b role=visitor reset=false seed=1 debug=true time=-');
   });
@@ -612,6 +617,64 @@ describe('failmodels parameter (development aid, needs debug=1)', () => {
     expect(formatParamsLine('default', { ...DEFAULT_PARAMS })).not.toContain('failmodels');
     expect(formatParamsLine('url', { ...DEFAULT_PARAMS, debug: true, failmodels: true })).toBe(
       'params source=url house=apartment-a role=visitor reset=false seed=1 debug=true time=- failmodels=true',
+    );
+  });
+});
+
+describe('pinch parameter (development aid, D31)', () => {
+  const none: ParsedParams = parseParams('');
+
+  it('is auto by default', () => {
+    expect(parseParams('').params.pinch).toBe('auto');
+    expect(DEFAULT_PARAMS.pinch).toBe('auto');
+    expect(PINCH_MODES).toEqual(['auto', 'grip', 'joints']);
+  });
+
+  it.each(['auto', 'grip', 'joints'] as const)('accepts %s', (mode) => {
+    const r = parseParams(`pinch=${mode}`);
+    expect(r.params.pinch).toBe(mode);
+    expect(r.present).toEqual(['pinch']);
+    expect(r.warnings).toEqual([]);
+  });
+
+  it.each(['', 'Grip', 'GRIP', '1', 'hand', 'grip ', 'joints,grip'])('rejects %j with a warning and keeps auto', (raw) => {
+    const r = parseParams(`pinch=${encodeURIComponent(raw)}`);
+    expect(r.params.pinch).toBe('auto');
+    expect(r.present).toEqual([]);
+    expect(r.warnings).toHaveLength(1);
+    expect(r.warnings[0]).toContain('param pinch=');
+    expect(r.warnings[0]).toContain('expected one of auto, grip, joints');
+  });
+
+  it('uses the existing warning format', () => {
+    expect(parseParams('pinch=hand').warnings).toEqual(['param pinch="hand" ignored: expected one of auto, grip, joints']);
+  });
+
+  it('is merged like the other keys: URL over dev file over default', () => {
+    expect(mergeParams(none, parseParams('pinch=grip')).params.pinch).toBe('grip');
+    expect(mergeParams(parseParams('pinch=joints'), parseParams('pinch=grip')).params.pinch).toBe('joints');
+    expect(mergeParams(parseParams('pinch=bad'), parseParams('pinch=grip')).params.pinch).toBe('grip');
+    expect(mergeParams(none, none).params.pinch).toBe('auto');
+  });
+
+  it('does not touch failmodels (still needs debug=1) and does not need debug itself', () => {
+    const m = mergeParams(parseParams('pinch=grip&failmodels=1'), null);
+    expect(m.params.pinch).toBe('grip');
+    expect(m.params.failmodels).toBe(false);
+    expect(m.warnings).toEqual(['param failmodels ignored: needs debug=1']);
+    const ok = mergeParams(parseParams('pinch=joints&failmodels=1&debug=1'), null);
+    expect(ok.params.pinch).toBe('joints');
+    expect(ok.params.failmodels).toBe(true);
+    expect(ok.warnings).toEqual([]);
+  });
+
+  it('is part of the log line only when it is not auto, so the known line does not change', () => {
+    expect(formatParamsLine('default', { ...DEFAULT_PARAMS })).not.toContain('pinch');
+    expect(formatParamsLine('dev-file', { ...DEFAULT_PARAMS, pinch: 'grip' })).toBe(
+      'params source=dev-file house=apartment-a role=visitor reset=false seed=1 debug=false time=- pinch=grip',
+    );
+    expect(formatParamsLine('url', { ...DEFAULT_PARAMS, debug: true, failmodels: true, pinch: 'joints' })).toBe(
+      'params source=url house=apartment-a role=visitor reset=false seed=1 debug=true time=- failmodels=true pinch=joints',
     );
   });
 });

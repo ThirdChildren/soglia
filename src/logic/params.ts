@@ -1,5 +1,5 @@
 // Pure URL / dev-file parameter parsing: no imports from @iwsdk/core or three.
-// Recognised keys: house, role, reset, seed, time, debug, mr, glyphs, furnish, failmodels.
+// Recognised keys: house, role, reset, seed, time, debug, mr, glyphs, furnish, failmodels, pinch.
 // Unknown values fall back to the default and produce a warning returned as data;
 // the caller decides how to log it.
 
@@ -8,6 +8,10 @@ export type Role = (typeof ROLES)[number];
 
 export const FURNISH_STYLES = ['none', 'scandinavian'] as const;
 export type FurnishStyle = (typeof FURNISH_STYLES)[number];
+
+/** Where the pinch point and the palm come from (decision D31): `auto` = hand joints when present, else the grip. */
+export const PINCH_MODES = ['auto', 'grip', 'joints'] as const;
+export type PinchMode = (typeof PINCH_MODES)[number];
 
 export type ParamKey =
   | 'house'
@@ -19,7 +23,8 @@ export type ParamKey =
   | 'mr'
   | 'glyphs'
   | 'furnish'
-  | 'failmodels';
+  | 'failmodels'
+  | 'pinch';
 
 export type ParamsSource = 'url' | 'dev-file' | 'default';
 
@@ -46,6 +51,11 @@ export interface Params {
    * aid). Only honoured together with `debug=1` (`mergeParams` drops it with a warning otherwise).
    */
   failmodels: boolean;
+  /**
+   * `pinch=auto|grip|joints` (development aid, D31): `auto` (default) and `joints` use the hand joints when the
+   * session provides them; `grip` always uses the grip space, as in M2 (to re-run the older QA scenarios).
+   */
+  pinch: PinchMode;
 }
 
 export interface ParsedParams {
@@ -75,6 +85,7 @@ export const DEFAULT_PARAMS: Readonly<Params> = Object.freeze({
   glyphs: false,
   furnish: 'none',
   failmodels: false,
+  pinch: 'auto',
 });
 
 /** Letters, digits, `_` and `-` only: no dots, slashes, spaces or markup. */
@@ -131,6 +142,10 @@ const FIELD_PARSERS: { [K in ParamKey]: (raw: string) => FieldResult<Params[K]> 
     return { ok: true, value: raw };
   },
   failmodels: parseFlag,
+  pinch: (raw) =>
+    (PINCH_MODES as readonly string[]).includes(raw)
+      ? { ok: true, value: raw as PinchMode }
+      : { ok: false, reason: `expected one of ${PINCH_MODES.join(', ')}` },
 };
 
 const KEYS = Object.keys(FIELD_PARSERS) as ParamKey[];
@@ -210,8 +225,9 @@ export function formatParamsLine(source: ParamsSource, p: Params): string {
   const line =
     `params source=${source} house=${p.house} role=${p.role} reset=${p.reset} ` +
     `seed=${p.seed} debug=${p.debug} time=${p.time ?? '-'}`;
-  // Only when it is on, so the line stays the one the QA scenarios know.
-  return p.failmodels ? `${line} failmodels=true` : line;
+  // Only when they differ from the default, so the line stays the one the QA scenarios know.
+  const withFail = p.failmodels ? `${line} failmodels=true` : line;
+  return p.pinch === 'auto' ? withFail : `${withFail} pinch=${p.pinch}`;
 }
 
 /** True when the warnings include a discarded `house` value (the app then logs that it kept the default home). */

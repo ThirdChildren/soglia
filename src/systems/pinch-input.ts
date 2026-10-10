@@ -1,7 +1,8 @@
 // Shared pinch input (task T2.10a): one place that knows which hands are pinching and where.
 // Pinch per hand = the WebXR `selectstart` / `selectend` events of the XR session (the same events
-// IWSDK uses for hand pinch), keyed by handedness. The pinch point is the grip pose of the hand
-// (`pinchPoint` is the single function to swap for the index fingertip if the headset needs it).
+// IWSDK uses for hand pinch), keyed by handedness. The pinch POINT is the midpoint of the thumb and index tips
+// when the hand joints are available (hand-joints.ts, D31), else the grip pose of the hand; the pinch STATE never
+// depends on the joints.
 //
 // The module is a singleton, like the other shared flags of the app: `installPinchInput(world)`
 // registers the small system that follows the XR session; the rest of the app calls `isPinching`,
@@ -9,7 +10,9 @@
 
 import { createSystem, type Vector3, type World } from '@iwsdk/core';
 import { slog, swarn } from '../log';
+import { isPinchPointFinal } from '../logic/hand-joints';
 import { createClaims, type Claims } from '../logic/pinch-claims';
+import { getJointSample, refreshHandFromEvent } from './hand-joints';
 
 export type Hand = 'left' | 'right';
 export type PinchListener = (hand: Hand) => void;
@@ -20,6 +23,9 @@ interface PinchContext {
 
 let context: PinchContext | null = null;
 const pinching = { left: false, right: false };
+// A `selectstart` whose pinch point is not final yet (the joints still show an open hand): announced a frame later.
+const pending = { left: false, right: false };
+const pendingSince = { left: 0, right: 0 };
 const startListeners = new Set<PinchListener>();
 const endListeners = new Set<PinchListener>();
 
@@ -44,8 +50,13 @@ export function isPinching(hand: Hand): boolean {
   return pinching[hand];
 }
 
-/** Writes the world position of the pinch point of `hand` into `out` and returns it. */
+/**
+ * Writes the world position of the pinch point of `hand` into `out` and returns it: the midpoint of the thumb and
+ * index tips when the joints are tracked, otherwise the grip position (M2 behaviour, also `pinch=grip`).
+ */
 export function pinchPoint(hand: Hand, out: Vector3): Vector3 {
+  const sample = getJointSample(hand);
+  if (sample) return out.set(sample.pinchPoint.x, sample.pinchPoint.y, sample.pinchPoint.z);
   const grips = context?.world.player.gripSpaces;
   if (grips) grips[hand].getWorldPosition(out);
   return out;
@@ -89,6 +100,8 @@ let inputSuspended = false;
  * Cancel what depends on a pinch (a held piece, a gesture) BEFORE calling it: the pinch-end listeners would place it.
  */
 export function resetPinchInput(): void {
+  pending.left = false;
+  pending.right = false;
   setPinch('left', false);
   setPinch('right', false);
   pinchClaims.endSession();
@@ -103,6 +116,21 @@ export function suspendPinchInput(): void {
 /** Accepts `selectstart` again. A hand that is still pinched must pinch again. */
 export function resumePinchInput(): void {
   inputSuspended = false;
+}
+
+const HANDS: readonly Hand[] = ['left', 'right'];
+const clock = (): number => performance.now() / 1000;
+
+/** True when the pinch point of `hand` can be used by the listeners of a new pinch (see `isPinchPointFinal`). */
+function pointIsFinal(hand: Hand, waitedSeconds: number): boolean {
+  const sample = getJointSample(hand);
+  return isPinchPointFinal(sample !== null, sample ? sample.pinchDistance : Number.POSITIVE_INFINITY, waitedSeconds);
+}
+
+/** Announces the pinch of `hand` that was waiting (unless the input was suspended meanwhile). */
+function announcePending(hand: Hand): void {
+  pending[hand] = false;
+  if (!inputSuspended) setPinch(hand, true);
 }
 
 function handOf(event: XRInputSourceEvent): Hand | null {
@@ -122,16 +150,35 @@ export class PinchInputSystem extends createSystem({}) {
   private readonly onSelectStart = (event: XRInputSourceEvent): void => {
     if (inputSuspended) return;
     const hand = handOf(event);
-    if (hand) setPinch(hand, true);
+    if (!hand) return;
+    // The listeners of this pinch use the pinch point at once: read the joints of the frame of the event first.
+    refreshHandFromEvent(event);
+    if (pointIsFinal(hand, 0)) {
+      setPinch(hand, true);
+    } else {
+      // The joints still show the open hand (IWER at the event): announce the pinch when the tips are together.
+      pending[hand] = true;
+      pendingSince[hand] = clock();
+    }
   };
   private readonly onSelectEnd = (event: XRInputSourceEvent): void => {
     const hand = handOf(event);
-    if (hand) setPinch(hand, false);
+    if (!hand) return;
+    // The pinch was too short to be announced: announce it with the point it has, so every start has its end.
+    if (pending[hand]) announcePending(hand);
+    setPinch(hand, false);
   };
 
   init(): void {
     // If the system is destroyed during a session its listeners must not stay on the session.
     this.cleanupFuncs.push(() => this.detachSession());
+  }
+
+  /** Announces the pinches that were waiting for their pinch point, once it is final or the wait is over. */
+  private announcePendingPinches(): void {
+    for (const hand of HANDS) {
+      if (pending[hand] && pointIsFinal(hand, clock() - pendingSince[hand])) announcePending(hand);
+    }
   }
 
   /** Removes the listeners from the session they were added to (when the session can do that) and forgets it. */
@@ -150,7 +197,10 @@ export class PinchInputSystem extends createSystem({}) {
   update(): void {
     const xr = this.world.renderer.xr;
     const current = xr.isPresenting ? xr.getSession() : null;
-    if (current === this.xrSession) return;
+    if (current === this.xrSession) {
+      this.announcePendingPinches();
+      return;
+    }
 
     this.detachSession();
     // The session ended or changed: no hand is pinching any more.

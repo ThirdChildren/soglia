@@ -2,8 +2,9 @@
 // closes it only when the palm turns away (a pinch never closes it, M2 rerun 2). Works with both hands; if both are up,
 // the first one wins. The maths is in src/logic/palm.ts; the pinch state comes from pinch-input.
 //
-// The palm normal is a local axis of the grip space of the hand (PALM_NORMAL_LOCAL, spike T2.11).
-// Only the grip pose is used: it is available for hands and for controllers alike.
+// The palm normal comes from the hand joints (-Y of the wrist, hand-joints.ts, D31) when they are tracked; the
+// reserve is a local axis of the grip space of the hand (PALM_NORMAL_LOCAL, spike T2.11), which exists for hands and
+// controllers alike. The menu anchor follows the grip position. Thresholds and times do not depend on the source.
 
 import { createSystem, Quaternion, Vector3, type World } from '@iwsdk/core';
 import { slog } from '../log';
@@ -11,7 +12,6 @@ import {
   chooseMenuHand,
   createMenuGate,
   createPalmDetector,
-  palmNormalY,
   resetPalmDetector,
   updatePalmDetector,
   type PalmHand,
@@ -20,6 +20,7 @@ import { menuOpacity } from '../logic/menu-dim';
 import { markMenuOpened, type Store } from '../logic/state';
 import { flushPanelDisposals } from '../ui/panel-lifecycle';
 import { PalmMenuPanel } from '../ui/palm-menu';
+import { palmNormalYOf } from './hand-joints';
 import { isMiniatureGestureActive } from './miniature-gesture';
 import { isPanActive, isPinching, pinchClaims } from './pinch-input';
 
@@ -109,12 +110,10 @@ export class PalmMenuSystem extends createSystem({}) {
     const pieceHeld = pinchClaims.anyClaimed('furniture');
     const gestureActive = isMiniatureGestureActive() || isPanActive() || pinchClaims.anyClaimed('two-hands');
     const grips = world.player.gripSpaces;
-    grips.left.getWorldQuaternion(this.quat);
-    const leftY = palmNormalY(this.quat.x, this.quat.y, this.quat.z, this.quat.w);
+    const leftY = palmNormalYOf('left', grips.left, this.quat);
     const leftPinch = isPinching('left');
     const leftOpen = updatePalmDetector(this.left, leftY, leftPinch, this.mayOpen('left', leftPinch, pieceHeld, gestureActive)) === 'open';
-    grips.right.getWorldQuaternion(this.quat);
-    const rightY = palmNormalY(this.quat.x, this.quat.y, this.quat.z, this.quat.w);
+    const rightY = palmNormalYOf('right', grips.right, this.quat);
     const rightPinch = isPinching('right');
     const rightOpen = updatePalmDetector(this.right, rightY, rightPinch, this.mayOpen('right', rightPinch, pieceHeld, gestureActive)) === 'open';
 
