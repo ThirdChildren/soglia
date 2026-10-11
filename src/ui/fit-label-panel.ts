@@ -10,6 +10,7 @@ import { tagEntity } from '../components/tag-entity';
 import { stableId } from '../logic/ids';
 import { applyPanelFont } from './fonts';
 import { fitColors } from './theme';
+import { disposePanelEntity } from './panel-lifecycle';
 
 const PANEL_ASSET = 'fit-label';
 const TEXT_ELEMENT = 'fit-label-text';
@@ -98,6 +99,7 @@ export class FitLabelPanel {
   }
 
   dispose(): void {
-    this.entity.dispose();
+    // The panel layout loads asynchronously: a panel closed before its document arrived is disposed later (M2 F1).
+    disposePanelEntity(this.entity);
   }
 }
