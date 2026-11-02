@@ -148,7 +148,8 @@ describe('the text is at least 2.4 cm and fits where it is drawn', () => {
     const all = [...sizes(panelSource), ...sizes(buttonSource)];
     // title, footer, Back, Close, the four chips, the hint, the two buttons of home, the note of the other screens, and the button (13);
     // the form of a new issue (T4.7): the context line, eight boxes of the grid, three urgencies, the summary and the middle Back (14)
-    expect(all.length).toBe(27);
+    // the list (T4.8): five headings, five texts and five urgencies, the empty text and the middle Next (17)
+    expect(all.length).toBe(44);
     for (const size of all) expect(size).toBeGreaterThanOrEqual(ISSUE_MIN_TEXT_SIZE);
   });
 

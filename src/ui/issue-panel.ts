@@ -28,6 +28,7 @@ import {
   type FormCell,
   type IssueForm,
 } from '../logic/issue-form';
+import { LIST_BAR_BUTTON_WIDTH, LIST_PAGE_SIZE, listBarWidth, type ListPage, type ListRow } from '../logic/issue-list';
 import { ISSUE_URGENCIES } from '../logic/issues';
 import type { Role } from '../logic/params';
 import { PANEL_CENTER } from '../logic/menu';
@@ -61,6 +62,12 @@ const SUMMARY_BOX_ELEMENT = 'issue-panel-summary-box';
 const SUMMARY_ELEMENT = 'issue-panel-summary';
 const MID_ELEMENT = 'issue-panel-mid';
 const CLOSE_ELEMENT = 'issue-panel-close';
+const MID2_ELEMENT = 'issue-panel-mid2';
+const LIST_ELEMENT = 'issue-panel-list';
+const LIST_EMPTY_BOX_ELEMENT = 'issue-panel-list-empty-box';
+const LIST_EMPTY_ELEMENT = 'issue-panel-list-empty';
+/** The colour of a row's status dot as the style string UIKit takes (`#e5322d`). */
+const hexColor = (color: number): string => `#${color.toString(16).padStart(6, '0')}`;
 /** The grid of the form: four rows of two boxes (the categories take four rows, the phrases at most three). */
 const GRID_ROWS = 4;
 const GRID_COLUMNS = 2;
@@ -88,6 +95,17 @@ interface ChipElements {
   label: UIKit.Text | null;
 }
 
+/** The parts of one row of the list: its wrapper (with the heading above the row), the heading, the row, the dot, the text, the urgency. */
+interface ListRowElements {
+  wrapper: UIKit.Container | null;
+  heading: UIKit.Container | null;
+  headingLabel: UIKit.Text | null;
+  row: UIKit.Container | null;
+  dot: UIKit.Container | null;
+  text: UIKit.Text | null;
+  urgency: UIKit.Text | null;
+}
+
 export class IssuePanel {
   private entity: Entity | null = null;
   private applied = false;
@@ -110,6 +128,12 @@ export class IssuePanel {
   private closeLabel: UIKit.Text | null = null;
   private backLabel: UIKit.Text | null = null;
   private mid: ChipElements = { box: null, label: null };
+  private mid2: ChipElements = { box: null, label: null };
+  private listBox: UIKit.Container | null = null;
+  private listEmptyBox: UIKit.Container | null = null;
+  private listEmpty: UIKit.Text | null = null;
+  private readonly listRows: ListRowElements[] = [];
+  private listModel: ListPage | null = null;
   /** Boxes of the grid, row by row (`row * 2 + column`), and of the three urgencies. */
   private readonly gridRows: (UIKit.Container | null)[] = [];
   private readonly gridBoxes: ChipElements[] = [];
@@ -194,6 +218,12 @@ export class IssuePanel {
     this.closeLabel = null;
     this.backLabel = null;
     this.mid = { box: null, label: null };
+    this.mid2 = { box: null, label: null };
+    this.listBox = null;
+    this.listEmptyBox = null;
+    this.listEmpty = null;
+    this.listRows.length = 0;
+    this.listModel = null;
     this.gridRows.length = 0;
     this.gridBoxes.length = 0;
     this.urgencies.clear();
@@ -205,6 +235,12 @@ export class IssuePanel {
   /** The form of a new issue that the `new` screen shows (null: none). Written in place; kept until the layout is loaded. */
   setForm(form: IssueForm | null): void {
     this.form = form;
+    if (this.applied) this.writeScreen();
+  }
+
+  /** The page of the list that the `list` screen shows (null: none). Written in place; kept until the layout is loaded. */
+  setList(list: ListPage | null): void {
+    this.listModel = list;
     if (this.applied) this.writeScreen();
   }
 
@@ -264,6 +300,21 @@ export class IssuePanel {
     this.closeLabel = doc.getElementById<UIKit.Text>(CLOSE_LABEL_ELEMENT);
     this.closeBox = doc.getElementById<UIKit.Container>(CLOSE_ELEMENT);
     this.mid = { box: doc.getElementById<UIKit.Container>(MID_ELEMENT), label: doc.getElementById<UIKit.Text>(`${MID_ELEMENT}-label`) };
+    this.mid2 = { box: doc.getElementById<UIKit.Container>(MID2_ELEMENT), label: doc.getElementById<UIKit.Text>(`${MID2_ELEMENT}-label`) };
+    this.listBox = doc.getElementById<UIKit.Container>(LIST_ELEMENT);
+    this.listEmptyBox = doc.getElementById<UIKit.Container>(LIST_EMPTY_BOX_ELEMENT);
+    this.listEmpty = doc.getElementById<UIKit.Text>(LIST_EMPTY_ELEMENT);
+    for (let i = 0; i < LIST_PAGE_SIZE; i += 1) {
+      this.listRows.push({
+        wrapper: doc.getElementById<UIKit.Container>(`issue-panel-lrow-${i}`),
+        heading: doc.getElementById<UIKit.Container>(`issue-panel-lh-${i}`),
+        headingLabel: doc.getElementById<UIKit.Text>(`issue-panel-lh-${i}-label`),
+        row: doc.getElementById<UIKit.Container>(`issue-panel-lr-${i}`),
+        dot: doc.getElementById<UIKit.Container>(`issue-panel-ld-${i}`),
+        text: doc.getElementById<UIKit.Text>(`issue-panel-lt-${i}`),
+        urgency: doc.getElementById<UIKit.Text>(`issue-panel-lu-${i}`),
+      });
+    }
     this.newBox = doc.getElementById<UIKit.Container>(NEW_ELEMENT);
     this.context = doc.getElementById<UIKit.Text>(CONTEXT_ELEMENT);
     this.urgencyRow = doc.getElementById<UIKit.Container>(URGENCY_ROW_ELEMENT);
@@ -308,14 +359,20 @@ export class IssuePanel {
     const screen = this.screenValue;
     const isHome = screen === 'home';
     const form = screen === 'new' ? this.form : null;
-    // The title of the form is the name of the fixture (a free spot keeps "New issue").
-    const title = form?.fixtureName ? clipName(form.fixtureName, TITLE_MAX_LENGTH) : strings.issues.screens[screen];
+    const list = screen === 'list' ? this.listModel : null;
+    // The title of the form is the name of the fixture (a free spot keeps "New issue"); the list says "Sample data" and its page.
+    const title = form?.fixtureName ? clipName(form.fixtureName, TITLE_MAX_LENGTH) : (list?.title ?? strings.issues.screens[screen]);
     this.title?.setProperties({ text: title });
     this.footer?.setProperties({ text: isHome ? strings.issues.footer : '', display: isHome ? 'flex' : 'none' });
     this.home?.setProperties({ display: isHome ? 'flex' : 'none' });
-    this.noteBox?.setProperties({ display: isHome || form ? 'none' : 'flex' });
+    this.noteBox?.setProperties({ display: isHome || form || list ? 'none' : 'flex' });
     this.newBox?.setProperties({ display: form ? 'flex' : 'none' });
-    this.writeBar(form);
+    this.listBox?.setProperties({ display: list ? 'flex' : 'none' });
+    this.writeBar(form, list);
+    if (list) {
+      this.writeList(list);
+      return;
+    }
     if (form) {
       this.writeForm(form);
       return;
@@ -344,14 +401,25 @@ export class IssuePanel {
    * The bar: `Back` and `Close` on every screen but the form. In the form the left box is `Cancel`, the right one `Report`
    * (only at the second step, faint until a phrase is chosen) and the middle one `Back` (a free spot at the second step).
    */
-  private writeBar(form: IssueForm | null): void {
+  private writeBar(form: IssueForm | null, list: ListPage | null = null): void {
     const screen = this.screenValue;
+    this.mid2.box?.setProperties({ display: 'none' });
     if (!form) {
-      this.back?.setProperties({ width: ISSUE_BAR_BUTTON_WIDTH, opacity: backVisible(screen) ? undefined : 0 });
+      // The list has `Prev` and `Next` between `Back` and `Close` when there is more than one page (four narrower buttons).
+      const paged = list?.paged === true;
+      const width = list ? listBarWidth(paged) : ISSUE_BAR_BUTTON_WIDTH;
+      this.back?.setProperties({ width, opacity: backVisible(screen) ? undefined : 0 });
       this.backLabel?.setProperties({ text: strings.issues.back });
-      this.closeBox?.setProperties({ display: 'flex', width: ISSUE_BAR_BUTTON_WIDTH, opacity: undefined });
+      this.closeBox?.setProperties({ display: 'flex', width, opacity: undefined });
       this.closeLabel?.setProperties({ text: strings.issues.close });
-      this.mid.box?.setProperties({ display: 'none' });
+      if (list && paged) {
+        this.mid.box?.setProperties({ display: 'flex', width: LIST_BAR_BUTTON_WIDTH });
+        this.mid.label?.setProperties({ text: list.prevText });
+        this.mid2.box?.setProperties({ display: 'flex', width: LIST_BAR_BUTTON_WIDTH });
+        this.mid2.label?.setProperties({ text: list.nextText });
+      } else {
+        this.mid.box?.setProperties({ display: 'none' });
+      }
       return;
     }
     const layout = formLayout(form, strings.issues.form);
@@ -368,6 +436,26 @@ export class IssuePanel {
     this.closeLabel?.setProperties({ text: strings.issues.form.report });
     this.mid.box?.setProperties({ display: back ? 'flex' : 'none', width: back?.width ?? ISSUE_BAR_BUTTON_WIDTH });
     this.mid.label?.setProperties({ text: strings.issues.form.back });
+  }
+
+  /** The list: up to five rows (a dot in the colour of the status, the text, the urgency), the heading "History" above the first archived one. */
+  private writeList(list: ListPage): void {
+    this.listEmptyBox?.setProperties({ display: list.empty ? 'flex' : 'none' });
+    this.listEmpty?.setProperties({ text: list.emptyText });
+    for (let i = 0; i < LIST_PAGE_SIZE; i += 1) {
+      const elements = this.listRows[i];
+      if (!elements) continue;
+      const row: ListRow | undefined = list.rows[i];
+      elements.wrapper?.setProperties({ display: row ? 'flex' : 'none' });
+      if (!row) continue;
+      const look = row.selected ? CHIP_ACTIVE : CHIP_IDLE;
+      elements.heading?.setProperties({ display: row.heading ? 'flex' : 'none' });
+      if (row.heading) elements.headingLabel?.setProperties({ text: list.historyText });
+      elements.row?.setProperties({ backgroundColor: look.backgroundColor });
+      elements.dot?.setProperties({ backgroundColor: hexColor(row.color) });
+      elements.text?.setProperties({ text: row.text, color: look.color });
+      elements.urgency?.setProperties({ text: row.urgencyLabel, color: look.color });
+    }
   }
 
   /** The body of the form: the context line, the grid (categories or phrases), the urgencies and the sentence that will be saved. */

@@ -8,8 +8,8 @@
 //
 // T4.6a made the structure: the title, the bar (`Back` outside `home`, `Close`). T4.6b adds the `home` screen: a grid of the
 // four roles (the current one drawn dark, like the active tab of the menu) and, for the roles the permission table lets see
-// the issues, the buttons `Issues (n)` and `Move-in report`. The other screens arrive with the tasks that fill them (T4.7
-// `new`, T4.8 `list`, T4.9 `detail`, T4.10 `movein`).
+// the issues, the buttons `Issues (n)` and `Move-in report`. T4.7 added `new` and T4.8 adds `list` (src/logic/issue-list.ts);
+// `detail` and `movein` arrive with the tasks that fill them (T4.9, T4.10).
 
 import { MENU_EXTENT, MENU_PANEL, MIN_TEXT_SIZE, type HalfSize, type Offset, type PanelExtent } from './menu';
 import type { Issue } from './issues';
@@ -55,8 +55,10 @@ export type StaticControlId = 'back' | 'close' | RoleControlId | HomeActionId;
  * urgency, and the bar of `new` (`cancel`, `report`; its `back` goes from the phrases to the categories).
  */
 export type FormControlId = `category-${string}` | `phrase-${string}` | `urgency-${string}` | 'cancel' | 'report';
+/** The controls of the list (T4.8, src/logic/issue-list.ts places them): its rows (`row-0` .. `row-4`) and the buttons for the pages. */
+export type ListControlId = `row-${number}` | 'page-prev' | 'page-next';
 /** Every control of the panel. */
-export type IssueControlId = StaticControlId | FormControlId;
+export type IssueControlId = StaticControlId | FormControlId | ListControlId;
 
 export function roleControlId(role: Role): RoleControlId {
   return `role-${role}`;

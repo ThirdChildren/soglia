@@ -69,6 +69,19 @@ import {
   urgencyOfControl,
   type IssueForm,
 } from '../logic/issue-form';
+import {
+  buildListPage,
+  formatListDenied,
+  formatListLine,
+  formatRowSelected,
+  listSlots,
+  listVisibleTo,
+  movePage,
+  rowIssueId,
+  rowOfControl,
+  type ListPage,
+  type ListTexts,
+} from '../logic/issue-list';
 import { setRole, type AppState, type Store } from '../logic/state';
 import { pickRect, type PickSlot } from '../logic/menu';
 import { pinnedPanelPoint } from '../logic/menu-anchor';
@@ -78,6 +91,10 @@ import { MenuAnchor } from '../ui/menu-anchor';
 import { strings } from '../ui/strings';
 import { closeOpenMenu, onMenuOpening } from './palm-menu';
 import { onPinchStart, pinchClaims, pinchPoint, type Hand } from './pinch-input';
+import { setPinRing } from './pins';
+
+/** The texts of the list (src/ui/strings.ts): the logic builds the rows from them. */
+const LIST_TEXTS: ListTexts = strings.issues.list;
 
 interface IssuePanelContext {
   panel: IssuePanel;
@@ -86,7 +103,14 @@ interface IssuePanelContext {
   roles: RoleObserver;
   /** The form shown at `new` (null: none) and a counter that changes with it, so the buttons are placed again. */
   form: IssueForm | null;
+  /** Changes with the form and with the page of the list, so the buttons of the screen are placed again. */
   formRev: number;
+  /** The list (T4.8): the page being shown (zero-based), the row selected, the page model and what the model was made from. */
+  listPage: number;
+  selectedId: string | null;
+  listModel: ListPage | null;
+  listIssues: unknown;
+  lastListLine: string;
 }
 
 /** What the form calls when `Cancel` or `Report` is pressed (issue-create registers them). */
@@ -100,6 +124,9 @@ let formHandlers: IssueFormHandlers | null = null;
 
 type RoleListener = (change: RoleChange) => void;
 const roleListeners = new Set<RoleListener>();
+
+type IssueSelectedListener = (id: string) => void;
+const selectedListeners = new Set<IssueSelectedListener>();
 
 // Shared with the system, which has no constructor arguments: set by `createIssuePanel`.
 let context: IssuePanelContext | null = null;
@@ -115,6 +142,11 @@ export function createIssuePanel(world: World, store: Store): void {
     roles: createRoleObserver(store.get().role),
     form: null,
     formRev: 0,
+    listPage: 0,
+    selectedId: null,
+    listModel: null,
+    listIssues: null,
+    lastListLine: '',
   };
   world.registerSystem(IssuePanelSystem);
 }
@@ -128,6 +160,22 @@ export function onRoleChanged(listener: RoleListener): () => void {
   return () => {
     roleListeners.delete(listener);
   };
+}
+
+/**
+ * Calls `listener` with the id of the issue whose row of the list was pinched (`issues row selected id=…`, also when the row was
+ * already selected). The detail (T4.9) opens from here. Returns the unsubscribe function.
+ */
+export function onIssueSelected(listener: IssueSelectedListener): () => void {
+  selectedListeners.add(listener);
+  return () => {
+    selectedListeners.delete(listener);
+  };
+}
+
+/** The issue selected in the list (its row is drawn dark and its pin has the ring), or null. It is cleared when the list is left. */
+export function getSelectedIssue(): string | null {
+  return context?.selectedId ?? null;
 }
 
 /** True while the Issues panel is open. */
@@ -225,11 +273,16 @@ export class IssuePanelSystem extends createSystem({}) {
     const ctx = context;
     if (!ctx) return;
     const change = ctx.roles.observe(state.role);
-    if (ctx.panel.isOpen) ctx.panel.setHome({ role: state.role, issueCount: issueCount(state.issues) });
+    if (ctx.panel.isOpen) {
+      ctx.panel.setHome({ role: state.role, issueCount: issueCount(state.issues) });
+      // The list follows the issues (a new one, a transition): redrawn in place while it is the screen.
+      if (!change && ctx.navigator.screen === 'list' && state.issues !== ctx.listIssues) this.syncList(ctx);
+    }
     if (!change) return;
     // The panel goes back to `home` (it was on `home` when the chip was pinched; another way of changing the role may find it elsewhere).
     if (ctx.panel.isOpen && ctx.navigator.go(HOME_SCREEN) !== null) {
       this.dropForm(ctx);
+      this.syncList(ctx);
       ctx.panel.setScreen(HOME_SCREEN);
       slog(formatScreenLine(HOME_SCREEN));
     }
@@ -269,16 +322,64 @@ export class IssuePanelSystem extends createSystem({}) {
     this.disposeAnchors();
     ctx.navigator.reset();
     ctx.form = null;
+    this.syncList(ctx);
     slog(formatPanelClosed(via));
   }
 
   show(screen: IssueScreen): void {
     const ctx = context;
     if (!ctx || !ctx.panel.isOpen) return;
+    // The list is for the roles that see the issues (D43); `home` has no button for the others, so this is a safety net.
+    if (screen === 'list' && !listVisibleTo(ctx.store.get().role)) {
+      slog(formatListDenied(ctx.store.get().role));
+      return;
+    }
     if (ctx.navigator.go(screen) === null) return;
     if (screen !== 'new') this.dropForm(ctx);
+    this.syncList(ctx);
     ctx.panel.setScreen(screen);
-    slog(formatScreenLine(screen));
+    if (screen !== 'list') slog(formatScreenLine(screen));
+  }
+
+  /**
+   * Keeps the list in step with the screen: on `list` it builds the page from the store and gives it to the panel (and logs
+   * `issues screen=list page=1/1 items=…` when the rows changed); anywhere else it drops the selection (the ring goes) and the page.
+   */
+  private syncList(ctx: IssuePanelContext): void {
+    if (!ctx.panel.isOpen || ctx.navigator.screen !== 'list') {
+      if (ctx.selectedId !== null) {
+        ctx.selectedId = null;
+        setPinRing(null);
+      }
+      ctx.listPage = 0;
+      ctx.listModel = null;
+      ctx.listIssues = null;
+      ctx.lastListLine = '';
+      ctx.panel.setList(null);
+      ctx.formRev += 1;
+      return;
+    }
+    const state = ctx.store.get();
+    const page = buildListPage(state.issues, state.role, ctx.listPage, ctx.selectedId, LIST_TEXTS);
+    ctx.listPage = page.page;
+    ctx.listModel = page;
+    ctx.listIssues = state.issues;
+    ctx.panel.setList(page);
+    ctx.formRev += 1;
+    const line = formatListLine(page);
+    if (line !== ctx.lastListLine) {
+      ctx.lastListLine = line;
+      slog(line);
+    }
+  }
+
+  /** A row of the list was pinched: it becomes the selected one, its pin gets the ring, the listeners hear of it. */
+  private selectRow(ctx: IssuePanelContext, id: string): void {
+    ctx.selectedId = id;
+    setPinRing(id);
+    this.syncList(ctx);
+    slog(formatRowSelected(id));
+    for (const listener of [...selectedListeners]) listener(id);
   }
 
   /** The form of `new` (the long pinch has just made the draft): set it, log its step. */
@@ -323,6 +424,7 @@ export class IssuePanelSystem extends createSystem({}) {
   private controlsFor(ctx: IssuePanelContext): readonly ControlSlot[] {
     const screen = ctx.navigator.screen;
     if (screen === 'new' && ctx.form) return formSlots(formLayout(ctx.form, strings.issues.form));
+    if (screen === 'list' && ctx.listModel) return listSlots(ctx.listModel);
     return screenControls(screen, ctx.store.get().role).map((id) => CONTROL_SLOTS[id]);
   }
 
@@ -394,12 +496,29 @@ export class IssuePanelSystem extends createSystem({}) {
       this.close('close');
       return;
     }
+    if (ctx.navigator.screen === 'list' && ctx.listModel) {
+      const list = ctx.listModel;
+      const row = rowOfControl(hit.id);
+      if (row !== null) {
+        const id = rowIssueId(list, row);
+        if (id !== null) this.selectRow(ctx, id);
+        return;
+      }
+      if (hit.id === 'page-prev' || hit.id === 'page-next') {
+        const target = movePage(list.page, list.pageCount, hit.id === 'page-next' ? 'next' : 'prev');
+        if (target === null) return;
+        ctx.listPage = target;
+        this.syncList(ctx);
+        return;
+      }
+    }
     if (hit.id === 'back') {
       const target = ctx.navigator.back();
       if (target === null) return;
       // `navigator.back()` already moved on: write the screen into the panel and tell the log.
+      this.syncList(ctx);
       ctx.panel.setScreen(target);
-      slog(formatScreenLine(target));
+      if (target !== 'list') slog(formatScreenLine(target));
       return;
     }
     if (hit.id === 'open-list') {

@@ -108,7 +108,20 @@ export const strings = {
       /** Context line of the second step: "Appliances · Bathroom" (with `ascii` a plain dash when the panel font has no middle dot). */
       context: (category: string, room: string, ascii = false): string => `${category}${ascii ? ' - ' : ' \u00b7 '}${room}`,
     },
-    /** Body of a screen that a later task fills (list T4.8, detail T4.9, new T4.7, move-in T4.10). */
+    /** The list of issues (T4.8, D48). "Prev" and not "Back": `Back` of the bar already goes back to `home`. */
+    list: {
+      title: 'Issues',
+      empty: 'No issues yet',
+      history: 'History',
+      sampleData: 'Sample data',
+      urgency: { low: 'Low', medium: 'Medium', urgent: 'Urgent' },
+      prev: 'Prev',
+      next: 'Next',
+      back: 'Back',
+      close: 'Close',
+      pageOf: (page: number, pageCount: number): string => `${page}/${pageCount}`,
+    },
+    /** Body of a screen that a later task fills (detail T4.9, move-in T4.10). */
     comingSoon: 'Coming soon',
     /** Title of each screen. */
     screens: {

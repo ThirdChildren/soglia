@@ -57,6 +57,13 @@ export function ringInstanceIndex(pinCount: number): number {
   return draftInstanceIndex(pinCount) + 1;
 }
 
+/** Colour of the selection ring (T4.8): white, which no status uses. */
+export const PIN_RING_COLOR = 0xffffff;
+/** The ring is the needle squashed to a flat disc at the height of the head: this many times the width of the pin... */
+export const PIN_RING_WIDEN = 2.4;
+/** ...and this fraction of its height (the disc is thin, so it reads as a ring around the head). */
+export const PIN_RING_FLATTEN = 0.12;
+
 /** Colour of the draft ghost: the colour the new issue will have (open). */
 export const PIN_DRAFT_COLOR = STATUS_COLORS.open;
 
@@ -169,6 +176,30 @@ export function pinInstancePose(
   out.sx = s;
   out.sy = s;
   out.sz = s;
+  return true;
+}
+
+/**
+ * Pose of the selection ring of a pin (T4.8) inside the house node: the needle of the pin squashed to a thin disc and widened,
+ * its centre where the centre of the head is, so it surrounds the head like a halo. Same size rules as `pinInstancePose`: the
+ * ring keeps its size in the WORLD. Returns false and leaves `out` alone when the model scale is not positive and finite.
+ */
+export function pinRingPose(
+  pin: Readonly<Pick<PinView, 'x' | 'y' | 'z'>>,
+  modelScale: number,
+  out: PinInstancePose,
+): boolean {
+  if (!Number.isFinite(modelScale) || !(modelScale > 0)) return false;
+  const wide = PIN_RING_WIDEN / modelScale;
+  const flat = PIN_RING_FLATTEN / modelScale;
+  out.x = pin.x;
+  // The tip of the squashed needle: the centre of its head (PIN_HEAD_CENTER_WORLD * flat above the tip) lands on the head of the pin.
+  out.y = pin.y + (PIN_HEAD_CENTER_WORLD / modelScale) * (1 - PIN_RING_FLATTEN);
+  out.z = pin.z;
+  out.yawRad = 0;
+  out.sx = wide;
+  out.sy = flat;
+  out.sz = wide;
   return true;
 }
 

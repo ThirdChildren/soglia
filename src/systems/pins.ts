@@ -23,12 +23,15 @@ import { stableId } from '../logic/ids';
 import type { MiniatureRoot, Vec3Tuple } from '../logic/furniture-pose';
 import {
   PIN_DRAFT_COLOR,
+  PIN_RING_COLOR,
   draftInstanceIndex,
   layoutPins,
   pickPin,
   pinDisplayPosition,
   pinHeadWorld,
   pinInstancePose,
+  pinRingPose,
+  ringInstanceIndex,
   type PinInstancePose,
   type PinView,
 } from '../logic/pin-layout';
@@ -58,6 +61,8 @@ interface PinsContext {
   headScratch: Vec3Tuple;
   /** Draft ghost: place (house coordinates, already clamped), size 0..1, and its entity. */
   draft: { place: Vec3Tuple; size: number; entity: Entity | null } | null;
+  /** Id of the issue whose pin has the selection ring (the list, T4.8), or null. */
+  ringId: string | null;
   /** The inputs of the last layout (a change of one of them is a rebuild). */
   seen: { issues: unknown; role: Role; moveIn: boolean; realScale: boolean };
   /** How many instances were written last time (pins and draft), so the ones that are no longer needed can be taken out. */
@@ -92,6 +97,7 @@ export function createPins(world: World, store: Store, house: House, houseEntity
     rootScratch: { x: 0, y: 0, z: 0, yawRad: 0, scale: 1 },
     headScratch: [0, 0, 0],
     draft: null,
+    ringId: null,
     seen: { issues: null, role: state.role, moveIn: state.prefs.moveInVisible, realScale: false },
     written: 0,
     scale: 0,
@@ -131,6 +137,19 @@ function writeInstances(ctx: PinsContext): void {
     if (pinInstancePose({ x: draft.place[0], y: draft.place[1], z: draft.place[2] }, scale, draft.size, ctx.pose)) {
       ctx.markers.set(at, ctx.pose, PIN_DRAFT_COLOR);
       end = at + 1;
+    }
+  }
+  // The selection ring of the list: a thin disc around the head of the selected pin, right after the draft's place.
+  let ringAt = -1;
+  if (ctx.ringId !== null) {
+    let pin: PinView | null = null;
+    for (let i = 0; i < count && pin === null; i += 1) if (ctx.pins[i].id === ctx.ringId) pin = ctx.pins[i];
+    if (pin && pinRingPose(pin, scale, ctx.pose)) {
+      ringAt = ringInstanceIndex(count);
+      ctx.markers.set(ringAt, ctx.pose, PIN_RING_COLOR);
+      // The place of the draft stays free when there is no draft.
+      if (end <= draftInstanceIndex(count)) ctx.markers.hide(draftInstanceIndex(count));
+      end = ringAt + 1;
     }
   }
   for (let i = end; i < ctx.written; i += 1) ctx.markers.hide(i);
@@ -211,6 +230,18 @@ export function setPinDraftSize(size: number): void {
   const ctx = context;
   if (!ctx?.draft || ctx.draft.size === size) return;
   ctx.draft.size = size;
+  writeInstances(ctx);
+}
+
+/**
+ * Puts the selection ring around the pin of issue `id` (the list selects a row, T4.8), or takes it away with null. An issue
+ * that has no pin on the model (archived, or a role without pins) gets no ring. Does nothing before `createPins`; no extra draw call
+ * (one more instance of the same mesh).
+ */
+export function setPinRing(id: string | null): void {
+  const ctx = context;
+  if (!ctx || ctx.ringId === id) return;
+  ctx.ringId = id;
   writeInstances(ctx);
 }
 
