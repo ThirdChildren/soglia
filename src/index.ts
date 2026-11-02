@@ -35,6 +35,7 @@ import { createMiniaturePan } from './systems/miniature-pan';
 import { createMenuHint } from './systems/menu-hint';
 import { createOnboarding } from './systems/onboarding';
 import { createPalmMenu } from './systems/palm-menu';
+import { PanelDisposalSystem } from './systems/panel-disposal';
 import { installPinchInput } from './systems/pinch-input';
 import { createRoomLabel } from './systems/room-label';
 import { createViewpoint } from './systems/viewpoint';
@@ -68,6 +69,7 @@ async function start(): Promise<void> {
   installLocalHands(world);
   installLocalControllers(world);
   world.registerSystem(ErrorPanelSystem);
+  world.registerSystem(PanelDisposalSystem);
   await loadPanelFonts();
   slog('world ready');
   if (params.debug) attachStats(world);

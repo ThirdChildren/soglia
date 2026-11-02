@@ -24,7 +24,6 @@ import {
 } from '../logic/palm';
 import { menuOpacity } from '../logic/menu-dim';
 import { markMenuOpened, type Store } from '../logic/state';
-import { flushPanelDisposals } from '../ui/panel-lifecycle';
 import { PalmMenuPanel, type PalmMenuMode } from '../ui/palm-menu';
 import { palmNormalYOf } from './hand-joints';
 import { isMiniatureGestureActive } from './miniature-gesture';
@@ -138,7 +137,6 @@ export class PalmMenuSystem extends createSystem({}) {
   }
 
   update(): void {
-    flushPanelDisposals();
     const ctx = context;
     if (!ctx) return;
     const world = this.world;
