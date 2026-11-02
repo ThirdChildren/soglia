@@ -8,7 +8,7 @@ import { attachStateLog } from './debug/state-log';
 import { showGlyphTest } from './debug/glyph-test';
 import { attachStats } from './debug/stats';
 import { loadCatalog } from './data/load-catalog';
-import { loadMyFurniture } from './data/load-my-furniture';
+import { loadMyFurniture, type LoadMyFurnitureResult } from './data/load-my-furniture';
 import { loadHouse } from './data/load-house';
 import { createSafeStorage } from './data/storage';
 import { slog, swarn } from './log';
@@ -76,11 +76,15 @@ async function start(): Promise<void> {
   if (params.debug) attachStats(world);
   if (params.glyphs) showGlyphTest(world);
 
-  const [result, catalogResult, myResult] = await Promise.all([
-    loadHouse(params.house),
-    loadCatalog(),
-    loadMyFurniture(),
-  ]);
+  // `failmy=1` (with `debug=1`): the file of the own pieces is not even requested, as if it failed (D44).
+  let myLoad: Promise<LoadMyFurnitureResult>;
+  if (params.failmy) {
+    slog('debug failmy=1: my-furniture.json is not loaded');
+    myLoad = Promise.resolve({ ok: false, reason: 'failmy' });
+  } else {
+    myLoad = loadMyFurniture();
+  }
+  const [result, catalogResult, myResult] = await Promise.all([loadHouse(params.house), loadCatalog(), myLoad]);
   // The catalog the whole app works with: the catalog items plus the user's own pieces (T3.8, D34). A failed load of
   // the own pieces only hides their tab; an own id that the catalog already uses is left out (the catalog wins).
   const merged = catalogResult.ok ? mergeCatalog(catalogResult.items, myResult.ok ? myResult.items : []) : null;
@@ -90,8 +94,8 @@ async function start(): Promise<void> {
     // furniture see the restored state. `furnish=` runs later and wins over the saved pieces (D29).
     let persistence: Persistence = { flush: () => undefined, stop: () => undefined };
     if (merged) {
-      restoreSavedState(store, storage, result.house, merged.items, params.furnish !== 'none');
-      persistence = attachPersistence(store, storage);
+      const parked = restoreSavedState(store, storage, result.house, merged.items, params.furnish !== 'none');
+      persistence = attachPersistence(store, storage, parked);
     }
     const miniature = createMiniature(world, (scale, yawDeg) => {
       store.dispatch(setMiniature(scale, yawDeg));

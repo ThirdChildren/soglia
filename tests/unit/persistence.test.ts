@@ -91,7 +91,7 @@ describe('pickRestorable', () => {
   it('restores nothing outside the whitelist', () => {
     const picked = pickRestorable(serialize(busyState()), ctx());
     expect(picked).not.toBeNull();
-    expect(Object.keys(picked ?? {}).sort()).toEqual(['dropped', 'furniture', 'history', 'nextInstance', 'prefs', 'view']);
+    expect(Object.keys(picked ?? {}).sort()).toEqual(['dropped', 'furniture', 'history', 'nextInstance', 'parked', 'prefs', 'view']);
   });
 
   it('accepts a state saved before the newer fields existed', () => {
@@ -111,10 +111,11 @@ describe('pickRestorable', () => {
       prefs: { onboardingStep: 'two-hands', menuOpened: false },
       view: { kind: 'tabletop' },
       dropped: [],
+      parked: [],
     });
   });
 
-  it('restores a piece of the user\'s own furniture when the merged catalog knows it, drops it when it does not (T3.8)', () => {
+  it('restores a piece of the user\'s own furniture when the merged catalog knows it, parks it when it does not (T3.8, D44)', () => {
     const state = run(
       initial(),
       placeFurniture('my-sofa', 3, 3, 90, 'living'),
@@ -125,7 +126,8 @@ describe('pickRestorable', () => {
     expect(withMine?.dropped).toEqual([]);
     const without = pickRestorable(serialize(state), ctx({ catalogIds: new Set(['armchair']) }));
     expect(without?.furniture.map((p) => p.id)).toEqual(['furniture:armchair#1']);
-    expect(without?.dropped).toEqual([{ id: 'furniture:my-sofa#1', reason: 'unknown-catalog' }]);
+    expect(without?.dropped).toEqual([]);
+    expect(without?.parked.map((p) => p.id)).toEqual(['furniture:my-sofa#1']);
   });
 
   it('returns null for another house, broken JSON, a wrong version and non-text', () => {
@@ -137,12 +139,13 @@ describe('pickRestorable', () => {
     expect(pickRestorable(undefined as unknown as string, ctx())).toBeNull();
   });
 
-  it('drops a piece of an unknown catalog item and the history follows it', () => {
+  it('parks a piece of an unknown catalog item and the history follows it', () => {
     const state = busyState();
     const known = new Set(['bed-double', 'sofa-3seat']); // armchair is gone from the catalog
     const picked = pickRestorable(serialize(state), ctx({ catalogIds: known }));
     expect(picked?.furniture.map((p) => p.id)).toEqual(['furniture:bed-double#1', 'furniture:sofa-3seat#1']);
-    expect(picked?.dropped).toEqual([{ id: 'furniture:armchair#1', reason: 'unknown-catalog' }]);
+    expect(picked?.dropped).toEqual([]);
+    expect(picked?.parked.map((p) => p.id)).toEqual(['furniture:armchair#1']);
     // the step that placed the armchair is gone; no step mentions it any more
     expect(picked?.history.some((h) => h.id === 'furniture:armchair#1')).toBe(false);
     expect(picked?.history.length).toBe(2);
@@ -180,6 +183,7 @@ describe('pickRestorable', () => {
       prefs: { onboardingStep: 'done', menuOpened: true },
       view: { kind: 'tabletop' },
       dropped: [],
+      parked: [],
     });
   });
 });
@@ -329,11 +333,12 @@ function numbersIn(value: unknown, out: number[] = []): number[] {
 }
 
 describe('pickRestorable: rooms, catalog and history filtering', () => {
-  it('reports an unknown catalog item before an unknown room when a piece has both problems', () => {
+  it('parks (not drops) a piece with an unknown catalog item before checking its room when a piece has both problems', () => {
     const state = run(initial(), setFurniture([piece('lamp-gone', 1, 2, 'old-room')]));
     const picked = mustPick(serialize(state));
     expect(picked.furniture).toEqual([]);
-    expect(picked.dropped).toEqual([{ id: 'furniture:lamp-gone#1', reason: 'unknown-catalog' }]);
+    expect(picked.dropped).toEqual([]);
+    expect(picked.parked.map((p) => p.id)).toEqual(['furniture:lamp-gone#1']);
   });
 
   it('filters the pieces of an undo step by room but keeps the pieces that are outside every room', () => {
@@ -655,7 +660,7 @@ describe('what is NOT restored, even when it is in the saved text', () => {
 
   it('keeps the object of the result free of fields that are outside the whitelist', () => {
     const picked = mustPick(loudText());
-    expect(Object.keys(picked).sort()).toEqual(['dropped', 'furniture', 'history', 'nextInstance', 'prefs', 'view']);
+    expect(Object.keys(picked).sort()).toEqual(['dropped', 'furniture', 'history', 'nextInstance', 'parked', 'prefs', 'view']);
     expect(Object.keys(picked.prefs).sort()).toEqual(['menuOpened', 'onboardingStep']);
   });
 

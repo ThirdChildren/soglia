@@ -1,5 +1,5 @@
 // Pure URL / dev-file parameter parsing: no imports from @iwsdk/core or three.
-// Recognised keys: house, role, reset, seed, time, debug, mr, glyphs, furnish, failmodels, pinch.
+// Recognised keys: house, role, reset, seed, time, debug, mr, glyphs, furnish, failmodels, failmy, pinch.
 // Unknown values fall back to the default and produce a warning returned as data;
 // the caller decides how to log it.
 
@@ -24,6 +24,7 @@ export type ParamKey =
   | 'glyphs'
   | 'furnish'
   | 'failmodels'
+  | 'failmy'
   | 'pinch';
 
 export type ParamsSource = 'url' | 'dev-file' | 'default';
@@ -51,6 +52,11 @@ export interface Params {
    * aid). Only honoured together with `debug=1` (`mergeParams` drops it with a warning otherwise).
    */
   failmodels: boolean;
+  /**
+   * `failmy=1`: do not load `my-furniture.json`, as if it failed (404), to try that a saved own piece is parked and
+   * not lost (D44; development aid). Only honoured together with `debug=1`, like `failmodels`.
+   */
+  failmy: boolean;
   /**
    * `pinch=auto|grip|joints` (development aid, D31): `auto` (default) and `joints` use the hand joints when the
    * session provides them; `grip` always uses the grip space, as in M2 (to re-run the older QA scenarios).
@@ -85,6 +91,7 @@ export const DEFAULT_PARAMS: Readonly<Params> = Object.freeze({
   glyphs: false,
   furnish: 'none',
   failmodels: false,
+  failmy: false,
   pinch: 'auto',
 });
 
@@ -142,6 +149,7 @@ const FIELD_PARSERS: { [K in ParamKey]: (raw: string) => FieldResult<Params[K]> 
     return { ok: true, value: raw };
   },
   failmodels: parseFlag,
+  failmy: parseFlag,
   pinch: (raw) =>
     (PINCH_MODES as readonly string[]).includes(raw)
       ? { ok: true, value: raw as PinchMode }
@@ -217,6 +225,10 @@ export function mergeParams(
     params.failmodels = false;
     warnings.push('param failmodels ignored: needs debug=1');
   }
+  if (params.failmy && !params.debug) {
+    params.failmy = false;
+    warnings.push('param failmy ignored: needs debug=1');
+  }
   return { params, source, warnings };
 }
 
@@ -227,7 +239,8 @@ export function formatParamsLine(source: ParamsSource, p: Params): string {
     `seed=${p.seed} debug=${p.debug} time=${p.time ?? '-'}`;
   // Only when they differ from the default, so the line stays the one the QA scenarios know.
   const withFail = p.failmodels ? `${line} failmodels=true` : line;
-  return p.pinch === 'auto' ? withFail : `${withFail} pinch=${p.pinch}`;
+  const withMy = p.failmy ? `${withFail} failmy=true` : withFail;
+  return p.pinch === 'auto' ? withMy : `${withMy} pinch=${p.pinch}`;
 }
 
 /** True when the warnings include a discarded `house` value (the app then logs that it kept the default home). */

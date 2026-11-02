@@ -10,12 +10,14 @@ import type { CatalogItem } from '../logic/catalog';
 import type { House } from '../logic/house';
 import {
   createSavePlanner,
+  parkedToWrite,
   pickRestorable,
   serializeForSave,
   storageKey,
   utf8Length,
   type SaveReason,
 } from '../logic/persistence';
+import type { PlacedPiece } from '../logic/placement-rules';
 import { restoreSaved, type AppState, type Store } from '../logic/state';
 
 /** `reset=1`: removes every saved state before anything is read. */
@@ -28,6 +30,8 @@ export function clearSavedState(storage: SafeStorage): void {
  * Puts the saved state of the open house back into the store (furniture, counters, history, preferences).
  * Logs one of `state restored`, `state none` or `state discarded` (an unreadable state is also removed).
  * With `ignoreFurniture` (a staging preset will replace the pieces) only the preferences come back.
+ * Returns the parked pieces (D44): saved pieces of a catalog item that is not available now. They are not put in the
+ * store; pass them to `attachPersistence` so every save writes them again.
  */
 export function restoreSavedState(
   store: Store,
@@ -35,13 +39,13 @@ export function restoreSavedState(
   house: House,
   catalog: readonly CatalogItem[],
   ignoreFurniture: boolean,
-): void {
-  if (!storage.available()) return;
+): readonly PlacedPiece[] {
+  if (!storage.available()) return [];
   const key = storageKey(store.get().houseId);
   const saved = storage.get(key);
   if (saved === null) {
     slog(`state none key=${key}`);
-    return;
+    return [];
   }
   const picked = pickRestorable(saved, {
     houseId: store.get().houseId,
@@ -53,11 +57,13 @@ export function restoreSavedState(
   if (picked === null) {
     swarn(`state discarded key=${key} reason=invalid`);
     storage.remove(key);
-    return;
+    return [];
   }
   for (const piece of picked.dropped) swarn(`state piece discarded id=${piece.id} reason=${piece.reason}`);
+  for (const piece of picked.parked) swarn(`state piece parked id=${piece.id} reason=unknown-catalog`);
   store.dispatch(restoreSaved(picked));
   slog(`state restored pieces=${store.get().furniture.length} key=${key}`);
+  return picked.parked;
 }
 
 export interface Persistence {
@@ -81,22 +87,26 @@ function savedPartChanged(prev: AppState, next: AppState): boolean {
 /**
  * Starts saving. Call it after the restore: the state at this moment is taken as already saved, so a
  * session with no change writes nothing. Without usable storage nothing is attached.
+ * `parked` (from `restoreSavedState`) are held here and written again, identical, with every save (D44).
  */
-export function attachPersistence(store: Store, storage: SafeStorage): Persistence {
+export function attachPersistence(store: Store, storage: SafeStorage, parked: readonly PlacedPiece[] = []): Persistence {
   const none: Persistence = { flush: () => undefined, stop: () => undefined };
   if (!storage.available()) return none;
 
   const key = storageKey(store.get().houseId);
   const clock = typeof performance !== 'undefined' ? () => performance.now() : () => Date.now();
   const planner = createSavePlanner(clock);
-  planner.baseline(serializeForSave(store.get()));
+  planner.baseline(serializeForSave(store.get(), parked));
 
   let timer: ReturnType<typeof setTimeout> | null = null;
 
   const write = (text: string, reason: SaveReason): void => {
     if (!storage.set(key, text)) return;
     planner.confirm(text);
-    slog(`state saved key=${key} pieces=${store.get().furniture.length} bytes=${utf8Length(text)} reason=${reason}`);
+    const written = parkedToWrite(store.get().furniture, parked).length;
+    slog(
+      `state saved key=${key} pieces=${store.get().furniture.length} bytes=${utf8Length(text)} reason=${reason} parked=${written}`,
+    );
   };
 
   const cancelTimer = (): void => {
@@ -130,7 +140,7 @@ export function attachPersistence(store: Store, storage: SafeStorage): Persisten
     const previous = last;
     last = state;
     if (!savedPartChanged(previous, state)) return;
-    planner.update(serializeForSave(state));
+    planner.update(serializeForSave(state, parked));
     schedule();
   });
 

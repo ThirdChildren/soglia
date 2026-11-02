@@ -4,7 +4,7 @@
 
 import { serialize, deserialize, SCALE, TABLETOP_VIEW } from './state';
 import type { AppState, FurnitureSnapshot, ViewState } from './state';
-import type { PlacedPiece } from './placement-rules';
+import { MAX_PIECES, type PlacedPiece } from './placement-rules';
 
 /** Every key the project writes starts with this prefix; `reset=1` removes all of them. */
 export const KEY_PREFIX = 'soglia:v1:';
@@ -24,9 +24,12 @@ export function isSogliaKey(key: unknown): boolean {
 /** Why a saved piece was not restored. */
 export type DropReason = 'unknown-catalog' | 'unknown-room';
 
+/** Why a saved piece is thrown away for good: only a room that no longer exists (the house changed). */
+export type DiscardReason = Extract<DropReason, 'unknown-room'>;
+
 export interface DroppedPiece {
   id: string;
-  reason: DropReason;
+  reason: DiscardReason;
 }
 
 /** What the open house offers: a saved piece must still make sense against it. */
@@ -54,8 +57,14 @@ export interface Restorable {
   prefs: AppState['prefs'];
   /** The saved view if its viewpoint exists in the open house, else the tabletop. */
   view: ViewState;
-  /** Pieces left out, with the reason (the caller logs them). */
+  /** Pieces left out for good (a room that is gone), with the reason (the caller logs them). */
   dropped: DroppedPiece[];
+  /**
+   * Pieces of a catalog item that is not available now (D44, e.g. an own piece while `my-furniture.json` does not
+   * load). They are not restored and not shown, but the caller keeps them and hands them back to `serializeForSave`,
+   * so a save caused by another change does not lose them. The next session with the item restores them normally.
+   */
+  parked: PlacedPiece[];
 }
 
 const PIECE_ID_CATALOG = /^furniture:([a-z0-9][a-z0-9-]*)#[1-9][0-9]*$/;
@@ -73,22 +82,23 @@ function dropReasonOf(piece: PlacedPiece, ctx: RestoreContext): DropReason | nul
  * would not exist), `miniature` (the model is placed again every session, D3), `role` (the URL decides)
  * nor `houseId`.
  * Returns null for broken JSON, an invalid state or a state of another house.
- * Pieces of an unknown catalog item or of an unknown room are dropped; the undo history follows them
- * (steps that act on a dropped piece go away, dropped pieces are removed from the other steps).
- * `nextInstance` is kept whole: a dropped id is never handed out again.
+ * Pieces of an unknown room are dropped; pieces of an unknown catalog item are parked (`parked`, D44). The undo
+ * history follows both (steps that act on such a piece go away, those pieces are removed from the other steps).
+ * `nextInstance` is kept whole: a dropped or parked id is never handed out again.
  */
 export function pickRestorable(saved: string, ctx: RestoreContext): Restorable | null {
   const state = deserialize(saved);
   if (state === null || state.houseId !== ctx.houseId) return null;
 
   const dropped: DroppedPiece[] = [];
+  const parked: PlacedPiece[] = [];
   const nextInstance: Record<string, number> = { ...state.nextInstance };
   const view: ViewState =
     state.view.kind === 'viewpoint' && ctx.viewpointIds?.has(state.view.id) === true
       ? { kind: 'viewpoint', id: state.view.id }
       : TABLETOP_VIEW;
   if (ctx.ignoreFurniture === true) {
-    return { furniture: [], nextInstance: {}, history: [], prefs: { ...state.prefs }, view, dropped };
+    return { furniture: [], nextInstance: {}, history: [], prefs: { ...state.prefs }, view, dropped, parked };
   }
 
   const furniture: PlacedPiece[] = [];
@@ -97,7 +107,8 @@ export function pickRestorable(saved: string, ctx: RestoreContext): Restorable |
     const reason = dropReasonOf(piece, ctx);
     if (reason === null) furniture.push(piece);
     else {
-      dropped.push({ id: piece.id, reason });
+      if (reason === 'unknown-catalog') parked.push(piece);
+      else dropped.push({ id: piece.id, reason });
       droppedIds.add(piece.id);
     }
   }
@@ -113,17 +124,39 @@ export function pickRestorable(saved: string, ctx: RestoreContext): Restorable |
     });
   }
 
-  return { furniture, nextInstance, history, prefs: { ...state.prefs }, view, dropped };
+  return { furniture, nextInstance, history, prefs: { ...state.prefs }, view, dropped, parked };
+}
+
+/**
+ * The parked pieces that `serializeForSave` appends after the pieces of the store: in the order given, without an id
+ * that the store already uses or that repeats, and only as many as MAX_PIECES leaves room for (the pieces of the
+ * store come first). Pure: the caller uses it to know how many were written.
+ */
+export function parkedToWrite(furniture: readonly PlacedPiece[], parked: readonly PlacedPiece[]): PlacedPiece[] {
+  const seen = new Set<string>();
+  for (const piece of furniture) seen.add(piece.id);
+  const out: PlacedPiece[] = [];
+  for (const piece of parked) {
+    if (furniture.length + out.length >= MAX_PIECES) break;
+    if (seen.has(piece.id)) continue;
+    seen.add(piece.id);
+    out.push(piece);
+  }
+  return out;
 }
 
 /**
  * The state as it is saved: the same version-1 format as `serialize`, but with the parts that are never
  * restored at their defaults (`view` is part of the saved text). So a change of the model position or of the
  * selected room does not make the saved text different, and does not cause a write.
+ * `parked` (D44) are written again, identical, after the pieces of the store (see `parkedToWrite`); the store
+ * itself never holds them.
  */
-export function serializeForSave(state: AppState): string {
+export function serializeForSave(state: AppState, parked: readonly PlacedPiece[] = []): string {
+  const extra = parkedToWrite(state.furniture, parked);
   return serialize({
     ...state,
+    furniture: extra.length === 0 ? state.furniture : [...state.furniture, ...extra],
     miniature: { scale: SCALE, yawDeg: 0, offset: [0, 0] },
     selectedRoomId: null,
   });
