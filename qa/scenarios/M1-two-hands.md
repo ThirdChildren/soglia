@@ -1,42 +1,44 @@
 # S1.2 · Pizzico a due mani: zoom, rotazione, limiti
 
+> **Changelog 2026-11-02** (solo punti di partenza, criteri invariati; gate M3, `qa/reports/M3-2026-11-02-C2-m1-regressions.md`): da M3 i marcatori `viewpoint:V1/V2/V3` stanno a (−0,130; −0,465), (0,065; −0,470), (0,215; −0,535) in scala 0,05 e si spostano con il plastico; un pizzico entro 0,04 m da un marcatore entra nel punto di vista invece di avviare lo zoom (le mani a ∓0,15 cadevano a 0,025 m da `V1`). Le distanze delle mani dal centro diventano: fase A **∓0,20 → ∓0,333**, fase B **raggio 0,27**, passo 10 **∓0,27 → ∓0,75**, passo 11 **∓0,40 → ∓0,02**, fase D **∓0,17** (tutte a ≥ 0,05 m dai marcatori, ricalcolate sulla scala di partenza di ogni fase). Testa a (0; 1,6; 0), `O` = (0; 1,35; −0,45), `pinch=grip` (come M2/M3). Le mani restano simmetriche attorno al centro: la verifica 4 vale alla lettera.
+
 **Milestone**: M1 · **Tipo**: PC (emulatore IWER via MCP `iwsdk-runtime`)
 Prerequisiti di implementazione: T1.9, T1.11, T1.12 (vedi `docs/plans/M1.md`).
 
 ## Precondizioni
-- Come S1.1: runtime headless, `dev-params.local.txt` = `house=apartment-a&role=visitor&reset=1&seed=1&debug=1`, `browser_reload_page`.
-- `xr_set_transform` headset a (0; 1,2; 0); `xr_accept_session`; `xr_set_input_mode` con `mode: "hand"`; attesa 2 s.
-- Ricavare **O = (Ox; Oy; Oz)** dall'ultima riga `[soglia] miniature placed …` (atteso (0; 0,95; −0,45)). Le mani stanno alla quota **y = Oy + 0,05**. Convenzione di rotazione: `yawDeg` positivo = rotazione antioraria vista dall'alto attorno a +Y (come `rotation.y` di Three.js); la mano destra che si allontana dall'utente (−z) mentre la sinistra si avvicina equivale a +90°.
+- Come S1.1: runtime headless, `dev-params.local.txt` = `house=apartment-a&role=visitor&reset=1&seed=1&debug=1&pinch=grip`, `browser_reload_page`.
+- `xr_set_transform` headset a (0; 1,6; 0) (come l'emulatore la mette di default); `xr_accept_session`; `xr_set_input_mode` con `mode: "hand"`; attesa 2 s.
+- Ricavare **O = (Ox; Oy; Oz)** dall'ultima riga `[soglia] miniature placed …` (atteso (0; 1,35; −0,45) con la testa a 1,6 m). Le mani stanno alla quota **y = Oy + 0,05**. Convenzione di rotazione: `yawDeg` positivo = rotazione antioraria vista dall'alto attorno a +Y (come `rotation.y` di Three.js); la mano destra che si allontana dall'utente (−z) mentre la sinistra si avvicina equivale a +90°.
 - **Nota (T2.17a, mani rispetto al centro)**: dalla T2.17a il punto medio delle mani è il **perno** del gesto (`docs/plans/M2.md`, D28): mani simmetriche rispetto al centro del plastico non lo spostano, mani spostate da un lato lo spostano quando si ingrandisce. In IWER il punto di pizzico è il `gripSpace`, che sta a circa 5 cm dalla posa impostata con `xr_set_transform`: con orientamento `(0, 0, 0, 1)` il grip sta a **posa + (−0,038; −0,003; +0,037)** (assestato, dopo ~150 ms dal pizzico). Per avere mani davvero simmetriche attorno a O, ogni posa delle fasi A–D va impostata a **bersaglio − (−0,038; −0,003; +0,037)**, cioè (x + 0,038; y + 0,003; z − 0,037) (vale anche per le tappe di `xr_animate_to`). Senza questa correzione lo zoom ×2,4 sposta il centro di circa 7 cm e la verifica 4 non regge.
 - Nota sulle chiamate: `xr_animate_to` accoda le animazioni una dopo l'altra; l'esito dipende solo dalle pose finali di ogni tappa. Durata 0,5 s per tappa, una chiamata per mano, nell'ordine sinistra → destra.
 
 ## Passi
 
 ### Fase A · zoom
-1. `xr_set_transform`: `hand-left` a (Ox − 0,15; y; Oz), `hand-right` a (Ox + 0,15; y; Oz). Distanza tra le mani 0,30 m.
+1. `xr_set_transform`: `hand-left` a (Ox − 0,20; y; Oz), `hand-right` a (Ox + 0,20; y; Oz). Distanza tra le mani 0,40 m.
 2. `xr_set_select_value` `hand-left` = 1, poi `hand-right` = 1 (pizzico tenuto).
 3. `browser_get_console_logs` con `pattern: "gesture"` → deve esserci `miniature gesture start`.
-4. `xr_animate_to`: `hand-left` a (Ox − 0,25; y; Oz), poi `hand-right` a (Ox + 0,25; y; Oz). Distanza finale 0,50 m (rapporto 1,667).
+4. `xr_animate_to`: `hand-left` a (Ox − 0,333; y; Oz), poi `hand-right` a (Ox + 0,333; y; Oz). Distanza finale 0,667 m (rapporto 1,667).
 5. `xr_set_select_value` `hand-left` = 0, `hand-right` = 0 (rilascio).
 6. `browser_get_console_logs` con `pattern: "gesture end|room selected"`.
 
 ### Fase B · rotazione (a partire dalla fine della fase A; sia s1 la scala letta nella riga `gesture end` della fase A)
-7. `xr_set_transform`: `hand-left` a (Ox − 0,20; y; Oz), `hand-right` a (Ox + 0,20; y; Oz); poi `xr_set_select_value` a 1 su entrambe.
+7. `xr_set_transform`: `hand-left` a (Ox − 0,27; y; Oz), `hand-right` a (Ox + 0,27; y; Oz) (dopo la fase A il plastico è più grande e `V1` è a 0,03 m da ∓0,20: per questo il raggio è 0,27); poi `xr_set_select_value` a 1 su entrambe.
 8. Tappe, una chiamata `xr_animate_to` per mano (prima la sinistra, poi la destra), durata 0,5 s:
-   - 30°: sinistra (Ox − 0,173; y; Oz + 0,100), destra (Ox + 0,173; y; Oz − 0,100)
-   - 60°: sinistra (Ox − 0,100; y; Oz + 0,173), destra (Ox + 0,100; y; Oz − 0,173)
-   - 90°: sinistra (Ox; y; Oz + 0,200), destra (Ox; y; Oz − 0,200)
+   - 30°: sinistra (Ox − 0,234; y; Oz + 0,135), destra (Ox + 0,234; y; Oz − 0,135)
+   - 60°: sinistra (Ox − 0,135; y; Oz + 0,234), destra (Ox + 0,135; y; Oz − 0,234)
+   - 90°: sinistra (Ox; y; Oz + 0,270), destra (Ox; y; Oz − 0,270)
 9. Rilascio (select a 0 su entrambe). `browser_get_console_logs` con `pattern: "gesture end"`, poi `browser_screenshot` → allegare (plastico ingrandito e ruotato di 90°).
 
 ### Fase C · limiti
-10. Mani a (Ox ∓ 0,15; y; Oz), pizzico, `xr_animate_to` a (Ox ∓ 0,60; y; Oz) (rapporto 4), rilascio. Leggere `gesture end`.
-11. Mani a (Ox ∓ 0,15; y; Oz), pizzico, `xr_animate_to` a (Ox ∓ 0,02; y; Oz) (rapporto 0,13), rilascio. Leggere `gesture end`.
+10. Mani a (Ox ∓ 0,27; y; Oz), pizzico, `xr_animate_to` a (Ox ∓ 0,75; y; Oz) (rapporto ≈ 2,8: dalla scala della fase B, 0,0833, si supera 0,12 e la scala si ferma al limite), rilascio. Leggere `gesture end`.
+11. Mani a (Ox ∓ 0,40; y; Oz) (a 0,12 il marcatore `V2` sta a (0,156; −0,498): le mani a ∓0,40 ne distano 0,24 m), pizzico, `xr_animate_to` a (Ox ∓ 0,02; y; Oz) (rapporto 0,05), rilascio. Leggere `gesture end`.
 
 ### Fase D · traslazione a due mani (T2.17a, decisione D28; a scala qualsiasi, qui dalla scala della fase C)
-D1. Mani a (Ox ∓ 0,15; y; Oz), con la correzione del grip della nota in alto (centro tra le mani = centro del plastico), pizzico su entrambe, attesa 0,3 s.
-D2. `xr_animate_to`: `hand-left` a (Ox + 0,05; y; Oz), poi `hand-right` a (Ox + 0,35; y; Oz) (distanza invariata 0,30, punto medio **+0,20**); rilascio. `browser_get_console_logs` con `pattern: "\\] miniature (gesture end|translated)"`.
+D1. Mani a (Ox ∓ 0,17; y; Oz) (a scala 0,03 i marcatori sono vicini al centro: `V3` a 0,065 m dalla destra), con la correzione del grip della nota in alto (centro tra le mani = centro del plastico), pizzico su entrambe, attesa 0,3 s.
+D2. `xr_animate_to`: `hand-left` a (Ox + 0,03; y; Oz), poi `hand-right` a (Ox + 0,37; y; Oz) (distanza invariata 0,34, punto medio **+0,20**); rilascio. `browser_get_console_logs` con `pattern: "\\] miniature (gesture end|translated)"`.
 D3. `ecs_query_entity` su `miniature:root` con `["Transform"]`.
-D4. Limite: ripetere D1–D2 con spostamento del punto medio di **+0,60** (da una posizione già a +0,20); leggere `translated`.
+D4. Limite: ripetere D1–D2 con spostamento del punto medio di **+0,60** (da una posizione già a +0,20); **le mani partono centrate sul nuovo centro** (Ox + 0,20 ∓ 0,17: a scala 0,03 i pizzichi a ∓0,15 da Ox sono fuori dal raggio di presa e il gesto parte in ritardo con la scala sbagliata); leggere `translated`.
 
 ### Chiusura
 12. `scene_get_runtime_hierarchy` + `scene_get_object_transform` su `miniature:root` (posizione globale).
