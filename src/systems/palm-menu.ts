@@ -58,6 +58,32 @@ export function closeMenu(via: 'button' | 'debug-key'): void {
   active?.closePinned(via);
 }
 
+/**
+ * Closes the menu that is open, in either mode (the Issues panel takes its place: one panel at a time, T4.6a). The pinned
+ * menu closes as with the Menu button; the palm menu closes with `via=button` and the palm detectors start again, so a palm
+ * that is still up needs its 0.4 s again before a menu can open. Does nothing when no menu is open.
+ */
+export function closeOpenMenu(): void {
+  active?.closeAny();
+}
+
+const openedListeners = new Set<() => void>();
+
+/**
+ * Calls `listener` just before a menu opens, in either mode (the log line `menu opened` comes after). The Issues panel
+ * uses it to close itself: a menu and the panel are never open together. Returns the unsubscribe function.
+ */
+export function onMenuOpening(listener: () => void): () => void {
+  openedListeners.add(listener);
+  return () => {
+    openedListeners.delete(listener);
+  };
+}
+
+function notifyMenuOpening(): void {
+  for (const listener of openedListeners) listener();
+}
+
 /** The hand that holds the PALM menu open, or null when the menu is closed or pinned (the pinned menu belongs to no hand). */
 export function getPalmMenuHand(): PalmHand | null {
   return active && !active.isPinned ? active.palmOwner : null;
@@ -195,6 +221,7 @@ export class PalmMenuSystem extends createSystem({}) {
   private setOwner(ctx: { panel: PalmMenuPanel; store: Store }, next: PalmHand | null, via: MenuCloseVia): void {
     this.owner = next;
     if (next) {
+      notifyMenuOpening();
       ctx.panel.open();
       slog(`menu opened hand=${next} mode=palm`);
       ctx.store.dispatch(markMenuOpened()); // idempotent: only the first opening changes the state
@@ -212,6 +239,7 @@ export class PalmMenuSystem extends createSystem({}) {
       slog('menu pinned unavailable reason=no-session');
       return;
     }
+    notifyMenuOpening();
     if (this.owner !== null) this.setOwner(ctx, null, 'button');
     // The palm detectors start from "closed": a palm that is still up must not open a second menu behind this one.
     resetPalmDetector(this.left);
@@ -220,6 +248,20 @@ export class PalmMenuSystem extends createSystem({}) {
     ctx.panel.openPinned(this.world.player.head);
     slog(`menu opened hand=${hand ?? 'none'} mode=pinned`);
     ctx.store.dispatch(markMenuOpened());
+  }
+
+  /** Closes whichever menu is open (T4.6a): the pinned one as the Menu button does, the palm one with `via=button`. */
+  closeAny(): void {
+    const ctx = context;
+    if (!ctx) return;
+    if (this.pinned) {
+      this.closePinned('button');
+      return;
+    }
+    if (this.owner === null) return;
+    this.setOwner(ctx, null, 'button');
+    resetPalmDetector(this.left);
+    resetPalmDetector(this.right);
   }
 
   /** Closes the pinned menu. A palm that is up then needs its 0.4 s again before the palm menu can open. */

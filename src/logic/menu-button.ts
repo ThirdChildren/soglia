@@ -65,6 +65,8 @@ export interface ButtonAnchor {
   y: number;
   z: number;
   yawRad: number;
+  /** Half width of the pick rectangle, metres; absent = BUTTON_HALF_WIDTH (the "Menu" buttons). The "Issues" buttons are wider. */
+  halfWidth?: number;
 }
 
 /** Height of the centre of a button above the model floor at `scale` (world metres). A scale that is not usable counts as 0.05. */
@@ -123,13 +125,56 @@ export function buttonAnchors(
   return out;
 }
 
+// --- The "Issues" buttons (task T4.6a, decision D47) ---------------------------------------------------------------------
+
+/** Stable ids of the two "Issues" buttons, which open the Issues panel with one hand (rule 9). */
+export const ISSUE_BUTTON_IDS: Readonly<Record<ButtonSide, string>> = {
+  left: 'ui:issue-button-left',
+  right: 'ui:issue-button-right',
+};
+/**
+ * Size of an "Issues" button panel in UIKit units (centimetres). 9 cm, not the 8 cm of the "Menu" buttons: "Issues" in bold at
+ * 2.4 cm is 7.63 cm wide, which does not fit the 7.2 cm inside the border of an 8 cm button (tests/unit/issue-panel-geometry.test.ts).
+ */
+export const ISSUE_BUTTON_PANEL = { width: 9, height: 6 } as const;
+export const ISSUE_BUTTON_HALF_WIDTH = ISSUE_BUTTON_PANEL.width / 200;
+export const ISSUE_BUTTON_HALF_HEIGHT = ISSUE_BUTTON_PANEL.height / 200;
+/** An "Issues" button is this much higher than the "Menu" button below it (centre to centre, metres, D47). */
+export const ISSUE_BUTTON_LIFT = 0.07;
+/** Free space between the rectangle of an "Issues" button and the one of the "Menu" button below it, metres (at least 1 cm: no accidental pinch on the neighbour). */
+export const ISSUE_BUTTON_GAP = ISSUE_BUTTON_LIFT - BUTTON_HALF_HEIGHT - ISSUE_BUTTON_HALF_HEIGHT;
+
+/**
+ * Places the two "Issues" buttons above the two "Menu" buttons in `menu` (already placed by `buttonAnchors`): the same
+ * ring position and the same yaw (call it after `faceHead`), ISSUE_BUTTON_LIFT higher. Writes into `out` and returns it.
+ */
+export function issueButtonAnchors(menu: Readonly<ButtonPair>, out: ButtonPair = createButtonPair()): ButtonPair {
+  for (let i = 0; i < 2; i += 1) {
+    const side: ButtonSide = i === 0 ? 'left' : 'right';
+    const button = out[i];
+    button.id = ISSUE_BUTTON_IDS[side];
+    button.side = side;
+    button.x = menu[i].x;
+    button.y = menu[i].y + ISSUE_BUTTON_LIFT;
+    button.z = menu[i].z;
+    button.yawRad = menu[i].yawRad;
+    button.halfWidth = ISSUE_BUTTON_HALF_WIDTH;
+  }
+  return out;
+}
+
+/** Body of the `issue button view` log line: `issue button view distance=0.715 angleDeg=37.6`. */
+export function formatIssueButtonView(view: Readonly<ButtonView>): string {
+  return `issue button view distance=${view.distance.toFixed(3)} angleDeg=${view.angleDeg.toFixed(1)}`;
+}
+
 /** Turns each button toward the head about the vertical axis only (the panel faces +Z; no tilt, so the text never looks slanted). */
 export function faceHead(buttons: ButtonPair, head: Readonly<Point3Like>): ButtonPair {
   for (let i = 0; i < 2; i += 1) buttons[i].yawRad = yawTowardHead(buttons[i], head);
   return buttons;
 }
 
-/** Distance from the head to a button and its angle from the gaze (what `menu button view` logs). */
+/** Distance from the head to a button and its angle from the gaze (what `menu button view` and `issue button view` log). */
 export interface ButtonView {
   distance: number;
   angleDeg: number;
@@ -197,7 +242,7 @@ export function pickButton<T extends ButtonAnchor>(point: Readonly<Point3Like>, 
     // Axes of the panel after `rotation.y = yaw`: x -> (c, 0, -s), z (its normal) -> (s, 0, c).
     const lx = dx * c - dz * s;
     const lz = dx * s + dz * c;
-    if (!(Math.abs(lx) <= BUTTON_HALF_WIDTH && Math.abs(dy) <= BUTTON_HALF_HEIGHT && Math.abs(lz) <= BUTTON_PICK_DEPTH)) continue;
+    if (!(Math.abs(lx) <= (b.halfWidth ?? BUTTON_HALF_WIDTH) && Math.abs(dy) <= BUTTON_HALF_HEIGHT && Math.abs(lz) <= BUTTON_PICK_DEPTH)) continue;
     const distance = Math.sqrt(lx * lx + dy * dy + lz * lz);
     if (distance < bestDistance) {
       best = b;

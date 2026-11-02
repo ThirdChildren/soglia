@@ -30,6 +30,7 @@ import { cancelHeldFurniture } from './furniture-grab';
 import { cancelMeasure } from './measure';
 import { endMiniatureGesture } from './miniature-gesture';
 import { endMiniaturePan } from './miniature-pan';
+import { resumeIssuePanel, suspendIssuePanel } from './issue-panel';
 import { resumePalmMenu, suspendPalmMenu } from './palm-menu';
 import { cancelViewTransition } from './viewpoint';
 import { resumePinchInput, suspendPinchInput } from './pinch-input';
@@ -61,12 +62,14 @@ export function attachLifecycle(world: World, persistence: Persistence): Lifecyc
     endMiniatureGesture(); // (3) `miniature gesture end` with the current values
     endMiniaturePan(); // (3) `pan end`
     suspendPalmMenu(); // (4)
+    suspendIssuePanel(); // (4b) the Issues panel closes like the menu (T4.6a)
     suspendPinchInput(); // (5)
   };
 
   const resumeInput = (): void => {
     resumePinchInput();
     resumePalmMenu();
+    resumeIssuePanel();
   };
 
   const run = (action: LifecycleAction, event: LifecycleEvent): void => {

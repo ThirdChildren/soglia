@@ -67,6 +67,23 @@ export const strings = {
   viewpoint: {
     tabletopButton: 'Tabletop',
   },
+  /** The Issues panel and its buttons (M4, D47, D50). */
+  issues: {
+    /** The fixed buttons beside the model (T4.6a), above the "Menu" ones: they open and close the Issues panel with one hand. */
+    button: 'Issues',
+    back: 'Back',
+    close: 'Close',
+    /** Footer of the `home` screen: the roles are a demo, there are no accounts (rule 7, honesty). */
+    footer: 'Demo roles, no accounts',
+    /** Title of each screen. */
+    screens: {
+      home: 'Issues',
+      new: 'New issue',
+      list: 'Issues',
+      detail: 'Issue',
+      movein: 'Move-in report',
+    },
+  },
   reason,
   /** The tape measure (T3.14, D36): the hint while it is on, and the label of a measure ("140 cm"). */
   measure: {

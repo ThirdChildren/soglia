@@ -1,5 +1,5 @@
 // A fixed "Menu" button (`ui:menu-button-left` / `ui:menu-button-right`, task T3.3b, decision D32): a small opaque
-// UIKit panel (8 x 6 cm, public/ui/menu-button.uikitml) with the text `strings.menu.button`, placed by the Menu
+// UIKit panel (8 x 6 cm, public/ui/menu-button.uikitml; the "Issues" button is 9 x 6, public/ui/issue-button.uikitml) with the text `strings.menu.button`, placed by the Menu
 // button system beside the table-top model and turned toward the head about the vertical axis only (no tilt, so
 // the text never looks slanted). One panel per button; each exists for the whole life of the app. Like the menu
 // it is never hidden by the model (no depth test, drawn last). It does not handle input: the system picks the
@@ -10,9 +10,11 @@ import { tagEntity } from '../components/tag-entity';
 import { applyPanelFont } from './fonts';
 import { uiColors } from './theme';
 
-const PANEL_ASSET = 'menu-button';
-const ROOT_ELEMENT = 'menu-button-root';
-const TEXT_ELEMENT = 'menu-button-text';
+/** The "Menu" button (8 x 6 cm) and the "Issues" button above it (9 x 6 cm, T4.6a): same look, own layout file. */
+export type ButtonPanelKind = 'menu' | 'issues';
+const PANEL_ASSET: Readonly<Record<ButtonPanelKind, string>> = { menu: 'menu-button', issues: 'issue-button' };
+const ROOT_ELEMENT: Readonly<Record<ButtonPanelKind, string>> = { menu: 'menu-button-root', issues: 'issue-button-root' };
+const TEXT_ELEMENT: Readonly<Record<ButtonPanelKind, string>> = { menu: 'menu-button-text', issues: 'issue-button-text' };
 /** Drawn after the scene (and its transparent parts) so it is never covered; the menu uses the same order. */
 const BUTTON_RENDER_ORDER = 1000;
 
@@ -29,10 +31,11 @@ export class MenuButtonPanel {
     /** Stable id, `ui:menu-button-left` or `ui:menu-button-right`. */
     readonly stableId: string,
     private readonly text: string,
+    private readonly kind: ButtonPanelKind = 'menu',
   ) {
     const entity = world.createTransformEntity();
     tagEntity(entity, stableId);
-    entity.addComponent(PanelUI, { config: PANEL_ASSET });
+    entity.addComponent(PanelUI, { config: PANEL_ASSET[kind] });
     // Hidden until its content is in and it has a place.
     if (entity.object3D) entity.object3D.visible = false;
     this.entity = entity;
@@ -63,10 +66,10 @@ export class MenuButtonPanel {
 
   private tryApply(): void {
     const doc = this.entity.getValue(PanelDocument, 'document') as UiDocument | undefined;
-    const text = doc?.getElementById<UIKit.Text>(TEXT_ELEMENT);
+    const text = doc?.getElementById<UIKit.Text>(TEXT_ELEMENT[this.kind]);
     if (!doc || !text) return;
-    applyPanelFont(doc, ROOT_ELEMENT);
-    doc.getElementById<UIKit.Container>(ROOT_ELEMENT)?.setProperties({
+    applyPanelFont(doc, ROOT_ELEMENT[this.kind]);
+    doc.getElementById<UIKit.Container>(ROOT_ELEMENT[this.kind])?.setProperties({
       backgroundColor: uiColors.surface,
       borderColor: uiColors.ink,
       depthTest: false,

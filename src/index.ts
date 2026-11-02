@@ -27,6 +27,7 @@ import { installHandJoints } from './systems/hand-joints';
 import { createFitCheck } from './systems/fit-check';
 import { createFurnitureReasons } from './systems/furniture-reasons';
 import { createMeasure } from './systems/measure';
+import { createIssuePanel } from './systems/issue-panel';
 import { createMenuButton } from './systems/menu-button';
 import { createMenuItems, setMenuTabData } from './systems/menu-items';
 import { attachLifecycle } from './systems/lifecycle';
@@ -156,6 +157,8 @@ async function start(): Promise<void> {
     createMenuButton(world);
     // The way back from real scale with one hand (T4.R1): same place in the order, since a pinch on it is a `menu` claim.
     createTabletopButton(world);
+    // The Issues panel (T4.6a): its Close/Back controls are a `menu` claim too, so it goes after the menu and the buttons.
+    createIssuePanel(world);
     // The tape measure claims the pinch above the grab (and below the menu): register it after the menu, before the grab (T3.14).
     createMeasure(world, store, result.house, merged ? merged.items : [], built.entity, miniature.root);
     if (merged) {
