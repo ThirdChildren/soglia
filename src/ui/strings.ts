@@ -121,7 +121,27 @@ export const strings = {
       close: 'Close',
       pageOf: (page: number, pageCount: number): string => `${page}/${pageCount}`,
     },
-    /** Body of a screen that a later task fills (detail T4.9, move-in T4.10). */
+    /** The detail of one issue (T4.9, D43, D48): the status in words (the colour is not the only sign), the history and the actions. */
+    detail: {
+      title: 'Issue',
+      missing: 'Issue not found',
+      sampleData: 'Sample data',
+      status: { open: 'Open', in_progress: 'In progress', resolved: 'Resolved', archived: 'Archived' },
+      urgency: { low: 'Low', medium: 'Medium', urgent: 'Urgent' },
+      /** One line of the history is `28 Oct · landlord · Resolved`. */
+      events: {
+        created: 'Created',
+        in_progress: 'In progress',
+        resolved: 'Resolved',
+        archived: 'Archived',
+        reopened: 'Reopened',
+        commented: 'Comment',
+      },
+      /** The buttons: only the ones the role may press on this issue exist. */
+      actions: { 'take-on': 'Take on', resolve: 'Resolved', confirm: 'Confirm', reopen: 'Reopen' },
+      more: (count: number): string => `+${count} more`,
+    },
+    /** Body of a screen that a later task fills (move-in T4.10). */
     comingSoon: 'Coming soon',
     /** Title of each screen. */
     screens: {

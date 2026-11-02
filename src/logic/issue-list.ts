@@ -252,6 +252,14 @@ export function buildListPage(
   };
 }
 
+/** The page of the list where issue `id` is (0 when it is not in the list, or the role has no list): `Back` from the detail lands there. */
+export function pageOfIssue(issues: readonly StoredIssue[], role: Role, id: string): number {
+  if (!listVisibleTo(role)) return 0;
+  const sorted = sortIssues(issues.filter((issue) => issue.kind === 'issue' && issue.status !== undefined));
+  const at = sorted.findIndex((issue) => issue.id === id);
+  return at < 0 ? 0 : Math.floor(at / LIST_PAGE_SIZE);
+}
+
 /** Id of the issue in row `index` of the page, or null. */
 export function rowIssueId(page: Pick<ListPage, 'rows'>, index: number): string | null {
   return page.rows.find((row) => row.index === index)?.id ?? null;

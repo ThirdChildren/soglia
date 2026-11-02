@@ -148,6 +148,56 @@
         <span id="issue-panel-list-empty" style="font-size: 2.4; font-weight: normal; color: #1a1a1a; line-height: 1.1; text-align: center;">-</span>
       </div>
     </div>
+    <div id="issue-panel-detail" style="display: none; flex-direction: column; align-items: center; justify-content: space-between; width: 35.2; height: 25;">
+      <div id="issue-panel-dinfo" style="display: flex; flex-direction: column; width: 35.2;">
+        <div id="issue-panel-dhead" style="display: flex; flex-direction: row; align-items: center; justify-content: space-between; width: 35.2; height: 2.6;">
+          <div id="issue-panel-dstate" style="display: flex; flex-direction: row; align-items: center;">
+            <div id="issue-panel-ddot" style="width: 1.8; height: 1.8; border-radius: 0.9; background-color: #8a8f98;"></div>
+            <span id="issue-panel-dstatus" style="font-size: 2.4; font-weight: bold; color: #1a1a1a; line-height: 1; margin-left: 0.4;">-</span>
+          </div>
+          <span id="issue-panel-durgency" style="font-size: 2.4; font-weight: bold; color: #1a1a1a; line-height: 1;">-</span>
+        </div>
+        <div id="issue-panel-dmeta-box" style="display: flex; flex-direction: column; justify-content: center; width: 35.2; height: 2.4; margin-top: 0.2;">
+          <span id="issue-panel-dmeta" style="font-size: 2.4; font-weight: normal; color: #1a1a1a; line-height: 1;">-</span>
+        </div>
+        <div id="issue-panel-dmeta2-box" style="display: none; flex-direction: column; justify-content: center; width: 35.2; height: 2.4;">
+          <span id="issue-panel-dmeta2" style="font-size: 2.4; font-weight: normal; color: #1a1a1a; line-height: 1;">-</span>
+        </div>
+        <div id="issue-panel-dtext" style="display: flex; flex-direction: column; width: 35.2; margin-top: 0.2;">
+          <div id="issue-panel-dtl-0" style="display: none; flex-direction: column; justify-content: center; width: 35.2; height: 2.5;">
+            <span id="issue-panel-dtl-0-text" style="font-size: 2.4; font-weight: normal; color: #1a1a1a; line-height: 1;">-</span>
+          </div>
+          <div id="issue-panel-dtl-1" style="display: none; flex-direction: column; justify-content: center; width: 35.2; height: 2.5;">
+            <span id="issue-panel-dtl-1-text" style="font-size: 2.4; font-weight: normal; color: #1a1a1a; line-height: 1;">-</span>
+          </div>
+          <div id="issue-panel-dtl-2" style="display: none; flex-direction: column; justify-content: center; width: 35.2; height: 2.5;">
+            <span id="issue-panel-dtl-2-text" style="font-size: 2.4; font-weight: normal; color: #1a1a1a; line-height: 1;">-</span>
+          </div>
+        </div>
+        <div id="issue-panel-dhist" style="display: flex; flex-direction: column; width: 35.2; margin-top: 0.2;">
+        <div id="issue-panel-dhl-0" style="display: none; flex-direction: column; justify-content: center; width: 35.2; height: 2.4;">
+          <span id="issue-panel-dhl-0-text" style="font-size: 2.4; font-weight: normal; color: #3a3f47; line-height: 1;">-</span>
+        </div>
+        <div id="issue-panel-dhl-1" style="display: none; flex-direction: column; justify-content: center; width: 35.2; height: 2.4;">
+          <span id="issue-panel-dhl-1-text" style="font-size: 2.4; font-weight: normal; color: #3a3f47; line-height: 1;">-</span>
+        </div>
+        <div id="issue-panel-dhl-2" style="display: none; flex-direction: column; justify-content: center; width: 35.2; height: 2.4;">
+          <span id="issue-panel-dhl-2-text" style="font-size: 2.4; font-weight: normal; color: #3a3f47; line-height: 1;">-</span>
+        </div>
+        </div>
+        <div id="issue-panel-dmore-box" style="display: none; flex-direction: column; justify-content: center; width: 35.2; height: 2.4;">
+          <span id="issue-panel-dmore" style="font-size: 2.4; font-weight: bold; color: #3a3f47; line-height: 1;">-</span>
+        </div>
+      </div>
+      <div id="issue-panel-dactions" style="display: flex; flex-direction: row; justify-content: space-between; width: 35.2; height: 4;">
+      <div id="issue-panel-da-0" style="display: none; flex-direction: column; align-items: center; justify-content: center; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a; width: 17.4; height: 4;">
+        <span id="issue-panel-da-0-label" style="font-size: 2.4; font-weight: bold; color: #1a1a1a; line-height: 1; text-align: center;">-</span>
+      </div>
+      <div id="issue-panel-da-1" style="display: none; flex-direction: column; align-items: center; justify-content: center; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a; width: 17.4; height: 4;">
+        <span id="issue-panel-da-1-label" style="font-size: 2.4; font-weight: bold; color: #1a1a1a; line-height: 1; text-align: center;">-</span>
+      </div>
+      </div>
+    </div>
     <div id="issue-panel-note-box" style="display: none; flex-direction: column; align-items: center; width: 34.4; margin-top: 1;">
       <span id="issue-panel-note" style="font-size: 2.4; font-weight: normal; color: #1a1a1a; line-height: 1.1; text-align: center; width: 34.4;">-</span>
     </div>

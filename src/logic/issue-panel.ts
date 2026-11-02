@@ -9,7 +9,7 @@
 // T4.6a made the structure: the title, the bar (`Back` outside `home`, `Close`). T4.6b adds the `home` screen: a grid of the
 // four roles (the current one drawn dark, like the active tab of the menu) and, for the roles the permission table lets see
 // the issues, the buttons `Issues (n)` and `Move-in report`. T4.7 added `new` and T4.8 adds `list` (src/logic/issue-list.ts);
-// `detail` and `movein` arrive with the tasks that fill them (T4.9, T4.10).
+// `detail` and `movein` arrive with the tasks that fill them (T4.9 filled `detail`, T4.10 fills `movein`).
 
 import { MENU_EXTENT, MENU_PANEL, MIN_TEXT_SIZE, type HalfSize, type Offset, type PanelExtent } from './menu';
 import type { Issue } from './issues';
@@ -57,8 +57,12 @@ export type StaticControlId = 'back' | 'close' | RoleControlId | HomeActionId;
 export type FormControlId = `category-${string}` | `phrase-${string}` | `urgency-${string}` | 'cancel' | 'report';
 /** The controls of the list (T4.8, src/logic/issue-list.ts places them): its rows (`row-0` .. `row-4`) and the buttons for the pages. */
 export type ListControlId = `row-${number}` | 'page-prev' | 'page-next';
+/** The action buttons of the detail (T4.9, src/logic/issue-detail.ts places them): `resolve` is the button `action-resolved`. */
+export type DetailActionControlId = 'action-take-on' | 'action-resolved' | 'action-confirm' | 'action-reopen';
+/** The controls of the detail: the action buttons and the bar. */
+export type DetailControlId = DetailActionControlId | 'back' | 'close';
 /** Every control of the panel. */
-export type IssueControlId = StaticControlId | FormControlId | ListControlId;
+export type IssueControlId = StaticControlId | FormControlId | ListControlId | DetailActionControlId;
 
 export function roleControlId(role: Role): RoleControlId {
   return `role-${role}`;

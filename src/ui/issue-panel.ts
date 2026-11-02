@@ -28,6 +28,11 @@ import {
   type FormCell,
   type IssueForm,
 } from '../logic/issue-form';
+import {
+  DETAIL_HISTORY_ENTRIES,
+  DETAIL_TEXT_LINES,
+  type DetailModel,
+} from '../logic/issue-detail';
 import { LIST_BAR_BUTTON_WIDTH, LIST_PAGE_SIZE, listBarWidth, type ListPage, type ListRow } from '../logic/issue-list';
 import { ISSUE_URGENCIES } from '../logic/issues';
 import type { Role } from '../logic/params';
@@ -66,6 +71,10 @@ const MID2_ELEMENT = 'issue-panel-mid2';
 const LIST_ELEMENT = 'issue-panel-list';
 const LIST_EMPTY_BOX_ELEMENT = 'issue-panel-list-empty-box';
 const LIST_EMPTY_ELEMENT = 'issue-panel-list-empty';
+const DETAIL_ELEMENT = 'issue-panel-detail';
+const DETAIL_ACTIONS_ELEMENT = 'issue-panel-dactions';
+/** Most action buttons of the detail (a resolved issue has two for the tenant: Confirm and Reopen). */
+const DETAIL_ACTION_SLOTS = 2;
 /** The colour of a row's status dot as the style string UIKit takes (`#e5322d`). */
 const hexColor = (color: number): string => `#${color.toString(16).padStart(6, '0')}`;
 /** The grid of the form: four rows of two boxes (the categories take four rows, the phrases at most three). */
@@ -93,6 +102,24 @@ export interface HomeModel {
 interface ChipElements {
   box: UIKit.Container | null;
   label: UIKit.Text | null;
+}
+
+/** The parts of the detail (T4.9): the container, the status dot and words, the urgency, the category and room, the text, the history, the buttons. */
+interface DetailElements {
+  box: UIKit.Container | null;
+  dot: UIKit.Container | null;
+  status: UIKit.Text | null;
+  urgency: UIKit.Text | null;
+  meta: UIKit.Text | null;
+  meta2Box: UIKit.Container | null;
+  meta2: UIKit.Text | null;
+  textLines: ChipElements[];
+  histBox: UIKit.Container | null;
+  history: ChipElements[];
+  moreBox: UIKit.Container | null;
+  more: UIKit.Text | null;
+  actionsBox: UIKit.Container | null;
+  actions: ChipElements[];
 }
 
 /** The parts of one row of the list: its wrapper (with the heading above the row), the heading, the row, the dot, the text, the urgency. */
@@ -134,6 +161,23 @@ export class IssuePanel {
   private listEmpty: UIKit.Text | null = null;
   private readonly listRows: ListRowElements[] = [];
   private listModel: ListPage | null = null;
+  private detailModel: DetailModel | null = null;
+  private readonly detail: DetailElements = {
+    box: null,
+    dot: null,
+    status: null,
+    urgency: null,
+    meta: null,
+    meta2Box: null,
+    meta2: null,
+    textLines: [],
+    histBox: null,
+    history: [],
+    moreBox: null,
+    more: null,
+    actionsBox: null,
+    actions: [],
+  };
   /** Boxes of the grid, row by row (`row * 2 + column`), and of the three urgencies. */
   private readonly gridRows: (UIKit.Container | null)[] = [];
   private readonly gridBoxes: ChipElements[] = [];
@@ -224,6 +268,8 @@ export class IssuePanel {
     this.listEmpty = null;
     this.listRows.length = 0;
     this.listModel = null;
+    this.detailModel = null;
+    this.clearDetail();
     this.gridRows.length = 0;
     this.gridBoxes.length = 0;
     this.urgencies.clear();
@@ -242,6 +288,20 @@ export class IssuePanel {
   setList(list: ListPage | null): void {
     this.listModel = list;
     if (this.applied) this.writeScreen();
+  }
+
+  /** The detail that the `detail` screen shows (null: none). Written in place; kept until the layout is loaded. */
+  setDetail(detail: DetailModel | null): void {
+    this.detailModel = detail;
+    if (this.applied) this.writeScreen();
+  }
+
+  private clearDetail(): void {
+    const d = this.detail;
+    d.box = d.dot = d.status = d.urgency = d.meta = d.meta2Box = d.meta2 = d.histBox = d.moreBox = d.more = d.actionsBox = null;
+    d.textLines.length = 0;
+    d.history.length = 0;
+    d.actions.length = 0;
   }
 
   /** The role and the count that `home` shows. Written in place when the layout is loaded, else as soon as it is. */
@@ -315,6 +375,27 @@ export class IssuePanel {
         urgency: doc.getElementById<UIKit.Text>(`issue-panel-lu-${i}`),
       });
     }
+    const d = this.detail;
+    d.box = doc.getElementById<UIKit.Container>(DETAIL_ELEMENT);
+    d.dot = doc.getElementById<UIKit.Container>('issue-panel-ddot');
+    d.status = doc.getElementById<UIKit.Text>('issue-panel-dstatus');
+    d.urgency = doc.getElementById<UIKit.Text>('issue-panel-durgency');
+    d.meta = doc.getElementById<UIKit.Text>('issue-panel-dmeta');
+    d.meta2Box = doc.getElementById<UIKit.Container>('issue-panel-dmeta2-box');
+    d.meta2 = doc.getElementById<UIKit.Text>('issue-panel-dmeta2');
+    for (let i = 0; i < DETAIL_TEXT_LINES; i += 1) {
+      d.textLines.push({ box: doc.getElementById<UIKit.Container>(`issue-panel-dtl-${i}`), label: doc.getElementById<UIKit.Text>(`issue-panel-dtl-${i}-text`) });
+    }
+    d.histBox = doc.getElementById<UIKit.Container>('issue-panel-dhist');
+    d.moreBox = doc.getElementById<UIKit.Container>('issue-panel-dmore-box');
+    d.more = doc.getElementById<UIKit.Text>('issue-panel-dmore');
+    d.actionsBox = doc.getElementById<UIKit.Container>(DETAIL_ACTIONS_ELEMENT);
+    for (let i = 0; i < DETAIL_HISTORY_ENTRIES; i += 1) {
+      d.history.push({ box: doc.getElementById<UIKit.Container>(`issue-panel-dhl-${i}`), label: doc.getElementById<UIKit.Text>(`issue-panel-dhl-${i}-text`) });
+    }
+    for (let i = 0; i < DETAIL_ACTION_SLOTS; i += 1) {
+      d.actions.push({ box: doc.getElementById<UIKit.Container>(`issue-panel-da-${i}`), label: doc.getElementById<UIKit.Text>(`issue-panel-da-${i}-label`) });
+    }
     this.newBox = doc.getElementById<UIKit.Container>(NEW_ELEMENT);
     this.context = doc.getElementById<UIKit.Text>(CONTEXT_ELEMENT);
     this.urgencyRow = doc.getElementById<UIKit.Container>(URGENCY_ROW_ELEMENT);
@@ -360,12 +441,16 @@ export class IssuePanel {
     const isHome = screen === 'home';
     const form = screen === 'new' ? this.form : null;
     const list = screen === 'list' ? this.listModel : null;
-    // The title of the form is the name of the fixture (a free spot keeps "New issue"); the list says "Sample data" and its page.
-    const title = form?.fixtureName ? clipName(form.fixtureName, TITLE_MAX_LENGTH) : (list?.title ?? strings.issues.screens[screen]);
+    const detail = screen === 'detail' ? this.detailModel : null;
+    const detailShown = detail !== null && !detail.missing;
+    // The title of the form is the name of the fixture (a free spot keeps "New issue"); the list says "Sample data" and its page,
+    // the detail says "Issue" or "Issue - Sample data".
+    const title = form?.fixtureName ? clipName(form.fixtureName, TITLE_MAX_LENGTH) : (list?.title ?? detail?.title ?? strings.issues.screens[screen]);
     this.title?.setProperties({ text: title });
     this.footer?.setProperties({ text: isHome ? strings.issues.footer : '', display: isHome ? 'flex' : 'none' });
     this.home?.setProperties({ display: isHome ? 'flex' : 'none' });
-    this.noteBox?.setProperties({ display: isHome || form || list ? 'none' : 'flex' });
+    this.noteBox?.setProperties({ display: isHome || form || list || detailShown ? 'none' : 'flex' });
+    this.detail.box?.setProperties({ display: detailShown ? 'flex' : 'none' });
     this.newBox?.setProperties({ display: form ? 'flex' : 'none' });
     this.listBox?.setProperties({ display: list ? 'flex' : 'none' });
     this.writeBar(form, list);
@@ -375,6 +460,11 @@ export class IssuePanel {
     }
     if (form) {
       this.writeForm(form);
+      return;
+    }
+    if (detail) {
+      if (detailShown) this.writeDetail(detail);
+      else this.note?.setProperties({ text: detail.missingText });
       return;
     }
     if (!isHome) {
@@ -436,6 +526,39 @@ export class IssuePanel {
     this.closeLabel?.setProperties({ text: strings.issues.form.report });
     this.mid.box?.setProperties({ display: back ? 'flex' : 'none', width: back?.width ?? ISSUE_BAR_BUTTON_WIDTH });
     this.mid.label?.setProperties({ text: strings.issues.form.back });
+  }
+
+  /**
+   * The detail: the status (dot and words) and the urgency, the category and room, the text (its lines are joined with a line break
+   * and the box has the height of its lines), the last history entries, `+n more`, and the buttons the role may press.
+   */
+  private writeDetail(detail: DetailModel): void {
+    const d = this.detail;
+    d.dot?.setProperties({ backgroundColor: hexColor(detail.color) });
+    d.status?.setProperties({ text: detail.statusText });
+    d.urgency?.setProperties({ text: detail.urgencyText });
+    d.meta?.setProperties({ text: detail.meta });
+    d.meta2Box?.setProperties({ display: detail.meta2 === '' ? 'none' : 'flex' });
+    if (detail.meta2 !== '') d.meta2?.setProperties({ text: detail.meta2 });
+    for (let i = 0; i < DETAIL_TEXT_LINES; i += 1) {
+      const line = detail.textLines[i];
+      d.textLines[i]?.box?.setProperties({ display: line === undefined ? 'none' : 'flex' });
+      if (line !== undefined) d.textLines[i]?.label?.setProperties({ text: line });
+    }
+    for (let i = 0; i < DETAIL_HISTORY_ENTRIES; i += 1) {
+      const line = detail.historyLines[i];
+      d.history[i]?.box?.setProperties({ display: line === undefined ? 'none' : 'flex' });
+      if (line !== undefined) d.history[i]?.label?.setProperties({ text: line });
+    }
+    const more = detail.moreText !== '';
+    d.moreBox?.setProperties({ display: more ? 'flex' : 'none' });
+    if (more) d.more?.setProperties({ text: detail.moreText });
+    d.actionsBox?.setProperties({ display: detail.actions.length > 0 ? 'flex' : 'none' });
+    for (let i = 0; i < DETAIL_ACTION_SLOTS; i += 1) {
+      const action = detail.actions[i];
+      d.actions[i]?.box?.setProperties({ display: action === undefined ? 'none' : 'flex', width: action?.width });
+      if (action !== undefined) d.actions[i]?.label?.setProperties({ text: action.label });
+    }
   }
 
   /** The list: up to five rows (a dot in the colour of the status, the text, the urgency), the heading "History" above the first archived one. */
