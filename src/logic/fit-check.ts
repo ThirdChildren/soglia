@@ -8,8 +8,8 @@
 // The blocking door is the FIRST door of the route that does not pass. A furniture piece that can be taken
 // apart is never `blocked`: it is `disassembled`. Corridors are not verified (the house file has no corridor
 // data), which the app says with the fixed line "Simplified check".
-// The codes are distinct from the placement reasons of D16: `blocks-door` (the 0.30 m clear zone in front of a
-// door) is never used here.
+// The codes are distinct from the placement reasons of D16: the reason for the 0.30 m clear zone in front of a
+// door (see placement-rules) is never used here.
 
 import type { CatalogItem } from './catalog';
 import { buildDoorGraph, routeTo, OUTSIDE, type DoorEdge, type DoorGraph } from './door-graph';
