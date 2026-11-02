@@ -75,6 +75,24 @@ export const strings = {
     close: 'Close',
     /** Footer of the `home` screen: the roles are a demo, there are no accounts (rule 7, honesty). */
     footer: 'Demo roles, no accounts',
+    /** The four roles of the grid of `home` (T4.6b). */
+    roles: {
+      visitor: 'Visitor',
+      agent: 'Agent',
+      tenant: 'Tenant',
+      landlord: 'Landlord',
+    },
+    /** The buttons of `home` for the roles that see the issues: the number is the issues in the store (the baseline does not count). */
+    openList: (count: number): string => `Issues (${count})`,
+    openMoveIn: 'Move-in report',
+    /** The line under the role chips: how to report (tenant), what to pick (visitor), and the agent, who has no issue tools yet. */
+    hints: {
+      report: 'Hold a pinch on an appliance or a spot to report an issue.',
+      'pick-role': 'Pick Tenant to report an issue or Landlord to manage them.',
+      'agent-soon': 'Info points for agents are coming soon.',
+    },
+    /** Body of a screen that a later task fills (list T4.8, detail T4.9, new T4.7, move-in T4.10). */
+    comingSoon: 'Coming soon',
     /** Title of each screen. */
     screens: {
       home: 'Issues',

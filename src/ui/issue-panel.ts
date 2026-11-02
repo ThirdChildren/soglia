@@ -10,10 +10,15 @@ import { PanelDocument, PanelUI, Quaternion, Vector3, type Entity, type Object3D
 import { tagEntity } from '../components/tag-entity';
 import { stableId } from '../logic/ids';
 import {
+  HOME_ROLES,
   ISSUE_PANEL_EXTENT,
   backVisible,
+  homeActions,
+  homeHint,
+  type HomeActionId,
   type IssueScreen,
 } from '../logic/issue-panel';
+import type { Role } from '../logic/params';
 import { PANEL_CENTER } from '../logic/menu';
 import { pinnedAnchorPitchRad, pinnedConeAngleDeg, pinnedMenuAnchor, pitchOfForward, yawOfForward } from '../logic/menu-anchor';
 import type { Vec3Like } from '../logic/palm';
@@ -30,6 +35,14 @@ const FOOTER_ELEMENT = 'issue-panel-footer';
 const BACK_ELEMENT = 'issue-panel-back';
 const BACK_LABEL_ELEMENT = 'issue-panel-back-label';
 const CLOSE_LABEL_ELEMENT = 'issue-panel-close-label';
+const HOME_ELEMENT = 'issue-panel-home';
+const HINT_ELEMENT = 'issue-panel-hint';
+const NOTE_BOX_ELEMENT = 'issue-panel-note-box';
+const NOTE_ELEMENT = 'issue-panel-note';
+/** The active chip is drawn dark with light text, the others light with dark text (the same look as the active tab of the menu). */
+const CHIP_ACTIVE = { backgroundColor: '#1a1a1a', color: '#ffffff' } as const;
+const CHIP_IDLE = { backgroundColor: uiColors.surface, color: uiColors.ink } as const;
+const HOME_ACTION_IDS: readonly HomeActionId[] = ['open-list', 'open-movein'];
 /** Drawn after the scene (and its transparent parts) so it is never covered; the menu uses the same order. */
 const PANEL_RENDER_ORDER = 1000;
 
@@ -41,6 +54,17 @@ interface UiDocument {
   getElementById: <T>(id: string) => T | null;
 }
 
+/** What `home` shows besides the fixed texts: the current role (the dark chip, the buttons, the hint) and the number in `Issues (n)`. */
+export interface HomeModel {
+  readonly role: Role;
+  readonly issueCount: number;
+}
+
+interface ChipElements {
+  box: UIKit.Container | null;
+  label: UIKit.Text | null;
+}
+
 export class IssuePanel {
   private entity: Entity | null = null;
   private applied = false;
@@ -50,6 +74,13 @@ export class IssuePanel {
   private title: UIKit.Text | null = null;
   private footer: UIKit.Text | null = null;
   private back: UIKit.Container | null = null;
+  private home: UIKit.Container | null = null;
+  private hint: UIKit.Text | null = null;
+  private noteBox: UIKit.Container | null = null;
+  private note: UIKit.Text | null = null;
+  private readonly chips = new Map<Role, ChipElements>();
+  private readonly actions = new Map<HomeActionId, ChipElements>();
+  private homeModel: HomeModel = { role: 'visitor', issueCount: 0 };
   private readonly headPosition = new Vector3();
   private readonly headForward = new Vector3();
   private readonly headQuaternion = new Quaternion();
@@ -113,6 +144,18 @@ export class IssuePanel {
     this.title = null;
     this.footer = null;
     this.back = null;
+    this.home = null;
+    this.hint = null;
+    this.noteBox = null;
+    this.note = null;
+    this.chips.clear();
+    this.actions.clear();
+  }
+
+  /** The role and the count that `home` shows. Written in place when the layout is loaded, else as soon as it is. */
+  setHome(model: HomeModel): void {
+    this.homeModel = model;
+    if (this.applied) this.writeScreen();
   }
 
   /** Shows `screen` (written in place). Before the layout is loaded it is kept and written as soon as it is. */
@@ -163,16 +206,56 @@ export class IssuePanel {
     this.back = doc.getElementById<UIKit.Container>(BACK_ELEMENT);
     doc.getElementById<UIKit.Text>(BACK_LABEL_ELEMENT)?.setProperties({ text: strings.issues.back, color: uiColors.ink });
     doc.getElementById<UIKit.Text>(CLOSE_LABEL_ELEMENT)?.setProperties({ text: strings.issues.close, color: uiColors.ink });
+    this.home = doc.getElementById<UIKit.Container>(HOME_ELEMENT);
+    this.hint = doc.getElementById<UIKit.Text>(HINT_ELEMENT);
+    this.noteBox = doc.getElementById<UIKit.Container>(NOTE_BOX_ELEMENT);
+    this.note = doc.getElementById<UIKit.Text>(NOTE_ELEMENT);
+    for (const role of HOME_ROLES) {
+      const label = doc.getElementById<UIKit.Text>(`issue-panel-role-${role}-label`);
+      label?.setProperties({ text: strings.issues.roles[role] });
+      this.chips.set(role, { box: doc.getElementById<UIKit.Container>(`issue-panel-role-${role}`), label });
+    }
+    for (const id of HOME_ACTION_IDS) {
+      this.actions.set(id, {
+        box: doc.getElementById<UIKit.Container>(`issue-panel-${id}`),
+        label: doc.getElementById<UIKit.Text>(`issue-panel-${id}-label`),
+      });
+    }
     this.applied = true;
     this.writeScreen();
   }
 
-  /** Writes the parts that depend on the screen: the title, the footer of `home` and the `Back` button. */
+  /**
+   * Writes the parts that depend on the screen and on the role: the title, `Back`, and either `home` (the chips, the hint, the
+   * buttons the role has, the footer) or the placeholder of a screen that a later task fills. Everything is set in place:
+   * the document is never rebuilt.
+   */
   private writeScreen(): void {
     const screen = this.screenValue;
+    const isHome = screen === 'home';
     this.title?.setProperties({ text: strings.issues.screens[screen] });
-    this.footer?.setProperties({ text: screen === 'home' ? strings.issues.footer : '' });
+    this.footer?.setProperties({ text: isHome ? strings.issues.footer : '' });
     // `Back` keeps its place in the bar (`Close` stays at the right end) and is simply not drawn on `home`.
     this.back?.setProperties({ opacity: backVisible(screen) ? undefined : 0 });
+    this.home?.setProperties({ display: isHome ? 'flex' : 'none' });
+    this.noteBox?.setProperties({ display: isHome ? 'none' : 'flex' });
+    if (!isHome) {
+      this.note?.setProperties({ text: strings.issues.comingSoon });
+      return;
+    }
+    const { role, issueCount } = this.homeModel;
+    for (const [chipRole, chip] of this.chips) {
+      const look = chipRole === role ? CHIP_ACTIVE : CHIP_IDLE;
+      chip.box?.setProperties({ backgroundColor: look.backgroundColor });
+      chip.label?.setProperties({ color: look.color });
+    }
+    const hint = homeHint(role);
+    this.hint?.setProperties({ text: hint ? strings.issues.hints[hint] : '' });
+    const shown = homeActions(role);
+    for (const [id, action] of this.actions) {
+      // A button the role does not have keeps its place and is not drawn (the other one does not move).
+      action.box?.setProperties({ opacity: shown.includes(id) ? undefined : 0 });
+      action.label?.setProperties({ text: id === 'open-list' ? strings.issues.openList(issueCount) : strings.issues.openMoveIn });
+    }
   }
 }
