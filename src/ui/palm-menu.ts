@@ -36,7 +36,7 @@ import {
   type ButtonId,
   type MenuTabId,
 } from '../logic/menu';
-import { pinnedConeAngleDeg, pinnedMenuAnchor, yawOfForward } from '../logic/menu-anchor';
+import { pinnedAnchorPitchRad, pinnedConeAngleDeg, pinnedMenuAnchor, pitchOfForward, yawOfForward } from '../logic/menu-anchor';
 import {
   MENU_FRAME_MAX_DISTANCE,
   MENU_LIFT,
@@ -84,6 +84,11 @@ export interface MenuItemContent {
   readonly name: string;
   readonly size: string;
 }
+
+const RAD_TO_DEG = 180 / Math.PI;
+/** Radians as degrees with one decimal and no "-0.0". */
+const degrees1 = (rad: number): string => (Math.round(rad * RAD_TO_DEG * 10) / 10 + 0).toFixed(1);
+
 const CONE_FIT: ConeFit = {
   halfAngleDeg: VIEW_CONE_HALF_ANGLE_DEG,
   minDistance: MENU_MIN_DISTANCE,
@@ -166,8 +171,8 @@ export class PalmMenuPanel {
   }
 
   /**
-   * Creates the panel pinned in space (task T3.3a): the anchor is computed NOW from the head (position and yaw of
-   * its gaze, no pitch) and never changes while the menu is open. Does nothing when it is already open.
+   * Creates the panel pinned in space (task T3.3a): the anchor is computed NOW from the head (position, yaw of its
+   * gaze, and its pitch within a limit, T4.R2) and never changes while the menu is open. The panel stays upright. Does nothing when it is already open.
    */
   openPinned(head: Object3D): void {
     if (this.entity) return;
@@ -176,7 +181,9 @@ export class PalmMenuPanel {
     head.getWorldQuaternion(this.headQuaternion);
     this.headForward.set(0, 0, -1).applyQuaternion(this.headQuaternion);
     this.pinnedYaw = yawOfForward(this.headForward.x, this.headForward.z);
-    pinnedMenuAnchor(this.headPosition, this.pinnedYaw, this.pinnedAnchor);
+    const pitch = pitchOfForward(this.headForward.x, this.headForward.y, this.headForward.z);
+    pinnedMenuAnchor(this.headPosition, this.pinnedYaw, this.pinnedAnchor, pitch);
+    slog(`menu pinned pitchDeg=${degrees1(pitch)} anchorPitchDeg=${degrees1(pinnedAnchorPitchRad(pitch))}`);
     this.pinnedPlaced = false;
     this.create();
   }
