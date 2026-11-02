@@ -63,6 +63,10 @@ export const strings = {
   hint: {
     palmMenu: 'Palm up for the menu',
   },
+  /** Real scale (T3.12, T4.R1, D49): the button in front of the head that takes a one-handed user back to the model on the table. */
+  viewpoint: {
+    tabletopButton: 'Tabletop',
+  },
   reason,
   /** The tape measure (T3.14, D36): the hint while it is on, and the label of a measure ("140 cm"). */
   measure: {

@@ -254,16 +254,18 @@ function enter(ctx: ViewpointContext, viewpoint: Viewpoint): void {
 }
 
 /**
- * Goes back from a viewpoint to the table-top model with a fade ("Tabletop" in the menu). Does nothing on the
- * table-top view or while a fade is running.
+ * Goes back from a viewpoint to the table-top model with a fade. Does nothing on the table-top view or while a fade is
+ * running. `source` is who asked: the "Tabletop" item of the menu or the button in front of the head (T4.R1); the fade, the
+ * swap and the log lines are the same for both. Returns true when the fade started.
  */
-export function returnToTabletop(): void {
+export function requestTabletop(source: 'menu' | 'button'): boolean {
+  void source;
   const ctx = context;
-  if (!ctx || !isRealScale() || transition !== null) return;
+  if (!ctx || !isRealScale() || transition !== null) return false;
   const view = ctx.store.get().view;
   const id = view.kind === 'viewpoint' ? view.id : '';
   slog(`viewpoint transition start id=${id} from=viewpoint`);
-  startTransition(
+  return startTransition(
     ctx,
     { kind: 'exit', id, swapped: false },
     () => {
@@ -272,6 +274,11 @@ export function returnToTabletop(): void {
     },
     (durationMs) => slog(`viewpoint exited id=${id} durationMs=${Math.round(durationMs)}`),
   );
+}
+
+/** The "Tabletop" item of the menu (T3.12): goes back to the table-top model with a fade. */
+export function returnToTabletop(): void {
+  requestTabletop('menu');
 }
 
 /**

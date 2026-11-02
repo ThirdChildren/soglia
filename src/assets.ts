@@ -63,6 +63,11 @@ export default defineAssets({
     type: AssetType.UIKitML,
     priority: 'lazy',
   },
+  'tabletop-button': {
+    url: `${import.meta.env.BASE_URL}ui/tabletop-button.uikitml`,
+    type: AssetType.UIKitML,
+    priority: 'lazy',
+  },
   'menu-hint': {
     url: `${import.meta.env.BASE_URL}ui/menu-hint.uikitml`,
     type: AssetType.UIKitML,

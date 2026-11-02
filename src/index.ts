@@ -38,6 +38,7 @@ import { createPalmMenu } from './systems/palm-menu';
 import { PanelDisposalSystem } from './systems/panel-disposal';
 import { installPinchInput } from './systems/pinch-input';
 import { createRoomLabel } from './systems/room-label';
+import { createTabletopButton } from './systems/tabletop-button';
 import { createViewpoint } from './systems/viewpoint';
 import { isRealScale } from './systems/view-mode';
 import { createFadeOverlay } from './ui/fade-overlay';
@@ -126,6 +127,8 @@ async function start(): Promise<void> {
     }
     // The Menu buttons (T3.3b) come after the menu items (a control of an open menu wins a pinch) and before the grab and the drag.
     createMenuButton(world);
+    // The way back from real scale with one hand (T4.R1): same place in the order, since a pinch on it is a `menu` claim.
+    createTabletopButton(world);
     // The tape measure claims the pinch above the grab (and below the menu): register it after the menu, before the grab (T3.14).
     createMeasure(world, store, result.house, merged ? merged.items : [], built.entity, miniature.root);
     if (merged) {
