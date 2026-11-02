@@ -15,7 +15,7 @@ Legenda stato: ⬜ da fare · 🟨 in corso · ✅ PC-done · 🟩 Device-done
 | M0 Setup e strumenti | 30 set – 1 ott | ✅ PC-done (piano: `docs/plans/M0.md`) |
 | M1 Casa e plastico | 2 – 7 ott | ✅ PC-done 2026-10-05 (piano: `docs/plans/M1.md`; report: `qa/reports/M1-2026-10-05-rerun.md`; gate visore in debito) |
 | M2 Arredare con le mani | 8 – 14 ott (PC-done anticipato al 7 ott) | ✅ PC-done 2026-10-07 (piano: `docs/plans/M2.md`; report: `qa/reports/M2-2026-10-06-rerun3.md`; `contest-reviewer`: SUPERATO CON RISERVE, nessun bloccante; gate visore in debito, vedi `qa/device/DEBT.md`) |
-| M3 Dentro la casa e i miei mobili | 15 – 21 ott (PC-done atteso 12–13 ott) | 🟨 piano consegnato 2026-10-09 (`docs/plans/M3.md`; scenari `qa/scenarios/M3-*.md`) |
+| M3 Dentro la casa e i miei mobili | 15 – 21 ott (PC-done atteso 12–13 ott) | ✅ PC-done 2026-11-02 (piano: `docs/plans/M3.md`; report: `qa/reports/M3-2026-10-10.md`; `contest-reviewer`: APPROVATO CON AVVISI, nessun bloccante; T3.15 tagliato; gate visore in debito, vedi `qa/device/DEBT.md`) |
 | M4 Segnalazioni e persistenza | 22 – 28 ott | ⬜ |
 | M5 Luce, agente, accessibilità, realtà mista | 29 ott – 4 nov | ⬜ |
 | M6 Integrazione con il visore | appena arriva il Quest (idealmente 2 – 10 nov) | ⬜ |
@@ -165,6 +165,16 @@ in più (voci in `qa/device/DEBT.md` a gate superato): ripresa dopo aver tolto i
 nel Quest Browser, giunti reali, raggiungibilità dei pulsanti Menu, draw call e fps reali con il caso
 peggiore.
 
+**Esito del gate PC (2026-11-02)**: **superato**, report in `qa/reports/M3-2026-10-10.md` (indice) con
+A, B, rerun di S3.5, C1 (regressioni M2) e C2 (regressioni M1). `npm test` 4465 test in 75 file,
+typecheck e build ok, CI verde. Un bloccante trovato e corretto durante il gate (F-S3.5-1, errore
+`PanelUISystem ... (reading 'add')` con le etichette del FitCheck e del motivo, commit `9d52d0e`).
+Draw call: caso peggiore K4 = 71 per vista (< 85: **R-A non diventa il primo task di M4**), proiezione
+M5 ≈ 86. **T3.15 (presa e misura a distanza) tagliato**: in scala reale si prende solo a portata di
+braccio, il metro lavora solo sul plastico, S3.10 non applicabile, il task passa a M5/M7. Voci di
+debito del visore in `qa/device/DEBT.md` (righe M3). Tempo reale di esecuzione ≈ 12–13 h di lavoro
+attivo contro 7 h stimate, con tre interruzioni per limite d'uso dell'account.
+
 ## M4 · Segnalazioni e persistenza
 
 **Obiettivo**: il ciclo completo della segnalazione e la ripresa dopo una pausa.
@@ -178,9 +188,21 @@ peggiore.
   `soglia:v1:state:<casa>`, lista bianca dei campi ripristinati, `reset=1`, ciclo di vita con presa
   chiusa pulita); M4 riusa `src/data/storage.ts`, `src/logic/persistence.ts` e il ciclo di vita e
   aggiunge solo `role` e le segnalazioni alla lista bianca, l'eventuale bump di versione e
-  IndexedDB se la quota lo richiede. Se il caso peggiore dei draw call di M3 misura ≥ 85, il primo
-  task di M4 è **R-A** (unire muri e soglie in due mesh, −16 chiamate per vista, ~2,5 h; vedi
-  `docs/plans/M3.md`, D33).
+  IndexedDB se la quota lo richiede. Il caso peggiore dei draw call di M3 ha misurato **71** (< 85):
+  R-A (unire muri e soglie in due mesh, −16 chiamate per vista, ~2,5 h; vedi `docs/plans/M3.md`, D33)
+  **non** è il primo task di M4, ma resta pronto se il Quest misura di più.
+- **Riporti dal gate di M3 (avvisi del `contest-reviewer` e di `emulator-qa`, da fare in M4 o M5)**, in
+  ordine di importanza: (1) **scala reale senza menu per chi usa una mano sola**: mostrare almeno un
+  pulsante di ritorno al plastico anche in scala reale (regola 9); (2) **menu `pinned` nel cono di 30°
+  solo con lo sguardo livellato**: ancora che tiene conto del beccheggio (`fitPanelToCone`); (3)
+  pilastro `viewpoint:V2` che copre una cifra dell'etichetta del corridoio (`Hallway · 13_ m²`,
+  `qa/reports/M3-gate-C2-S1.3-label-hall.png`): spostare l'etichetta o fare passare i marcatori sotto
+  le etichette; (4) pizzico vicino a un marcatore di punto di vista che sostituisce lo zoom: zona morta
+  o conferma; (5) perdita dei pezzi propri se `my-furniture.json` non si carica (non riscrivere il
+  salvato con pezzi scartati); (6) `placeRoomLabel` sotto il piano con stanze a meno di 0,52 m dalla
+  testa; (7) correggere gli scenari con punti non liberi (S3.0, S3.2 passo 10, S3.3 passi 5-6, S2.9
+  passo 10, S2.6 passo 6) e il corsivo W4; (8) `README.md` ancora a "M0" e `docs/DATA_FORMATS.md` in
+  italiano (prima della consegna, M7); (9) spostare `flushPanelDisposals()` fuori da `PalmMenuSystem`.
 
 | Scenario PC | Verifica |
 |---|---|
@@ -254,6 +276,7 @@ leggibile, sessione completa di 10 minuti senza fastidio.
 
 ## Changelog
 
+- 2026-11-02: **M3 🟨 → ✅ PC-done** (report `qa/reports/M3-2026-10-10.md`; scenari S3.0–S3.9 e regressioni S1.1–S1.6, S2.0–S2.9 superati; `contest-reviewer`: APPROVATO CON AVVISI, nessun bloccante). T3.15 tagliato (presa e misura a distanza passano a M5/M7). Chiarimento della regola 8 in `docs/RULES.md` (ingressi di riserva fino a 45°: due pulsanti Menu laterali a ±0,45 m). Voci M3 aggiunte a `qa/device/DEBT.md`. **Calendario non aggiornato**: M3 si chiude il 2 novembre invece del 12–13 ottobre e restano 16 giorni alla consegna del 18 novembre per M4–M7: da ripianificare con l'utente (tagli possibili: presa a distanza, voce, agente).
 - 2026-10-09: piano M3 consegnato (`docs/plans/M3.md`, scenari `qa/scenarios/M3-*.md`): **M3 ⬜ → 🟨**. Richiesta dell'utente: i primi quattro task sono salvataggio minimo in `localStorage` + ciclo di vita, palmo e pizzico dai giunti, pulsante "Menu" a una mano, previsione dei draw call fino a M5. Righe scenari aggiunte (S3.0, S3.6–S3.10). **M4**: `Persistence` ha già la prima fetta (nota). **M5**: la voce "menu e Recenter usabili con una mano sola" è riscritta come consegnata in M3, con l'elenco di ciò che resta a M5 (onboarding del pulsante, "Rotate", alto contrasto, default una mano, S5.4, prova sul visore). Nessun altro stato di milestone è cambiato.
 - 2026-10-07: M2 PC-done (report `qa/reports/M2-2026-10-06-rerun3.md`; `contest-reviewer`: SUPERATO CON RISERVE, nessun bloccante). Gate visore di M2 in debito: voci aggiunte o allineate in `qa/device/DEBT.md`. Stato di M3+ invariato (lo aggiorna il piano M3).
 - 2026-10-06: M5 ha ora la voce esplicita "menu e Recenter usabili con una mano sola" (menu `pinned`, Undo e Recenter inclusi) — decisione dell'utente sul gate di M2 (finding del report `qa/reports/M2-2026-10-06.md`). Nessuno stato di milestone è cambiato.

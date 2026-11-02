@@ -41,3 +41,16 @@ Collected 2026-10-10 to 2026-11-02 on the cloud machine (headless IWER, SwiftSha
 - FitCheck label (orange/green) and blue `viewpoint:V*` pillars appear in screenshots; door thresholds get green markers.
 - F-A of M2 is closed: a pinch of the menu hand with the palm menu open does not log `room selected`.
 - Draw calls (S2.8 re-measure): 67 per view worst case at 0.05 and 0.12, menu +9; below 70.
+
+## Added by part C2 (M1 regressions, 2026-11-02)
+- `viewpoint:V*` pillars sit at (-0.130, -0.465), (0.065, -0.470), (0.215, -0.535) in plan offsets and move with the model. For the
+  two-hand recipes of S1.2 widen the hand span keeping the ratios (span 0.36 -> 0.60) instead of shifting z: shifting z moves the
+  pivot and breaks the "centre unchanged" check.
+- The two-hand gesture starts only with both hands inside the model radius (+0.10 m) and within 0.65 m of the head; at scale 0.03
+  after a drag the pinches at (-/+0.15, Oz) can be out of reach: centre the hands on the new model centre.
+- The onboarding timeout (9 s) runs during MCP calls: do phase A in one block right after the first pinch; take the two-ghost
+  screenshot only in the timeout run.
+- `[soglia:hands]` lines fill the 200-line log buffer: read with `since` and a tight pattern, or `^(?!\[soglia:(hands|stats|state)\])`.
+- After `browser_profile start` use `wait` 1500 ms (3000 ms is rejected).
+- `browser run` needs `--allow-browser-automation` (off): S1.1 V7b/V7c (local hand models, no CDN request) cannot be probed from
+  the page; use the log lines `hand visuals: local models` / `controller visuals: local shape` and `curl` on the two `.glb`.
