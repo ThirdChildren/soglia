@@ -16,7 +16,7 @@ Esecutore: emulator-qa (Sonnet 5.5). Rendering software: gli fps non sono signif
 | S2.6 | M2-door-blocked | grip | **PASS** con AVVISO di procedura | in volo `blocks-door`, `Blocks the door`, 2a poltrona valida, 1a spostata valida 6.80/2.50, vecchio-su-nuovo `overlaps-furniture with=furniture:armchair#2`; AVVISO: con il menu aperto il pizzico al centro della stanza e' preso dal pulsante Recenter |
 | S2.7 | M2-return-to-catalog | grip | **PASS** | `returned ... from=menu` / `from=model`, `undo empty`, `undo action=remove`, `Outside the house` a 0,600 m / 11,5 deg |
 | S2.8 | M2-budget | grip | **PASS** (con AVVISI numerici) | max 67 chiamate per vista (<= 100), 31,2k triangoli (<= 150k), 0 error; costo del menu +9; blocchi `failmodels=1` 54 chiamate/vista |
-| S2.9 | M2-translate-miniature | grip | da fare | |
+| S2.9 | M2-translate-miniature | grip | **PASS** con AVVISI | passi 1-9 PASS; zoom a 0,12 (mani a z = -0,237), trascinamento due mani con clamp 0,30 m, rotazione `yawDeg=90.0 tiltDeg=0.0`; AVVISI: root dopo lo zoom a z = -0,75 e `translated x=0.166 z=-0.250` invece di `x=0.200` (conseguenze della ricetta di zoom, non difetti) |
 
 (Sezioni per scenario, FAIL, avvisi, differenze dovute a M3, limiti e trappole: sotto, riempite man mano.)
 
@@ -241,7 +241,7 @@ Screenshot: `M3-gate-C1-S2.8-worst-case-0.05.png` (esecuzione 1, caso peggiore: 
 **Confronto con il rerun3 di M2** (`qa/reports/M2-2026-10-06-rerun3.md`: 66 chiamate/vista a 0,05 nel caso peggiore, 53 a 0,12, 30,7k triangoli): a 0,05 M-worst **67** (+1: l'etichetta FitCheck e i segnalini porta di M3 compensano la riduzione della mesh dei blocchi e il menu piu' leggero) e triangoli 31.188 (+0,5k); M-closed regime 50 (M2: 49, +1 per i due pulsanti `Menu` di M3 meno la mano fantasma che sparisce); M-open 0,05 63 con la mano fantasma dell'onboarding ancora presente (M2: 58: la differenza e' la mano fantasma +4 e i pulsanti Menu +1). A 0,12: 50 / 59 / 67 contro 40 / 49 / 53 di M2: **+10 / +10 / +14, AVVISO non confrontabile**: M2 zoomava con le mani a z = -0,487 (centro invariato), M3 usa z = -0,237 per non toccare `viewpoint:V1` (trappola nota), quindi il modello si sposta di 0,3 m (`translated z=-0.300`) e la scena che entra nel cono visivo cambia; resta comunque <= 70 (a 0,12 il caso peggiore e' 67, quindi sotto l'avviso a 70).
 Gli fps sul PC (SwiftShader, 5-10 fps) non rappresentano il Quest.
 
-## S2.9 · Spostare il plastico (in corso: passi 1-9 completati, pinch=grip)
+## S2.9 · Spostare il plastico (PASS con AVVISI, pinch=grip)
 
 Parametri `house=apartment-a&role=visitor&reset=1&seed=1&debug=1&furnish=scandinavian&pinch=grip`; O = (0; 1,35; -0,45), scala 0,05; mani a riposo sinistra (-0,30; 1,10; 0,10), destra (0,30; 1,10; 0,10). Pose (grip corretto): B1 (0,388; 1,383; -0,487), B2 (-0,312; 1,383; -0,487).
 
@@ -257,3 +257,76 @@ Parametri `house=apartment-a&role=visitor&reset=1&seed=1&debug=1&furnish=scandin
 | 7b | Pizzico dentro una stanza (LV, posa (-0,137; 1,393; -0,487)) | PASS | nessuna riga `pan start`/`translated`/`furniture grabbed`; root ancora (0; 1,35; -0,45) |
 | 8 | Pezzo in mano + pizzico sinistro sulla base | PASS | destra tiene (`furniture grabbed furniture:plant#1 source=model hand=right`, ts ...228937), sinistra su B2 con `xr_select` 0,2: `furniture rotated furniture:plant#1 rot=90` (ts ...239379), nessun `pan start`/`miniature gesture start`; rilascio `furniture placed furniture:plant#1 room=living x=1.10 z=4.37 rot=90 status=valid` (ts ...249730); root invariato |
 | 9 | Promozione pan -> due mani | PASS | `pan start hand=right` (ts ...265137) a B1, poi pizzico della sinistra a B2: `[soglia] pan upgrade hand=right to=two-hands` e `[soglia] miniature gesture start` (ts ...272550, stesso ms); al rilascio `miniature gesture end scale=0.0500 yawDeg=0.0 tiltDeg=0.0` (ts ...281931); root (0; 1,35; -0,45), nessun `room selected` |
+
+### S2.9 · ripresa dopo l'interruzione (429): passi 10-12
+
+La sessione e' stata riavviata (nuova pagina, nuova sessione XR): ripartenza da zero con `house=apartment-a&role=visitor&reset=1&seed=1&debug=1&furnish=scandinavian&pinch=grip` (load ts 1793622338693; `furnish applied style=scandinavian pieces=14 invalid=0`), pagina ricaricata con offset 0 e scala 0,05 (`miniature placed x=0.000 y=1.350 z=-0.450 yawDeg=0.0 scale=0.0500`): il Recenter di partenza del passo 10 non serve (root gia' a O). Mani a riposo come nello scenario.
+
+| # | Verifica | Esito | Dato |
+|---|---|---|---|
+| 10a | Ingrandire a 0,12 (mani a z = -0,237 invece di -0,487, trappola nota: con z = -0,487 il pizzico entra in `viewpoint:V1`) | PASS con AVVISO | pose sinistra (-0,112; 1,453; -0,237) -> (-0,562; ...), destra (0,188; ...) -> (0,638; ...), 0,5 s ciascuna; `[soglia] miniature gesture start` (ts 1793622371527), `[soglia] miniature gesture end scale=0.1200 yawDeg=0.0 tiltDeg=0.0` (ts ...379857) e `miniature translated x=0.000 z=-0.300 source=two-hands`; nessun `furniture grabbed`/`room selected`/`viewpoint`. **AVVISO**: `miniature:root` = (0,000065; 1,35; -0,75), cioe' z = -0,75 e non O (-0,45) come chiedeva la verifica 10 ("O +- 0,01"): con le mani a z = -0,237 il punto medio (perno) e' 0,21 m piu' vicino alla testa della posizione di M2 e il plastico si sposta di 0,30 m (limite di 0,30 m raggiunto). La scala 0,12, yaw 0 e tilt 0 sono corretti. Screenshot `M3-gate-C1-S2.9-scaled-moved.png`: la casa ingrandita riempie la parte bassa della vista (bordi del plinto e stanze, mobili beige a destra, segnalini dei punti di vista blu), il suggerimento "Palm up for the menu" e i due pulsanti `Menu` restano visibili e non sono coperti |
+| 10b (1o tentativo) | Trascinare a 0,12 dai punti dello scenario spostati col modello (pianta (5,55; 3,6) e (7,25; 3,6) -> mondo (0,006; 1,45; -0,75) e (0,210; 1,45; -0,75), pose (0,044; 1,453; -0,787) / (0,248; 1,453; -0,787)) | **NON VALIDO (punto non idoneo, regola 10b)** | i due pizzichi partono (`pinch left start` ts 1793622424515, `pinch right start` ts ...425248) ma **non compare nessun** `miniature gesture start`/`pan start`/`translated` e il root resta (0,000065; 1,35; -0,75): nessun `furniture grabbed`/`room selected`. Causa probabile: con il plastico spostato a z = -0,75 i punti sono a 0,76 m dalla testa, oltre la portata utile dei pizzichi per il gesto (le interazioni del progetto sono entro ~0,6 m). Il passo non vale e si sceglie un altro punto (sotto) |
+| 10b (2o tentativo, punti scelti nella base libera piu' vicina) | stesso schema con le mani a z = -0,337 (pinch z = -0,30, pianta z = 7,35, fuori dalla casa e sulla base: margine > 1 m dalle impronte): sinistra (0,044; 1,453; -0,337) -> (0,244; ...), destra (0,248; 1,453; -0,337) -> (0,448; ...) | PASS con AVVISO | `miniature gesture start` (ts 1793622486111), `miniature gesture end scale=0.1200 yawDeg=0.0 tiltDeg=0.0` (ts ...502663), `[soglia] miniature translated x=0.166 z=-0.250 source=two-hands` (ts ...502668); root (0,1664; 1,35; -0,6996), quota invariata, scala 0,12, yaw 0, tilt 0; nessun `furniture grabbed`/`room selected`. **AVVISO**: l'offset atteso `x=0.200 z=0.000` non e' raggiunto perche' il plastico era gia' a offset (0; -0,30) dopo il passo 10a (mani a z = -0,237): l'offset richiesto (0,20; -0,30) ha raggio 0,36 > 0,30 e viene proiettato sul cerchio, esattamente (0,166; -0,250) (raggio 0,300). Quindi il clamp di 0,30 m funziona; lo scostamento e' una conseguenza della ricetta di zoom a z = -0,237, non di un difetto. Screenshot `M3-gate-C1-S2.9-scaled-dragged.png` |
+| 11 | Rotazione e traslazione insieme, senza Recenter (dagli stessi punti liberi del 10b spostati col modello: pinch a pianta z = 7,35, perno M = (0,308; 1,45; -0,30), r = 0,102; tappe 30 / 60 / 90 deg + 0,10 in x; pose 30: L (0,2577; 1,453; -0,286) R (0,4343; ...; -0,388), 60: L (0,295; ...; -0,2487) R (0,397; ...; -0,4253), 90: L (0,446; ...; -0,235) R (0,446; ...; -0,439)) | PASS | `miniature gesture start` (ts 1793622560275), `[soglia] miniature gesture end scale=0.1200 yawDeg=90.0 tiltDeg=0.0` (ts ...588422), `miniature translated x=0.008 z=0.292 source=two-hands` (raggio 0,292 <= 0,301); `miniature:root` (0,0081; 1,35; -0,1583), orientamento (0; 0,7071; 0; 0,7071) = solo yaw, scala 0,12 (invariata), quota 1,35; nessun `furniture grabbed`/`room selected`/`viewpoint`. Screenshot `M3-gate-C1-S2.9-rotated.png`: il modello ruotato di 90 deg e avvicinato alla testa (visto dall'alto-lato: parete, mobili beige e un letto rosa a sinistra, segnalino blu dei punti di vista), suggerimento e pulsanti `Menu` non coperti |
+| 12 | Console senza filtro, testa | PASS | `level=[error,warn]` vuoto da ts 1793622338000 (inizio del caricamento di ripresa) e filtro `uncaught|unhandled|Cannot read|undefined|Missing glyph|budget exceeded` vuoto; `xr_get_transform` della testa: (0; 1,6; 0), orientamento identita': nessuna locomozione; nessuna riga `room selected` nel caricamento di ripresa |
+| 13 | `npm test` / test del pan e dei claim | PASS | `npm test` (eseguito a inizio lavoro): 75 file, 4465 test verdi; `vitest run miniature-pan pinch-claims pinch-claims-matrix`: 203 test verdi |
+
+**Differenze rispetto a M2 dovute a M3 e avvisi per S2.9**
+1. (AVVISO, ricetta) Zoom a z = -0,237 invece di -0,487 (e di conseguenza root a z = -0,75 e offset (0; -0,30) dopo il passo 10a): in M3 i marcatori dei punti di vista (`viewpoint:V1` a ~0,02 m dal pizzico) catturano il pizzico a z = -0,487. Verifica 10 ("root a O +- 0,01 dopo l'ingrandimento") non rispettata alla lettera; scala, yaw e tilt corretti.
+2. (AVVISO, conseguenza) `translated x=0.166 z=-0.250` invece di `x=0.200 z=0.000` al 10b: il clamp di 0,30 m proietta (0,20; -0,30) sul cerchio; e' il comportamento corretto del limite. Per ottenere la cifra attesa servirebbe un Recenter (che pero' riporta la scala a 0,05) seguito da uno zoom con centro invariato, non possibile senza toccare un marcatore con la ricetta dello scenario.
+3. (AVVISO, punti) I punti del 10b dello scenario (pianta (5,55; 3,6) / (7,25; 3,6)) con il plastico a z = -0,75 stanno a ~0,76 m dalla testa e il gesto a due mani non parte (nessun log); regola 10b applicata: punti sulla base libera piu' vicini (pianta z = 7,35, a 0,34 m dalla testa), riportati sopra; nient'altro cambiato. 
+4. (differenza M3, positiva) Il pulsante `Menu` e i marcatori dei punti di vista restano a distanza dai pizzichi dei passi 1-9 (B1, B2, passi 6-9: nessun pizzico catturato da loro); il Recenter (passo 5) con il menu v2 funziona come in M2 (`miniature recentered scale=0.0500`, offset `[0,0]`, `historyLength` 0).
+5. (differenza M3) Il pizzico che prende `furniture:plant#1` mostra anche l'etichetta del FitCheck (`fit label shown ... "Fits: the narrowest door on the way is 80 cm wide"`), che sparisce 8 s dopo il rilascio.
+
+---
+
+## Riepilogo C1: regressioni di M2 nell'emulatore (HEAD 123f4e4)
+
+**Verdetto C1: PASS** (tutti gli scenari S2.0-S2.9 restano PASS dopo le modifiche di M3; nessun FAIL; nessun errore in console; budget rispettato).
+
+| Scenario | Esito | Pinch usato |
+|---|---|---|
+| S2.0 glifi | PASS | n/d |
+| S2.1 menu del palmo | PASS (AVVISI di M3) | grip completo + auto ridotto |
+| S2.2 posa il letto | PASS | grip completo + auto ridotto |
+| S2.3 collisione | PASS | grip |
+| S2.4 annulla | PASS | grip |
+| S2.5 rotazione | PASS | grip completo + auto ridotto |
+| S2.6 porta bloccata | PASS (AVVISO di procedura) | grip |
+| S2.7 ritorno al catalogo | PASS | grip |
+| S2.8 budget | PASS (AVVISI numerici) | grip |
+| S2.9 spostare il plastico | PASS (AVVISI) | grip |
+
+Criteri bloccanti (regola utente 2026-10-06): (a) errori in console: **0** in tutti gli scenari (`level=[error,warn]` vuoto, tranne i warn attesi di S2.8: `furnish: no staging in apartment-b` e 14 `furniture model unavailable ... using a block`); (b) test/build: `npm test` 4465 verdi (build non rieseguita in questa parte); (c) violazioni di `CLAUDE.md`: nessuna rilevata (solo mani, nessuna locomozione: testa sempre (0; 1,6; 0); testi in inglese; nessun `Missing glyph info`); (d) > 100 chiamate per vista: **no**, massimo **67** (S2.8 M-worst a 0,05 e 0,12), triangoli massimi 31.188 (<= 150.000), texture dell'app: 2 atlanti da 512 px.
+Chiusura di F-A (M2): il pizzico della mano del menu con il menu aperto non seleziona piu' la stanza (S2.1 8f, anche con `pinch=auto`): 0 `room selected` in tutto S2.1.
+
+## Avvisi
+
+1. S2.1 (cambi intenzionali di M3): `ui:menu-button-left/-right` (2 entita' con `PanelUI`) nel pattern `^ui:(palm-menu|menu-)` anche a menu chiuso; righe `menu opened hand=left mode=palm` / `menu closed mode=palm via=palm`; schede `ui:menu-tab-*` al posto del titolo; riga nuova `menu item picked id=... hand=right`; schede a 0,63 m dalla testa (entro 0,65); coordinate della griglia 2x3 cambiate (bed-double (-0,0953; 1,6746; -0,5720)).
+2. S2.2/S2.3/S2.5/S2.6/S2.8: etichetta arancione/verde del FitCheck (M3) che coesiste con l'etichetta del motivo e copre parte del menu attenuato e del letto in volo; `Furniture.fit`/`fitDoor`; segnalini verdi sulle porte (in M2 arancioni).
+3. S2.6 (procedura): con il menu aperto il pizzico al centro della stanza (punto di pizzico (0,065; 1,39; -0,505)) e' preso dal pulsante `ui:menu-recenter` (0,075 m; in M2 0,092 m): lo scenario scritto con il menu "tenuto in alto per tutto lo scenario" non e' eseguibile alla lettera al passo 6; menu chiuso per completare il passo.
+4. S2.8: M-worst 67 chiamate/vista (M2 rerun3: 66) a 0,05; a 0,12 50 / 59 / 67 contro 40 / 49 / 53 di M2 (+10 / +10 / +14) perche' la ricetta di zoom a z = -0,237 sposta il modello; costo del menu +9 (atteso); esecuzione 4 (blocchi) 54 chiamate/vista (M2: 63); onboarding: mano fantasma (+4) e suggerimento presenti nella prima misura (54), regime 50.
+5. S2.9: vedi i punti 1-3 della sezione S2.9 (root a z = -0,75, `translated x=0.166 z=-0.250`, punti 10b spostati).
+6. S2.1 passo 8e (palmo troppo breve) saltato: latenza MCP 1,2-2,1 s per ogni attesa > 0,35 s; coperto da `tests/unit/palm.test.ts`.
+7. Un `menu opened hand=right` spurio di 0,12 s e' comparso in S2.1 durante l'abbassamento sequenziale delle due mani (artefatto noto delle chiamate MCP sequenziali).
+
+## Cosa l'emulatore non dimostra (da aggiungere a `qa/device/DEBT.md`)
+
+- Precisione e comfort dei pizzichi con mani vere: punto di pizzico `auto` (punto medio delle punte, ~6,5 cm dal grip) rispetto al punto del `gripSpace`; raggio di cattura dei pulsanti `Menu`, `Recenter` e dei marcatori dei punti di vista vicino ai pezzi (S2.6) con le dita reali a 0,5 m.
+- Rilevamento del palmo in su/giu' (0,4 s / 0,25 s, soglie 35/55 gradi) e chiusura involontaria del menu con tremore, con mani vere.
+- Comfort del menu v2 (testo >= 2,4 cm, griglia 2x3, schede) nel campo visivo stretto e a 0,5-0,63 m; sovrapposizione delle etichette (FitCheck + motivo) sul menu attenuato.
+- fps e tempo per frame reali (il PC e' SwiftShader a 5-10 fps; p50 133 ms nel profilo di S2.8): il budget di draw call (max 67 per vista) e triangoli (31,2k) va misurato sul Quest con il menu aperto, un pezzo in mano e le due etichette.
+- Raggio di portata dei pizzichi a due mani con il plastico a 0,12 spostato a 0,75 m (S2.9 10b: nessun gesto a 0,76 m dalla testa), comodita' del limite di 0,30 m.
+- Resa dei testi, dei glifi `² · × °` e dei colori sui display del visore; percezione di scala in stereo; microfono e passthrough (non esercitati qui).
+
+## Trappole di procedura (per la memoria dell'orchestratore)
+
+- Dopo un riavvio del runtime/sessione la CLI/MCP ha un nuovo tab (`generation` riparte): ripetere reload -> `xr_accept_session` -> `xr_set_input_mode hand`.
+- `browser_interact`: una attesa singola dopo `browser_profile start` e `3000 + 2000` nello stesso batch vengono rifiutate; usare una sola attesa <= 3000 ms. Ogni `wait` dura ~1-1,7 s in piu' del valore (latenza).
+- Con il menu aperto e la mano destra sul punto di pizzico del centro stanza (0,065; 1,39; -0,505) il pulsante `ui:menu-recenter` vince sul pezzo (S2.6 passo 6): chiudere il menu (palmo giu') prima di riprendere il pezzo.
+- Il menu v2 segue la mano del palmo: per i cambi pagina con la stessa mano ricalcolare la posa dopo ogni spostamento (1-2 correzioni), posa = voce + (-0,038; +0,0159; -0,0335) con `Q_UP`.
+- Posa per pizzicare con `pinch=auto`: bersaglio + (0; 0,025; 0,012), `xr_select` >= 0,4-0,5 s; rotazione del polso: posa = G - R_y(a)*o con o = (0,0005; -0,0249; -0,0119) (destra).
+- Evitare i pattern di log che catturano `[soglia:state]` (con il preset arredi e' enorme) o `furniture status` (14 righe) con `count` alto; usare `since` e filtri stretti (`soglia\] (...)`).
+- S2.9 10b a 0,12: dopo lo zoom a z = -0,237 il plastico e' a z = -0,75 (0,76 m dalla testa) e il gesto a due mani non parte: usare i punti sulla base piu' vicini alla testa (pianta z = 7,35, mani a z = -0,337) e accettare che il clamp (0,30 m) dia `translated x=0.166 z=-0.250`.
+- `dev-params.local.txt` va riscritto con `pinch=grip` (la riga `params` stampa `pinch=grip`; con `auto` il campo non compare e `input source=joints` conferma la modalita').
+- Tempo: sessione 1 dalle 15:30 UTC dell'11/10 per circa 2 h 15 min (S2.0-S2.9 passo 9), sessione di ripresa (dopo il 429) circa 15 min.
