@@ -27,6 +27,7 @@ import { installHandJoints } from './systems/hand-joints';
 import { createFitCheck } from './systems/fit-check';
 import { createFurnitureReasons } from './systems/furniture-reasons';
 import { createMeasure } from './systems/measure';
+import { createIssueCreate } from './systems/issue-create';
 import { createIssuePanel } from './systems/issue-panel';
 import { createMenuButton } from './systems/menu-button';
 import { createMenuItems, setMenuTabData } from './systems/menu-items';
@@ -161,6 +162,8 @@ async function start(): Promise<void> {
     createIssuePanel(world, store);
     // The tape measure claims the pinch above the grab (and below the menu): register it after the menu, before the grab (T3.14).
     createMeasure(world, store, result.house, merged ? merged.items : [], built.entity, miniature.root);
+    // The long pinch (T4.5): after the tape measure (a point wins), before the grab (it waits for the claims of the later systems).
+    createIssueCreate(world, store, result.house, miniature.root);
     if (merged) {
       const visuals = new FurnitureVisuals(merged.items);
       await visuals.preload(params.failmodels);

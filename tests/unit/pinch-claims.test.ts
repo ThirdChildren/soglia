@@ -6,12 +6,12 @@ import {
   type RevokeReason,
 } from '../../src/logic/pinch-claims';
 
-const OWNERS: ClaimOwner[] = ['menu', 'measure', 'furniture', 'viewpoint', 'two-hands', 'pan', 'room'];
+const OWNERS: ClaimOwner[] = ['menu', 'measure', 'furniture', 'viewpoint', 'two-hands', 'pan', 'issue', 'room'];
 
 describe('pinch claims: priority', () => {
-  it('orders the owners menu > measure > furniture > viewpoint > two-hands > pan > room', () => {
+  it('orders the owners menu > measure > furniture > viewpoint > two-hands > pan > issue > room', () => {
     const ordered = [...OWNERS].sort((a, b) => CLAIM_PRIORITY[b] - CLAIM_PRIORITY[a]);
-    expect(ordered).toEqual(['menu', 'measure', 'furniture', 'viewpoint', 'two-hands', 'pan', 'room']);
+    expect(ordered).toEqual(['menu', 'measure', 'furniture', 'viewpoint', 'two-hands', 'pan', 'issue', 'room']);
   });
 
   it('a free hand is granted to anyone', () => {
@@ -24,7 +24,7 @@ describe('pinch claims: priority', () => {
   });
 
   it('a higher priority owner takes the hand, a lower or equal one is refused (all pairs)', () => {
-    // two-hands and pan are skipped against furniture: that rule has its own test.
+    // two-hands, pan and issue are skipped against furniture: that rule has its own test.
     for (const first of OWNERS) {
       for (const second of OWNERS) {
         if (first === second) continue;

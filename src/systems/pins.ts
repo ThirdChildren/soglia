@@ -204,6 +204,17 @@ export function setPinDraft(place: Readonly<Vec3Tuple> | null, size: number = 1)
 }
 
 /**
+ * Sets the size (0..1) of the ghost `pin:draft` that `setPinDraft` placed, without moving it and without allocating (T4.5 calls
+ * it every frame while a long pinch grows). Does nothing when there is no ghost.
+ */
+export function setPinDraftSize(size: number): void {
+  const ctx = context;
+  if (!ctx?.draft || ctx.draft.size === size) return;
+  ctx.draft.size = size;
+  writeInstances(ctx);
+}
+
+/**
  * Id of the issue whose pin a pinch at `point` (world metres) picks, or null: the nearest head within
  * `PIN_PICK_WORLD_RADIUS`. No pins at real scale or for a role that does not see them, so then null.
  */
