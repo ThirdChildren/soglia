@@ -48,6 +48,9 @@ describe('classifyGroup: real object names', () => {
   it('viewpoints, pins and the FitCheck markers are markers (not ui)', () => {
     expect(classifyGroup('viewpoint:V1')).toBe('markers');
     expect(classifyGroup('pin:issue-014')).toBe('markers');
+    // The instanced mesh of the pins (T4.4) and the draft ghost.
+    expect(classifyGroup('pin:instances')).toBe('markers');
+    expect(classifyGroup('pin:draft')).toBe('markers');
     expect(classifyGroup('ui:fit-marker-1')).toBe('markers');
     expect(classifyGroup('ui:fit-marker-door-d-bedroom')).toBe('markers');
     // The label of the FitCheck is a panel, not a marker.

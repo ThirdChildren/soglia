@@ -4,6 +4,7 @@ import { loadDevParams } from './data/dev-params';
 import { attachHandsLog } from './debug/hands-log';
 import { attachLifecycleKeys } from './debug/lifecycle-keys';
 import { attachMenuKey } from './debug/menu-key';
+import { attachPinDraftKey } from './debug/pin-draft-key';
 import { attachStateLog } from './debug/state-log';
 import { showGlyphTest } from './debug/glyph-test';
 import { attachStats } from './debug/stats';
@@ -47,6 +48,7 @@ import { PanelDisposalSystem } from './systems/panel-disposal';
 import { installPinchInput } from './systems/pinch-input';
 import { createRoomLabel } from './systems/room-label';
 import { createTabletopButton } from './systems/tabletop-button';
+import { createPins } from './systems/pins';
 import { createViewpoint } from './systems/viewpoint';
 import { isRealScale } from './systems/view-mode';
 import { createFadeOverlay } from './ui/fade-overlay';
@@ -172,6 +174,9 @@ async function start(): Promise<void> {
     // after the menu and the grab (their pinch listeners run first) and before the drag (a marker is never a pan).
     const fadeOverlay = createFadeOverlay(world);
     createViewpoint(world, store, result.house, miniature.root, built.entity, fadeOverlay);
+    // The pins of the issues (T4.4): one instanced mesh and a light entity per visible issue, after the viewpoint markers.
+    createPins(world, store, result.house, built.entity, miniature.root);
+    if (params.debug) attachPinDraftKey(result.house);
     // After the menu, the grab and the markers: their pinch listeners run first, so a pinch on a menu item, a piece or a marker is never a pan.
     createMiniaturePan(world, store, result.house);
     // Last: it cancels what the systems above hold when the session is hidden, blurred or ended (D30).

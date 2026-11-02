@@ -7,11 +7,21 @@
 //   markers.set(0, { x, y, z, yawRad, sx, sy, sz }, 0xe5322d);   // position, rotation about +y, size in metres
 //   markers.hide(0);
 //
-// The mesh draws nothing (and is invisible, so the renderer skips it) while no instance is in use. Instances are not
+// The mesh draws nothing (and is invisible, so the renderer skips it) while no instance is in use, and it draws only the
+// instances up to the highest one in use (`mesh.count`), so keep the used indexes at the start. Instances are not
 // culled one by one: the mesh sets `frustumCulled = false` (its bounding sphere would be the unit box). Nothing here
 // allocates after construction. Geometry, material and the instance buffers go with `dispose()`.
 
-import { BoxGeometry, Color, InstancedMesh, Matrix4, MeshBasicMaterial, Quaternion, Vector3 } from '@iwsdk/core';
+import {
+  BoxGeometry,
+  Color,
+  InstancedMesh,
+  Matrix4,
+  MeshBasicMaterial,
+  Quaternion,
+  Vector3,
+  type BufferGeometry,
+} from '@iwsdk/core';
 
 export interface InstancePose {
   x: number;
@@ -32,6 +42,8 @@ export interface InstancedMarkersOptions {
   name: string;
   /** Draw order, default 0. */
   renderOrder?: number;
+  /** Shape of one instance, default a unit box. The mesh takes ownership: `dispose()` disposes it (T4.4: the pin needle). */
+  geometry?: BufferGeometry;
 }
 
 export interface InstancedMarkers {
@@ -49,7 +61,7 @@ export interface InstancedMarkers {
 
 export function createInstancedMarkers(options: InstancedMarkersOptions): InstancedMarkers {
   const capacity = Math.max(1, Math.floor(options.capacity));
-  const geometry = new BoxGeometry(1, 1, 1);
+  const geometry = options.geometry ?? new BoxGeometry(1, 1, 1);
   // Unlit: the colour must read the same in every light (and over the dark base of the table).
   const material = new MeshBasicMaterial({ color: 0xffffff });
   const mesh = new InstancedMesh(geometry, material, capacity);
@@ -74,7 +86,16 @@ export function createInstancedMarkers(options: InstancedMarkersOptions): Instan
   matrix.compose(position.set(0, 0, 0), rotation.identity(), scale);
   for (let i = 0; i < capacity; i += 1) mesh.setMatrixAt(i, matrix);
 
+  // Only the instances up to the highest one in use are drawn: a hidden instance at the end costs nothing.
   const refresh = (): void => {
+    let top = 0;
+    for (let i = capacity - 1; i >= 0; i -= 1) {
+      if (inUse[i]) {
+        top = i + 1;
+        break;
+      }
+    }
+    mesh.count = top;
     mesh.visible = used > 0;
     mesh.instanceMatrix.needsUpdate = true;
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
