@@ -18,13 +18,19 @@
 //   A pinch that cannot start (another role, outside the house, a draft already open) is reported ONCE, when it has lasted 0.8 s
 //   and nobody owns the hand: `issue denied action=create role=…` or `issue hold ignored reason=…`. A short pinch stays silent.
 //
+// THE FORM (T4.7). Right after the panel opens on `new`, the system gives it the form of the draft (`createIssueForm`: the category
+// the fixture proposes, or the step to choose one) and registers what the form's two buttons do: `Cancel` drops the draft
+// (`issue draft cancelled reason=user`), `Report` takes it (`consumeDraft`), builds the issue with the sentence of the chosen phrase
+// (src/logic/issue-form.ts), dispatches `addIssue` and logs `issue created …`. If the store refuses (the limit, the role), the draft
+// is put back and the form stays open with a log line saying why.
+//
 // The draft lives until the form consumes it (`consumeDraft`, T4.7) or it is cancelled: `cancelDraft(reason)` (the form's Cancel,
 // the life cycle on a suspension: T4.11), a change of the role, the panel being closed.
 //
 // Register this system AFTER the tape measure and BEFORE the grab of the pieces (docs/plans/M4.md, T4.5). Nothing here allocates per frame.
 
 import { createSystem, Vector3, type Entity, type World } from '@iwsdk/core';
-import { slog } from '../log';
+import { slog, swarn } from '../log';
 import type { House } from '../logic/house';
 import type { MiniatureRoot, Vec3Tuple } from '../logic/furniture-pose';
 import { resolveAnchor, pinchToHouse, type IssueAnchor } from '../logic/issue-anchor';
@@ -53,9 +59,18 @@ import {
   updateLongPress,
   type LongPressCancelReason,
 } from '../logic/long-press';
+import {
+  buildReport,
+  createIssueForm,
+  formatCreateLimit,
+  formatIssueCreated,
+  hasRoomForIssue,
+  type IssueForm,
+} from '../logic/issue-form';
+import type { IssueClock } from '../logic/issue-clock';
 import { can } from '../logic/permissions';
-import { selectRoom, type Store } from '../logic/state';
-import { isIssuePanelOpen, onRoleChanged, openIssuePanel, showIssueScreen } from './issue-panel';
+import { addIssue, selectRoom, type Store } from '../logic/state';
+import { isIssuePanelOpen, onRoleChanged, openIssuePanel, setIssueFormHandlers, showIssueScreen, startIssueForm } from './issue-panel';
 import { onPinchEnd, onPinchStart, pinchClaims, pinchPoint, type Hand } from './pinch-input';
 import { setPinDraft, setPinDraftSize } from './pins';
 import { isTabletopLocked } from './view-mode';
@@ -65,6 +80,8 @@ interface IssueCreateContext {
   house: House;
   /** `miniature:root`: its pose maps the pinch to the house. */
   rootEntity: Entity;
+  /** The clock of the history of the issues (D42): read once per issue that is created. */
+  clock: IssueClock;
 }
 
 // Shared with the system, which has no constructor arguments: set by `createIssueCreate`.
@@ -92,8 +109,8 @@ export function consumeDraft(): IssueDraft | null {
 }
 
 /** Registers the long pinch. Register it AFTER the tape measure and BEFORE the grab of the pieces. */
-export function createIssueCreate(world: World, store: Store, house: House, rootEntity: Entity): void {
-  context = { store, house, rootEntity };
+export function createIssueCreate(world: World, store: Store, house: House, rootEntity: Entity, clock: IssueClock): void {
+  context = { store, house, rootEntity, clock };
   draft = null;
   world.registerSystem(IssueCreateSystem);
 }
@@ -129,6 +146,11 @@ export class IssueCreateSystem extends createSystem({}) {
       onPinchEnd((hand) => this.onPinchEnd(hand)),
       // A role change drops a hold in progress and the draft (D41, D45).
       onRoleChanged(() => this.cancelAll('role')),
+      // The two buttons of the form (T4.7).
+      setIssueFormHandlers({
+        cancel: () => this.cancelAll('user'),
+        report: (form) => this.report(form),
+      }),
       () => {
         cancelNow = null;
         consumeNow = null;
@@ -320,6 +342,7 @@ export class IssueCreateSystem extends createSystem({}) {
     const selected = ctx.store.get().selectedRoomId;
     if (selected !== null) ctx.store.dispatch(selectRoom(selected));
     openIssuePanel(hand);
+    if (isIssuePanelOpen()) startIssueForm(createIssueForm(draft, this.subjectOf(draft, ctx.house)));
     showIssueScreen('new');
     if (!isIssuePanelOpen()) {
       // The panel could not open (no session, suspended): there is nowhere to fill the draft.
@@ -329,6 +352,51 @@ export class IssueCreateSystem extends createSystem({}) {
     this.anchor = null;
     // The pinch goes on until the user lets go; it is not followed any more (the claim keeps the others away).
     this.mode = 'off';
+  }
+
+  /** The names the form shows: the fixture of the draft (its sentence says `The washing machine ...`) and the room. */
+  private subjectOf(d: IssueDraft, house: House): { fixtureName: string | null; roomName: string } {
+    const fixture = d.fixtureId === null ? undefined : house.fixtures?.find((f) => f.id === d.fixtureId);
+    const room = house.rooms.find((r) => r.id === d.roomId);
+    return { fixtureName: fixture?.name ?? null, roomName: room?.name ?? d.roomId };
+  }
+
+  /**
+   * `Report`: takes the draft away, makes the issue and puts it in the store. Returns true when the store has it (the panel
+   * closes); false when something refused, with the draft still there and the form still open.
+   */
+  private report(form: IssueForm): boolean {
+    const ctx = context;
+    const current = draft;
+    if (!ctx || current === null) return false;
+    const state = ctx.store.get();
+    if (!hasRoomForIssue(state.issues.length)) {
+      swarn(formatCreateLimit());
+      return false;
+    }
+    if (!can(state.role, 'create')) {
+      slog(formatCreateDenied(state.role));
+      return false;
+    }
+    const result = buildReport(form, current, {
+      houseId: state.houseId,
+      nextIssue: state.nextIssue,
+      role: state.role,
+      nowIso: ctx.clock.now(),
+    });
+    if (!result.ok) {
+      swarn(`issue report rejected reason=${result.reason}`);
+      return false;
+    }
+    ctx.store.dispatch(addIssue(result.issue));
+    if (!ctx.store.get().issues.some((i) => i.id === result.issue.id)) {
+      swarn(`issue report rejected id=${result.issue.id} reason=store`);
+      return false;
+    }
+    // The draft is the form's now: it goes with its ghost, without a `cancelled` line.
+    this.consume();
+    slog(formatIssueCreated(result.issue));
+    return true;
   }
 
   private clearGhost(): void {

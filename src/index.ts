@@ -163,7 +163,7 @@ async function start(): Promise<void> {
     // The tape measure claims the pinch above the grab (and below the menu): register it after the menu, before the grab (T3.14).
     createMeasure(world, store, result.house, merged ? merged.items : [], built.entity, miniature.root);
     // The long pinch (T4.5): after the tape measure (a point wins), before the grab (it waits for the claims of the later systems).
-    createIssueCreate(world, store, result.house, miniature.root);
+    createIssueCreate(world, store, result.house, miniature.root, issueClock);
     if (merged) {
       const visuals = new FurnitureVisuals(merged.items);
       await visuals.preload(params.failmodels);

@@ -2,6 +2,7 @@
 
 import { fitMessage, type FitItem, type FitResult, type FitTexts } from '../logic/fit-check';
 import { formatSize, formatSizeCompact, lowerName, type ReasonKind } from '../logic/furniture-label';
+import { CATEGORY_LABELS, PHRASES } from '../logic/issue-text';
 import { measureLabelText } from '../logic/measure-tool';
 import { formatRoomLabel } from '../logic/room-label';
 
@@ -90,6 +91,22 @@ export const strings = {
       report: 'Hold a pinch on an appliance or a spot to report an issue.',
       'pick-role': 'Pick Tenant to report an issue or Landlord to manage them.',
       'agent-soon': 'Info points for agents are coming soon.',
+    },
+    /** The categories and the phrases of the form of a new issue (D40): the tables live in src/logic/issue-text.ts, which builds the saved sentence from the same labels. */
+    categories: CATEGORY_LABELS,
+    phrases: PHRASES,
+    /** The form of a new issue (T4.7): hands only, no keyboard. */
+    form: {
+      urgency: { low: 'Low', medium: 'Medium', urgent: 'Urgent' },
+      report: 'Report',
+      cancel: 'Cancel',
+      back: 'Back',
+      /** Context line of the first step of a free spot. */
+      pickCategory: 'What is it about?',
+      /** The line where the sentence will appear, until a phrase is chosen. */
+      pickPhrase: 'Pick what is wrong.',
+      /** Context line of the second step: "Appliances · Bathroom" (with `ascii` a plain dash when the panel font has no middle dot). */
+      context: (category: string, room: string, ascii = false): string => `${category}${ascii ? ' - ' : ' \u00b7 '}${room}`,
     },
     /** Body of a screen that a later task fills (list T4.8, detail T4.9, new T4.7, move-in T4.10). */
     comingSoon: 'Coming soon',

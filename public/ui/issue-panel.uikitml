@@ -32,6 +32,57 @@
       </div>
       </div>
     </div>
+    <div id="issue-panel-new" style="display: none; flex-direction: column; align-items: center; width: 35.2;">
+      <div id="issue-panel-ctx-box" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 35.2; height: 2.7;">
+        <span id="issue-panel-context" style="font-size: 2.4; font-weight: normal; color: #1a1a1a; line-height: 1.1; text-align: center; width: 35.2;">-</span>
+      </div>
+      <div id="issue-panel-gr0" style="display: none; flex-direction: row; justify-content: space-between; width: 35.2; height: 4; margin-top: 0.3;">
+        <div id="issue-panel-g0a" style="display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a; width: 17.4; height: 4;">
+          <span id="issue-panel-g0a-label" style="font-size: 2.4; font-weight: bold; color: #1a1a1a; line-height: 1; text-align: center;">-</span>
+        </div>
+        <div id="issue-panel-g0b" style="display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a; width: 17.4; height: 4;">
+          <span id="issue-panel-g0b-label" style="font-size: 2.4; font-weight: bold; color: #1a1a1a; line-height: 1; text-align: center;">-</span>
+        </div>
+      </div>
+      <div id="issue-panel-gr1" style="display: none; flex-direction: row; justify-content: space-between; width: 35.2; height: 4; margin-top: 0.3;">
+        <div id="issue-panel-g1a" style="display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a; width: 17.4; height: 4;">
+          <span id="issue-panel-g1a-label" style="font-size: 2.4; font-weight: bold; color: #1a1a1a; line-height: 1; text-align: center;">-</span>
+        </div>
+        <div id="issue-panel-g1b" style="display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a; width: 17.4; height: 4;">
+          <span id="issue-panel-g1b-label" style="font-size: 2.4; font-weight: bold; color: #1a1a1a; line-height: 1; text-align: center;">-</span>
+        </div>
+      </div>
+      <div id="issue-panel-gr2" style="display: none; flex-direction: row; justify-content: space-between; width: 35.2; height: 4; margin-top: 0.3;">
+        <div id="issue-panel-g2a" style="display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a; width: 17.4; height: 4;">
+          <span id="issue-panel-g2a-label" style="font-size: 2.4; font-weight: bold; color: #1a1a1a; line-height: 1; text-align: center;">-</span>
+        </div>
+        <div id="issue-panel-g2b" style="display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a; width: 17.4; height: 4;">
+          <span id="issue-panel-g2b-label" style="font-size: 2.4; font-weight: bold; color: #1a1a1a; line-height: 1; text-align: center;">-</span>
+        </div>
+      </div>
+      <div id="issue-panel-gr3" style="display: none; flex-direction: row; justify-content: space-between; width: 35.2; height: 4; margin-top: 0.3;">
+        <div id="issue-panel-g3a" style="display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a; width: 17.4; height: 4;">
+          <span id="issue-panel-g3a-label" style="font-size: 2.4; font-weight: bold; color: #1a1a1a; line-height: 1; text-align: center;">-</span>
+        </div>
+        <div id="issue-panel-g3b" style="display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a; width: 17.4; height: 4;">
+          <span id="issue-panel-g3b-label" style="font-size: 2.4; font-weight: bold; color: #1a1a1a; line-height: 1; text-align: center;">-</span>
+        </div>
+      </div>
+      <div id="issue-panel-urg" style="display: none; flex-direction: row; justify-content: space-between; width: 35.2; height: 4; margin-top: 0.3;">
+        <div id="issue-panel-urg-low" style="display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a; width: 11.4667; height: 4;">
+          <span id="issue-panel-urg-low-label" style="font-size: 2.4; font-weight: bold; color: #1a1a1a; line-height: 1; text-align: center;">-</span>
+        </div>
+        <div id="issue-panel-urg-medium" style="display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a; width: 11.4667; height: 4;">
+          <span id="issue-panel-urg-medium-label" style="font-size: 2.4; font-weight: bold; color: #1a1a1a; line-height: 1; text-align: center;">-</span>
+        </div>
+        <div id="issue-panel-urg-urgent" style="display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a; width: 11.4667; height: 4;">
+          <span id="issue-panel-urg-urgent-label" style="font-size: 2.4; font-weight: bold; color: #1a1a1a; line-height: 1; text-align: center;">-</span>
+        </div>
+      </div>
+      <div id="issue-panel-summary-box" style="display: none; flex-direction: column; align-items: center; justify-content: flex-start; width: 35.2; height: 4.8; margin-top: 0.3;">
+        <span id="issue-panel-summary" style="font-size: 2.4; font-weight: bold; color: #1a1a1a; line-height: 1; text-align: center; width: 34.4;">-</span>
+      </div>
+    </div>
     <div id="issue-panel-note-box" style="display: none; flex-direction: column; align-items: center; width: 34.4; margin-top: 1;">
       <span id="issue-panel-note" style="font-size: 2.4; font-weight: normal; color: #1a1a1a; line-height: 1.1; text-align: center; width: 34.4;">-</span>
     </div>
@@ -40,6 +91,9 @@
   <div id="issue-panel-bar" style="display: flex; flex-direction: row; justify-content: space-between; width: 36; height: 6.2; margin-top: 0.4;">
     <div id="issue-panel-back" style="display: flex; flex-direction: row; align-items: center; justify-content: center; width: 9; height: 6.2; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a;">
       <span id="issue-panel-back-label" style="font-size: 2.4; font-weight: bold; color: #1a1a1a; line-height: 1.1; text-align: center;">-</span>
+    </div>
+    <div id="issue-panel-mid" style="display: none; flex-direction: row; align-items: center; justify-content: center; width: 9; height: 6.2; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a;">
+      <span id="issue-panel-mid-label" style="font-size: 2.4; font-weight: bold; color: #1a1a1a; line-height: 1.1; text-align: center;">-</span>
     </div>
     <div id="issue-panel-close" style="display: flex; flex-direction: row; align-items: center; justify-content: center; width: 9; height: 6.2; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a;">
       <span id="issue-panel-close-label" style="font-size: 2.4; font-weight: bold; color: #1a1a1a; line-height: 1.1; text-align: center;">-</span>

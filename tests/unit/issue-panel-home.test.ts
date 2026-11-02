@@ -29,6 +29,7 @@ import {
   roleOfControl,
   screenControls,
   type IssueControlId,
+  type StaticControlId,
 } from '../../src/logic/issue-panel';
 import { pickRect, type PickSlot } from '../../src/logic/menu';
 import { can } from '../../src/logic/permissions';
@@ -70,7 +71,9 @@ describe('the controls of home for each role', () => {
   it('there is no Back on home, and the other screens have Back and Close whatever the role', () => {
     for (const role of ALL_ROLES) {
       expect(screenControls('home', role)).not.toContain('back');
-      for (const screen of ['new', 'list', 'detail', 'movein'] as const) expect(screenControls(screen, role)).toEqual(['back', 'close']);
+      for (const screen of ['list', 'detail', 'movein'] as const) expect(screenControls(screen, role)).toEqual(['back', 'close']);
+      // The form of a new issue brings its own buttons (src/logic/issue-form.ts): none of the fixed ones.
+      expect(screenControls('new', role)).toEqual([]);
     }
   });
 
@@ -127,7 +130,7 @@ describe('the number in "Issues (n)"', () => {
 
 describe('the slots of home', () => {
   const homeSlots = (role: Role) => screenControls('home', role).map((id) => CONTROL_SLOTS[id]);
-  const rect = (id: IssueControlId) => {
+  const rect = (id: StaticControlId) => {
     const slot = CONTROL_SLOTS[id];
     return { left: slot.dx - slot.halfWidth, right: slot.dx + slot.halfWidth, bottom: slot.dy - slot.halfHeight, top: slot.dy + slot.halfHeight };
   };
@@ -189,7 +192,7 @@ describe('the slots of home', () => {
         halfWidth: CONTROL_SLOTS[id].halfWidth,
         halfHeight: CONTROL_SLOTS[id].halfHeight,
       }));
-      for (const id of Object.keys(CONTROL_SLOTS) as IssueControlId[]) {
+      for (const id of Object.keys(CONTROL_SLOTS) as StaticControlId[]) {
         const hit = pickRect({ x: CONTROL_SLOTS[id].dx, y: CONTROL_SLOTS[id].dy, z: 0 }, slots, frame);
         if (screenControls('home', role).includes(id)) expect(hit?.id, `${role} ${id}`).toBe(id);
         else if (id !== 'back') expect(hit, `${role} ${id}`).toBeNull();

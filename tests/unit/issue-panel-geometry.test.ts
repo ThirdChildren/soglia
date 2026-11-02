@@ -146,8 +146,9 @@ describe('the text is at least 2.4 cm and fits where it is drawn', () => {
 
   it('every font-size of the panel and of the button is at least 2.4', () => {
     const all = [...sizes(panelSource), ...sizes(buttonSource)];
-    // title, footer, Back, Close, the four chips, the hint, the two buttons of home, the note of the other screens, and the button
-    expect(all.length).toBe(13);
+    // title, footer, Back, Close, the four chips, the hint, the two buttons of home, the note of the other screens, and the button (13);
+    // the form of a new issue (T4.7): the context line, eight boxes of the grid, three urgencies, the summary and the middle Back (14)
+    expect(all.length).toBe(27);
     for (const size of all) expect(size).toBeGreaterThanOrEqual(ISSUE_MIN_TEXT_SIZE);
   });
 
@@ -258,9 +259,11 @@ describe('the model of the screens', () => {
   it('the controls of a screen: Close always, Back outside home; the ids are the stable ids of the plan', () => {
     // `home` also has the four role chips (and the buttons of the role): the exact sets per role are in issue-panel-home.test.ts.
     expect(screenControls('home', 'visitor')).toEqual(['role-visitor', 'role-agent', 'role-tenant', 'role-landlord', 'close']);
-    for (const screen of ISSUE_SCREENS.filter((s) => s !== 'home')) {
+    for (const screen of ISSUE_SCREENS.filter((s) => s !== 'home' && s !== 'new')) {
       for (const role of ['visitor', 'agent', 'tenant', 'landlord'] as const) expect(screenControls(screen, role)).toEqual(['back', 'close']);
     }
+    // `new` has no fixed control: its buttons come from the form (issue-form.test.ts).
+    for (const role of ['visitor', 'agent', 'tenant', 'landlord'] as const) expect(screenControls('new', role)).toEqual([]);
     expect(controlStableId('close')).toBe('ui:issue-close');
     expect(controlStableId('back')).toBe('ui:issue-back');
   });

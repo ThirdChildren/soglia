@@ -48,8 +48,15 @@ export const HOME_ROLES: readonly Role[] = ROLES;
 /** The id of a role chip (`role-tenant`) and the two buttons of `home`. */
 export type RoleControlId = `role-${Role}`;
 export type HomeActionId = 'open-list' | 'open-movein';
-/** Every control of the panel: the bar (`back`, `close`), the role chips and the two buttons of `home`. */
-export type IssueControlId = 'back' | 'close' | RoleControlId | HomeActionId;
+/** The controls with a fixed place: the bar (`back`, `close`), the role chips and the two buttons of `home`. */
+export type StaticControlId = 'back' | 'close' | RoleControlId | HomeActionId;
+/**
+ * The controls of the form of a new issue (T4.7, src/logic/issue-form.ts places them): a category, a phrase of the category, an
+ * urgency, and the bar of `new` (`cancel`, `report`; its `back` goes from the phrases to the categories).
+ */
+export type FormControlId = `category-${string}` | `phrase-${string}` | `urgency-${string}` | 'cancel' | 'report';
+/** Every control of the panel. */
+export type IssueControlId = StaticControlId | FormControlId;
 
 export function roleControlId(role: Role): RoleControlId {
   return `role-${role}`;
@@ -74,16 +81,18 @@ export function homeActions(role: Role): readonly HomeActionId[] {
 }
 
 /** The controls of `home` for `role`, in the order of the layout: the four chips, the buttons, `Close`. */
-export function homeControls(role: Role): readonly IssueControlId[] {
+export function homeControls(role: Role): readonly StaticControlId[] {
   return [...HOME_ROLES.map(roleControlId), ...homeActions(role), 'close'];
 }
 
 /**
  * The controls that exist on `screen` for `role`, in layout order. A control that is not here has no entity and cannot be
- * pinched. Only `home` depends on the role; `Back` is drawn (and can be pinched) outside `home`.
+ * pinched. Only `home` depends on the role; `Back` is drawn (and can be pinched) outside `home`. The form `new` has none of
+ * the static ones: its buttons come from `formControls` (src/logic/issue-form.ts), which depends on the step.
  */
-export function screenControls(screen: IssueScreen, role: Role): readonly IssueControlId[] {
+export function screenControls(screen: IssueScreen, role: Role): readonly StaticControlId[] {
   if (screen === 'home') return homeControls(role);
+  if (screen === 'new') return [];
   return ['back', 'close'];
 }
 
@@ -258,7 +267,7 @@ const ACTION_CENTRE_Y = HOME_ACTIONS_TOP_Y - HOME_ACTION_HEIGHT / 2;
  * Every control of the panel. `Back` is at the left end of the bar and `Close` at the right end (the same slot on every
  * screen); the chips are two by two under the title and the two buttons of `home` side by side under the hint.
  */
-export const CONTROL_SLOTS: Readonly<Record<IssueControlId, ControlSlot>> = {
+export const CONTROL_SLOTS: Readonly<Record<StaticControlId, ControlSlot>> = {
   back: slot('back', -BAR_SIDE_X * 100, BAR_CENTRE_Y * 100, ISSUE_BAR_BUTTON_WIDTH, ISSUE_BAR_HEIGHT),
   close: slot('close', BAR_SIDE_X * 100, BAR_CENTRE_Y * 100, ISSUE_BAR_BUTTON_WIDTH, ISSUE_BAR_HEIGHT),
   'role-visitor': chipSlot('visitor', 0),

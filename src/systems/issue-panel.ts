@@ -20,6 +20,11 @@
 // free hand inside the rectangle of one claims that hand as `menu` (the highest priority: it never grabs a piece, selects a
 // room or starts a gesture). With a piece in a hand they do not react (the pinch of the other hand rotates the piece).
 //
+// The form of a new issue (T4.7): the long pinch (src/systems/issue-create.ts) starts it with `startIssueForm` and shows `new`.
+// Its buttons (categories, phrases, urgencies, `Cancel`, `Report`, `Back`) are placed by src/logic/issue-form.ts; a pinch on one
+// updates the form (pure functions) and the panel is rewritten in place. `Cancel` and `Report` call the handlers that
+// issue-create registers (`setIssueFormHandlers`): that is where the draft is dropped or turned into an issue in the store.
+//
 // Register this system AFTER the menu items and the Menu/Issues buttons (a pinch that picks a control of the menu or a
 // button is theirs: the claim is taken when this listener runs) and BEFORE the furniture grab.
 //
@@ -41,6 +46,7 @@ import {
   issueCount,
   roleOfControl,
   screenControls,
+  type ControlSlot,
   type IssueControlId,
   type IssuePanelCloseVia,
   type IssueScreen,
@@ -48,12 +54,28 @@ import {
   type RoleObserver,
   type ScreenNavigator,
 } from '../logic/issue-panel';
+import {
+  backToCategory,
+  canReport,
+  categoryOfControl,
+  formLayout,
+  formatFormStep,
+  formatReportIgnored,
+  formSlots,
+  phraseOfControl,
+  pickCategory,
+  pickPhrase,
+  pickUrgency,
+  urgencyOfControl,
+  type IssueForm,
+} from '../logic/issue-form';
 import { setRole, type AppState, type Store } from '../logic/state';
 import { pickRect, type PickSlot } from '../logic/menu';
 import { pinnedPanelPoint } from '../logic/menu-anchor';
 import type { Role } from '../logic/params';
 import { IssuePanel } from '../ui/issue-panel';
 import { MenuAnchor } from '../ui/menu-anchor';
+import { strings } from '../ui/strings';
 import { closeOpenMenu, onMenuOpening } from './palm-menu';
 import { onPinchStart, pinchClaims, pinchPoint, type Hand } from './pinch-input';
 
@@ -62,7 +84,19 @@ interface IssuePanelContext {
   navigator: ScreenNavigator;
   store: Store;
   roles: RoleObserver;
+  /** The form shown at `new` (null: none) and a counter that changes with it, so the buttons are placed again. */
+  form: IssueForm | null;
+  formRev: number;
 }
+
+/** What the form calls when `Cancel` or `Report` is pressed (issue-create registers them). */
+export interface IssueFormHandlers {
+  /** Drops the draft (the form's Cancel). */
+  cancel(): void;
+  /** Turns the form into an issue of the store. True when it was added (the panel closes); false keeps the form open. */
+  report(form: IssueForm): boolean;
+}
+let formHandlers: IssueFormHandlers | null = null;
 
 type RoleListener = (change: RoleChange) => void;
 const roleListeners = new Set<RoleListener>();
@@ -74,7 +108,14 @@ let active: IssuePanelSystem | null = null;
 
 /** Creates the panel (closed) and registers the system. Register it after the menu items and the buttons, before the grab. */
 export function createIssuePanel(world: World, store: Store): void {
-  context = { panel: new IssuePanel(world), navigator: createScreenNavigator(), store, roles: createRoleObserver(store.get().role) };
+  context = {
+    panel: new IssuePanel(world),
+    navigator: createScreenNavigator(),
+    store,
+    roles: createRoleObserver(store.get().role),
+    form: null,
+    formRev: 0,
+  };
   world.registerSystem(IssuePanelSystem);
 }
 
@@ -118,6 +159,22 @@ export function showIssueScreen(screen: IssueScreen): void {
   active?.show(screen);
 }
 
+/**
+ * Gives the panel the form of a new issue (the long pinch calls it right after opening the panel, then shows `new`). Does
+ * nothing when the panel is closed. Logs `issues draft step=… urgency=…`.
+ */
+export function startIssueForm(form: IssueForm): void {
+  active?.setForm(form);
+}
+
+/** Registers what `Cancel` and `Report` do. Returns the function that removes them. */
+export function setIssueFormHandlers(handlers: IssueFormHandlers): () => void {
+  formHandlers = handlers;
+  return () => {
+    if (formHandlers === handlers) formHandlers = null;
+  };
+}
+
 /** The session is suspended (hidden, blurred, ended): closes the panel (D30). */
 export function suspendIssuePanel(): void {
   active?.suspend();
@@ -141,20 +198,16 @@ export class IssuePanelSystem extends createSystem({}) {
   private readonly spot = { x: 0, y: 0, z: 0 };
   /** Orientation of the panel (yaw only), what `pickRect` needs. */
   private readonly frameQuat = { x: 0, y: 0, z: 0, w: 1 };
-  /** One slot per control, filled when the panel has a place; `pickSlots` holds the ones of the screen (rebuilt with the anchors). */
-  private readonly slots = {} as Record<IssueControlId, Slot>;
+  /** The pick rectangles of the controls of the screen, in the plane of the panel (rebuilt with the anchors). */
   private readonly pickSlots: Slot[] = [];
   private readonly anchors = new Map<IssueControlId, MenuAnchor>();
   /** The screen and the role the anchors were made for (null: none exist). */
   private anchorsFor: IssueScreen | null = null;
   private anchorsRole: Role | null = null;
+  private anchorsFormRev = -1;
 
   init(): void {
     active = this;
-    for (const id of Object.keys(CONTROL_SLOTS) as IssueControlId[]) {
-      const base = CONTROL_SLOTS[id];
-      this.slots[id] = { id, x: 0, y: 0, z: 0, halfWidth: base.halfWidth, halfHeight: base.halfHeight };
-    }
     this.cleanupFuncs.push(() => {
       if (active === this) active = null;
       this.disposeAnchors();
@@ -176,6 +229,7 @@ export class IssuePanelSystem extends createSystem({}) {
     if (!change) return;
     // The panel goes back to `home` (it was on `home` when the chip was pinched; another way of changing the role may find it elsewhere).
     if (ctx.panel.isOpen && ctx.navigator.go(HOME_SCREEN) !== null) {
+      this.dropForm(ctx);
       ctx.panel.setScreen(HOME_SCREEN);
       slog(formatScreenLine(HOME_SCREEN));
     }
@@ -214,6 +268,7 @@ export class IssuePanelSystem extends createSystem({}) {
     ctx.panel.close();
     this.disposeAnchors();
     ctx.navigator.reset();
+    ctx.form = null;
     slog(formatPanelClosed(via));
   }
 
@@ -221,8 +276,31 @@ export class IssuePanelSystem extends createSystem({}) {
     const ctx = context;
     if (!ctx || !ctx.panel.isOpen) return;
     if (ctx.navigator.go(screen) === null) return;
+    if (screen !== 'new') this.dropForm(ctx);
     ctx.panel.setScreen(screen);
     slog(formatScreenLine(screen));
+  }
+
+  /** The form of `new` (the long pinch has just made the draft): set it, log its step. */
+  setForm(form: IssueForm): void {
+    const ctx = context;
+    if (!ctx || !ctx.panel.isOpen) return;
+    this.changeForm(ctx, form);
+  }
+
+  private changeForm(ctx: IssuePanelContext, form: IssueForm | null): void {
+    if (form === ctx.form) return;
+    ctx.form = form;
+    ctx.formRev += 1;
+    ctx.panel.setForm(form);
+    if (form) slog(formatFormStep(form));
+  }
+
+  private dropForm(ctx: IssuePanelContext): void {
+    if (ctx.form === null) return;
+    ctx.form = null;
+    ctx.formRev += 1;
+    ctx.panel.setForm(null);
   }
 
   update(): void {
@@ -233,16 +311,28 @@ export class IssuePanelSystem extends createSystem({}) {
       return;
     }
     ctx.panel.update(this.world.player.head);
-    if (ctx.panel.hasFrame && (this.anchorsFor !== ctx.navigator.screen || this.anchorsRole !== ctx.store.get().role)) this.placeAnchors(ctx);
+    if (ctx.panel.hasFrame && this.anchorsStale(ctx)) this.placeAnchors(ctx);
+  }
+
+  /** The anchors were made for another screen, role or form: they are placed again. */
+  private anchorsStale(ctx: IssuePanelContext): boolean {
+    return this.anchorsFor !== ctx.navigator.screen || this.anchorsRole !== ctx.store.get().role || this.anchorsFormRev !== ctx.formRev;
+  }
+
+  /** The controls of the current screen with their places: the form builds its own, the other screens use the fixed slots. */
+  private controlsFor(ctx: IssuePanelContext): readonly ControlSlot[] {
+    const screen = ctx.navigator.screen;
+    if (screen === 'new' && ctx.form) return formSlots(formLayout(ctx.form, strings.issues.form));
+    return screenControls(screen, ctx.store.get().role).map((id) => CONTROL_SLOTS[id]);
   }
 
   /** Makes the anchors of the controls of the current screen and puts them (and their pick slots) in the plane of the panel. */
   private placeAnchors(ctx: IssuePanelContext): void {
     const screen = ctx.navigator.screen;
     const role = ctx.store.get().role;
-    const wanted = screenControls(screen, role);
+    const controls = this.controlsFor(ctx);
     for (const [id, anchor] of this.anchors) {
-      if (wanted.includes(id)) continue;
+      if (controls.some((control) => control.id === id)) continue;
       anchor.dispose();
       this.anchors.delete(id);
     }
@@ -250,19 +340,15 @@ export class IssuePanelSystem extends createSystem({}) {
     this.frameQuat.y = Math.sin(yaw / 2);
     this.frameQuat.w = Math.cos(yaw / 2);
     this.pickSlots.length = 0;
-    for (const id of wanted) {
+    for (const base of controls) {
+      const id = base.id;
       let anchor = this.anchors.get(id);
       if (!anchor) {
         anchor = new MenuAnchor(this.world, controlStableId(id));
         this.anchors.set(id, anchor);
       }
-      const slot = CONTROL_SLOTS[id];
-      pinnedPanelPoint(ctx.panel.framePosition, yaw, slot.dx, slot.dy, this.spot);
-      const target = this.slots[id];
-      target.x = this.spot.x;
-      target.y = this.spot.y;
-      target.z = this.spot.z;
-      this.pickSlots.push(target);
+      pinnedPanelPoint(ctx.panel.framePosition, yaw, base.dx, base.dy, this.spot);
+      this.pickSlots.push({ id, x: this.spot.x, y: this.spot.y, z: this.spot.z, halfWidth: base.halfWidth, halfHeight: base.halfHeight });
       const object = anchor.object;
       if (object) {
         object.position.set(this.spot.x, this.spot.y, this.spot.z);
@@ -271,6 +357,7 @@ export class IssuePanelSystem extends createSystem({}) {
     }
     this.anchorsFor = screen;
     this.anchorsRole = role;
+    this.anchorsFormRev = ctx.formRev;
   }
 
   private disposeAnchors(): void {
@@ -279,11 +366,12 @@ export class IssuePanelSystem extends createSystem({}) {
     this.pickSlots.length = 0;
     this.anchorsFor = null;
     this.anchorsRole = null;
+    this.anchorsFormRev = -1;
   }
 
   private onPinch(hand: Hand): void {
     const ctx = context;
-    if (!ctx || !ctx.panel.hasFrame || this.anchorsFor !== ctx.navigator.screen || this.anchorsRole !== ctx.store.get().role) return;
+    if (!ctx || !ctx.panel.hasFrame || this.anchorsStale(ctx)) return;
     if (!this.world.renderer.xr.isPresenting) return;
     // A control of an open menu, a button (or anyone else) has this pinch already: it is not a press on the panel.
     if (pinchClaims.ownerOf(hand) !== null) return;
@@ -298,6 +386,10 @@ export class IssuePanelSystem extends createSystem({}) {
     // The menu has the highest priority: this only fails if the menu already owns the hand (checked above).
     if (!pinchClaims.claim(hand, 'menu')) return;
     slog(`issues control pressed id=${controlStableId(hit.id)} hand=${hand}`);
+    if (ctx.navigator.screen === 'new' && ctx.form) {
+      this.pressForm(ctx, ctx.form, hit.id);
+      return;
+    }
     if (hit.id === 'close') {
       this.close('close');
       return;
@@ -326,5 +418,40 @@ export class IssuePanelSystem extends createSystem({}) {
     slog(formatRoleChanged({ from, to: role }, 'ui'));
     slog(formatRoleSet(role, 'panel'));
     ctx.store.dispatch(setRole(role));
+  }
+
+  /** A press on a button of the form: choose (category, phrase, urgency), step back, cancel or report. */
+  private pressForm(ctx: IssuePanelContext, form: IssueForm, id: IssueControlId): void {
+    if (id === 'cancel') {
+      // The draft goes (`issue draft cancelled reason=user`) and the panel closes.
+      formHandlers?.cancel();
+      this.close('close');
+      return;
+    }
+    if (id === 'report') {
+      if (!canReport(form)) {
+        slog(formatReportIgnored('no-phrase'));
+        return;
+      }
+      if (formHandlers?.report(form)) this.close('report');
+      return;
+    }
+    if (id === 'back') {
+      this.changeForm(ctx, backToCategory(form));
+      return;
+    }
+    const category = categoryOfControl(id);
+    if (category !== null) {
+      this.changeForm(ctx, pickCategory(form, category));
+      return;
+    }
+    const phrase = phraseOfControl(id);
+    if (phrase !== null) {
+      const next = pickPhrase(form, phrase);
+      this.changeForm(ctx, next);
+      return;
+    }
+    const urgency = urgencyOfControl(id);
+    if (urgency !== null) this.changeForm(ctx, pickUrgency(form, urgency));
   }
 }

@@ -11,6 +11,7 @@ import { tagEntity } from '../components/tag-entity';
 import { stableId } from '../logic/ids';
 import {
   HOME_ROLES,
+  ISSUE_BAR_BUTTON_WIDTH,
   ISSUE_PANEL_EXTENT,
   backVisible,
   homeActions,
@@ -18,12 +19,22 @@ import {
   type HomeActionId,
   type IssueScreen,
 } from '../logic/issue-panel';
+import {
+  TITLE_MAX_LENGTH,
+  clipName,
+  fitContext,
+  formLayout,
+  formSummary,
+  type FormCell,
+  type IssueForm,
+} from '../logic/issue-form';
+import { ISSUE_URGENCIES } from '../logic/issues';
 import type { Role } from '../logic/params';
 import { PANEL_CENTER } from '../logic/menu';
 import { pinnedAnchorPitchRad, pinnedConeAngleDeg, pinnedMenuAnchor, pitchOfForward, yawOfForward } from '../logic/menu-anchor';
 import type { Vec3Like } from '../logic/palm';
 import { slog } from '../log';
-import { applyPanelFont } from './fonts';
+import { applyPanelFont, panelFontSupports } from './fonts';
 import { disposePanelEntity } from './panel-lifecycle';
 import { strings } from './strings';
 import { uiColors } from './theme';
@@ -43,6 +54,18 @@ const NOTE_ELEMENT = 'issue-panel-note';
 const CHIP_ACTIVE = { backgroundColor: '#1a1a1a', color: '#ffffff' } as const;
 const CHIP_IDLE = { backgroundColor: uiColors.surface, color: uiColors.ink } as const;
 const HOME_ACTION_IDS: readonly HomeActionId[] = ['open-list', 'open-movein'];
+const NEW_ELEMENT = 'issue-panel-new';
+const CONTEXT_ELEMENT = 'issue-panel-context';
+const URGENCY_ROW_ELEMENT = 'issue-panel-urg';
+const SUMMARY_BOX_ELEMENT = 'issue-panel-summary-box';
+const SUMMARY_ELEMENT = 'issue-panel-summary';
+const MID_ELEMENT = 'issue-panel-mid';
+const CLOSE_ELEMENT = 'issue-panel-close';
+/** The grid of the form: four rows of two boxes (the categories take four rows, the phrases at most three). */
+const GRID_ROWS = 4;
+const GRID_COLUMNS = 2;
+/** A button that cannot be used yet (`Report` before a phrase is chosen) is drawn faint. */
+const FAINT_OPACITY = 0.4;
 /** Drawn after the scene (and its transparent parts) so it is never covered; the menu uses the same order. */
 const PANEL_RENDER_ORDER = 1000;
 
@@ -78,6 +101,20 @@ export class IssuePanel {
   private hint: UIKit.Text | null = null;
   private noteBox: UIKit.Container | null = null;
   private note: UIKit.Text | null = null;
+  private newBox: UIKit.Container | null = null;
+  private context: UIKit.Text | null = null;
+  private urgencyRow: UIKit.Container | null = null;
+  private summaryBox: UIKit.Container | null = null;
+  private summary: UIKit.Text | null = null;
+  private closeBox: UIKit.Container | null = null;
+  private closeLabel: UIKit.Text | null = null;
+  private backLabel: UIKit.Text | null = null;
+  private mid: ChipElements = { box: null, label: null };
+  /** Boxes of the grid, row by row (`row * 2 + column`), and of the three urgencies. */
+  private readonly gridRows: (UIKit.Container | null)[] = [];
+  private readonly gridBoxes: ChipElements[] = [];
+  private readonly urgencies = new Map<string, ChipElements>();
+  private form: IssueForm | null = null;
   private readonly chips = new Map<Role, ChipElements>();
   private readonly actions = new Map<HomeActionId, ChipElements>();
   private homeModel: HomeModel = { role: 'visitor', issueCount: 0 };
@@ -148,8 +185,27 @@ export class IssuePanel {
     this.hint = null;
     this.noteBox = null;
     this.note = null;
+    this.newBox = null;
+    this.context = null;
+    this.urgencyRow = null;
+    this.summaryBox = null;
+    this.summary = null;
+    this.closeBox = null;
+    this.closeLabel = null;
+    this.backLabel = null;
+    this.mid = { box: null, label: null };
+    this.gridRows.length = 0;
+    this.gridBoxes.length = 0;
+    this.urgencies.clear();
+    this.form = null;
     this.chips.clear();
     this.actions.clear();
+  }
+
+  /** The form of a new issue that the `new` screen shows (null: none). Written in place; kept until the layout is loaded. */
+  setForm(form: IssueForm | null): void {
+    this.form = form;
+    if (this.applied) this.writeScreen();
   }
 
   /** The role and the count that `home` shows. Written in place when the layout is loaded, else as soon as it is. */
@@ -204,8 +260,26 @@ export class IssuePanel {
     this.title = title;
     this.footer = doc.getElementById<UIKit.Text>(FOOTER_ELEMENT);
     this.back = doc.getElementById<UIKit.Container>(BACK_ELEMENT);
-    doc.getElementById<UIKit.Text>(BACK_LABEL_ELEMENT)?.setProperties({ text: strings.issues.back, color: uiColors.ink });
-    doc.getElementById<UIKit.Text>(CLOSE_LABEL_ELEMENT)?.setProperties({ text: strings.issues.close, color: uiColors.ink });
+    this.backLabel = doc.getElementById<UIKit.Text>(BACK_LABEL_ELEMENT);
+    this.closeLabel = doc.getElementById<UIKit.Text>(CLOSE_LABEL_ELEMENT);
+    this.closeBox = doc.getElementById<UIKit.Container>(CLOSE_ELEMENT);
+    this.mid = { box: doc.getElementById<UIKit.Container>(MID_ELEMENT), label: doc.getElementById<UIKit.Text>(`${MID_ELEMENT}-label`) };
+    this.newBox = doc.getElementById<UIKit.Container>(NEW_ELEMENT);
+    this.context = doc.getElementById<UIKit.Text>(CONTEXT_ELEMENT);
+    this.urgencyRow = doc.getElementById<UIKit.Container>(URGENCY_ROW_ELEMENT);
+    this.summaryBox = doc.getElementById<UIKit.Container>(SUMMARY_BOX_ELEMENT);
+    this.summary = doc.getElementById<UIKit.Text>(SUMMARY_ELEMENT);
+    for (let row = 0; row < GRID_ROWS; row += 1) {
+      this.gridRows.push(doc.getElementById<UIKit.Container>(`issue-panel-gr${row}`));
+      for (const column of ['a', 'b']) {
+        const id = `issue-panel-g${row}${column}`;
+        this.gridBoxes.push({ box: doc.getElementById<UIKit.Container>(id), label: doc.getElementById<UIKit.Text>(`${id}-label`) });
+      }
+    }
+    for (const urgency of ISSUE_URGENCIES) {
+      const id = `issue-panel-urg-${urgency}`;
+      this.urgencies.set(urgency, { box: doc.getElementById<UIKit.Container>(id), label: doc.getElementById<UIKit.Text>(`${id}-label`) });
+    }
     this.home = doc.getElementById<UIKit.Container>(HOME_ELEMENT);
     this.hint = doc.getElementById<UIKit.Text>(HINT_ELEMENT);
     this.noteBox = doc.getElementById<UIKit.Container>(NOTE_BOX_ELEMENT);
@@ -233,12 +307,19 @@ export class IssuePanel {
   private writeScreen(): void {
     const screen = this.screenValue;
     const isHome = screen === 'home';
-    this.title?.setProperties({ text: strings.issues.screens[screen] });
-    this.footer?.setProperties({ text: isHome ? strings.issues.footer : '' });
-    // `Back` keeps its place in the bar (`Close` stays at the right end) and is simply not drawn on `home`.
-    this.back?.setProperties({ opacity: backVisible(screen) ? undefined : 0 });
+    const form = screen === 'new' ? this.form : null;
+    // The title of the form is the name of the fixture (a free spot keeps "New issue").
+    const title = form?.fixtureName ? clipName(form.fixtureName, TITLE_MAX_LENGTH) : strings.issues.screens[screen];
+    this.title?.setProperties({ text: title });
+    this.footer?.setProperties({ text: isHome ? strings.issues.footer : '', display: isHome ? 'flex' : 'none' });
     this.home?.setProperties({ display: isHome ? 'flex' : 'none' });
-    this.noteBox?.setProperties({ display: isHome ? 'none' : 'flex' });
+    this.noteBox?.setProperties({ display: isHome || form ? 'none' : 'flex' });
+    this.newBox?.setProperties({ display: form ? 'flex' : 'none' });
+    this.writeBar(form);
+    if (form) {
+      this.writeForm(form);
+      return;
+    }
     if (!isHome) {
       this.note?.setProperties({ text: strings.issues.comingSoon });
       return;
@@ -257,5 +338,65 @@ export class IssuePanel {
       action.box?.setProperties({ opacity: shown.includes(id) ? undefined : 0 });
       action.label?.setProperties({ text: id === 'open-list' ? strings.issues.openList(issueCount) : strings.issues.openMoveIn });
     }
+  }
+
+  /**
+   * The bar: `Back` and `Close` on every screen but the form. In the form the left box is `Cancel`, the right one `Report`
+   * (only at the second step, faint until a phrase is chosen) and the middle one `Back` (a free spot at the second step).
+   */
+  private writeBar(form: IssueForm | null): void {
+    const screen = this.screenValue;
+    if (!form) {
+      this.back?.setProperties({ width: ISSUE_BAR_BUTTON_WIDTH, opacity: backVisible(screen) ? undefined : 0 });
+      this.backLabel?.setProperties({ text: strings.issues.back });
+      this.closeBox?.setProperties({ display: 'flex', width: ISSUE_BAR_BUTTON_WIDTH, opacity: undefined });
+      this.closeLabel?.setProperties({ text: strings.issues.close });
+      this.mid.box?.setProperties({ display: 'none' });
+      return;
+    }
+    const layout = formLayout(form, strings.issues.form);
+    const cancel = layout.cells.find((cell) => cell.kind === 'cancel');
+    const report = layout.cells.find((cell) => cell.kind === 'report');
+    const back = layout.cells.find((cell) => cell.kind === 'back');
+    this.back?.setProperties({ width: cancel?.width ?? ISSUE_BAR_BUTTON_WIDTH, opacity: undefined });
+    this.backLabel?.setProperties({ text: strings.issues.form.cancel });
+    this.closeBox?.setProperties({
+      display: report ? 'flex' : 'none',
+      width: report?.width ?? ISSUE_BAR_BUTTON_WIDTH,
+      opacity: report && !report.enabled ? FAINT_OPACITY : undefined,
+    });
+    this.closeLabel?.setProperties({ text: strings.issues.form.report });
+    this.mid.box?.setProperties({ display: back ? 'flex' : 'none', width: back?.width ?? ISSUE_BAR_BUTTON_WIDTH });
+    this.mid.label?.setProperties({ text: strings.issues.form.back });
+  }
+
+  /** The body of the form: the context line, the grid (categories or phrases), the urgencies and the sentence that will be saved. */
+  private writeForm(form: IssueForm): void {
+    const layout = formLayout(form, strings.issues.form);
+    const atWhat = layout.step === 'what';
+    const room = form.roomName;
+    const category = form.category === null ? '' : strings.issues.categories[form.category];
+    this.context?.setProperties({
+      text: atWhat
+        ? fitContext(strings.issues.form.context(category, room, !panelFontSupports('\u00b7')), category)
+        : strings.issues.form.pickCategory,
+    });
+    for (let row = 0; row < GRID_ROWS; row += 1) this.gridRows[row]?.setProperties({ display: row < layout.gridRows ? 'flex' : 'none' });
+    for (const cellBox of this.gridBoxes) cellBox.box?.setProperties({ display: 'none' });
+    for (const cell of layout.cells) {
+      if (cell.kind === 'category' || cell.kind === 'phrase') this.writeCell(this.gridBoxes[cell.row * GRID_COLUMNS + cell.column], cell, true);
+      else if (cell.kind === 'urgency') this.writeCell(this.urgencies.get(cell.id.slice('urgency-'.length)), cell, false);
+    }
+    this.urgencyRow?.setProperties({ display: atWhat ? 'flex' : 'none' });
+    this.summaryBox?.setProperties({ display: atWhat ? 'flex' : 'none' });
+    this.summary?.setProperties({ text: formSummary(form) ?? strings.issues.form.pickPhrase });
+  }
+
+  private writeCell(elements: ChipElements | undefined, cell: FormCell, sized: boolean): void {
+    if (!elements) return;
+    const look = cell.selected ? CHIP_ACTIVE : CHIP_IDLE;
+    if (sized) elements.box?.setProperties({ display: 'flex', width: cell.width, backgroundColor: look.backgroundColor });
+    else elements.box?.setProperties({ backgroundColor: look.backgroundColor });
+    elements.label?.setProperties({ text: cell.label, color: look.color });
   }
 }
