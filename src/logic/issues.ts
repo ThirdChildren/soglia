@@ -1,6 +1,8 @@
 // Pure issue model (decisions D42, D43, D48 in docs/plans/M4.md): types, strict validation of one entry,
 // the list order and the status colours. No imports from @iwsdk/core or three, no clock, no randomness.
-// An `Issue` is one entry of `schemas/issue.schema.json`; `isIssue` accepts exactly what that schema accepts.
+// An `Issue` is one entry of `schemas/issue.schema.json`; `isIssue` is never more permissive than that schema and is
+// stricter in a few corner cases (empty fixtureId, lower-case `t`/`z`, offsets without a colon, leap seconds, text
+// length counted in UTF-16 units): see the "documented divergences" tests in tests/unit/issue-logic-gaps.test.ts.
 
 import { ROLES } from './params';
 import type { Role } from './params';
