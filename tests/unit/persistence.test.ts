@@ -84,14 +84,14 @@ describe('pickRestorable', () => {
     expect(picked?.furniture).toEqual(state.furniture);
     expect(picked?.nextInstance).toEqual(state.nextInstance);
     expect(picked?.history).toEqual(state.history);
-    expect(picked?.prefs).toEqual({ onboardingStep: 'done', menuOpened: true });
+    expect(picked?.prefs).toEqual({ onboardingStep: 'done', menuOpened: true, moveInVisible: false });
     expect(picked?.dropped).toEqual([]);
   });
 
   it('restores nothing outside the whitelist', () => {
     const picked = pickRestorable(serialize(busyState()), ctx());
     expect(picked).not.toBeNull();
-    expect(Object.keys(picked ?? {}).sort()).toEqual(['dropped', 'furniture', 'history', 'nextInstance', 'parked', 'prefs', 'view']);
+    expect(Object.keys(picked ?? {}).sort()).toEqual(['discardedIssues', 'dropped', 'furniture', 'history', 'issues', 'issuesSeeded', 'nextInstance', 'nextIssue', 'parked', 'prefs', 'role', 'view']);
   });
 
   it('accepts a state saved before the newer fields existed', () => {
@@ -108,10 +108,15 @@ describe('pickRestorable', () => {
       furniture: [],
       nextInstance: {},
       history: [],
-      prefs: { onboardingStep: 'two-hands', menuOpened: false },
+      prefs: { onboardingStep: 'two-hands', menuOpened: false, moveInVisible: false },
       view: { kind: 'tabletop' },
       dropped: [],
       parked: [],
+      role: 'visitor',
+      issues: [],
+      nextIssue: 14,
+      issuesSeeded: false,
+      discardedIssues: [],
     });
   });
 
@@ -180,16 +185,21 @@ describe('pickRestorable', () => {
       furniture: [],
       nextInstance: {},
       history: [],
-      prefs: { onboardingStep: 'done', menuOpened: true },
+      prefs: { onboardingStep: 'done', menuOpened: true, moveInVisible: false },
       view: { kind: 'tabletop' },
       dropped: [],
       parked: [],
+      role: 'visitor',
+      issues: [],
+      nextIssue: 14,
+      issuesSeeded: false,
+      discardedIssues: [],
     });
   });
 });
 
 describe('restoreSaved + serializeForSave', () => {
-  it('puts the whitelist back and leaves the model, the room and the role alone', () => {
+  it('puts the whitelist back (the saved role too) and leaves the model and the room alone', () => {
     const saved = busyState();
     const picked = pickRestorable(serialize(saved), ctx());
     if (!picked) throw new Error('expected a restorable state');
@@ -397,7 +407,7 @@ describe('pickRestorable: ignoreFurniture', () => {
     expect(picked.history).toEqual([]);
     expect(picked.nextInstance).toEqual({});
     expect(picked.dropped).toEqual([]);
-    expect(picked.prefs).toEqual({ onboardingStep: 'done', menuOpened: true });
+    expect(picked.prefs).toEqual({ onboardingStep: 'done', menuOpened: true, moveInVisible: false });
   });
 
   it('still returns null for another house or broken data', () => {
@@ -408,7 +418,7 @@ describe('pickRestorable: ignoreFurniture', () => {
   it('restores only the preferences into the store, and the counters then start from the preset', () => {
     const picked = mustPick(serialize(busyState()), ctx({ ignoreFurniture: true }));
     const restored = reduce(initial(), restoreSaved(picked));
-    expect(restored.prefs).toEqual({ onboardingStep: 'done', menuOpened: true });
+    expect(restored.prefs).toEqual({ onboardingStep: 'done', menuOpened: true, moveInVisible: false });
     expect(restored.furniture).toEqual([]);
     expect(restored.history).toEqual([]);
     expect(restored.nextInstance).toEqual({});
@@ -555,7 +565,7 @@ describe('pickRestorable: preferences', () => {
     json.prefs = { onboardingStep: 'done', menuOpened: 'yes' };
     expect(pickRestorable(JSON.stringify(json), ctx())).toBeNull();
     json.prefs = { onboardingStep: 'done' };
-    expect(mustPick(JSON.stringify(json)).prefs).toEqual({ onboardingStep: 'done', menuOpened: false });
+    expect(mustPick(JSON.stringify(json)).prefs).toEqual({ onboardingStep: 'done', menuOpened: false, moveInVisible: false });
   });
 
   it('restores each known onboarding step', () => {
@@ -628,12 +638,14 @@ describe('what is NOT restored, even when it is in the saved text', () => {
   }
   const session = (): AppState => run(initial(), setMiniature(0.07, 15), setMiniatureOffset(0.1, 0.2));
 
-  it('does not restore the role', () => {
+  it('restores the saved role (D41), unless the URL named one', () => {
     expect(JSON.parse(loudText()).role).toBe('agent');
     const before = session();
-    const after = reduce(before, restoreSaved(mustPick(loudText())));
     expect(before.role).toBe('visitor');
-    expect(after.role).toBe('visitor');
+    expect(reduce(before, restoreSaved(mustPick(loudText()))).role).toBe('agent');
+    const explicit = mustPick(loudText(), ctx({ roleExplicit: true }));
+    expect(explicit.role).toBeNull();
+    expect(reduce(before, restoreSaved(explicit)).role).toBe('visitor');
   });
 
   it('does not restore the model scale, rotation or offset', () => {
@@ -660,8 +672,8 @@ describe('what is NOT restored, even when it is in the saved text', () => {
 
   it('keeps the object of the result free of fields that are outside the whitelist', () => {
     const picked = mustPick(loudText());
-    expect(Object.keys(picked).sort()).toEqual(['dropped', 'furniture', 'history', 'nextInstance', 'parked', 'prefs', 'view']);
-    expect(Object.keys(picked.prefs).sort()).toEqual(['menuOpened', 'onboardingStep']);
+    expect(Object.keys(picked).sort()).toEqual(['discardedIssues', 'dropped', 'furniture', 'history', 'issues', 'issuesSeeded', 'nextInstance', 'nextIssue', 'parked', 'prefs', 'role', 'view']);
+    expect(Object.keys(picked.prefs).sort()).toEqual(['menuOpened', 'moveInVisible', 'onboardingStep']);
   });
 
   it('ignores unknown fields, including a __proto__ key, without touching any prototype', () => {
@@ -713,7 +725,7 @@ describe('restoreSaved in the reducer', () => {
     const after = reduce(session, restoreSaved(good()));
     expect(after.furniture.map((p) => p.id)).toEqual(busyState().furniture.map((p) => p.id));
     expect(after.history).toEqual(busyState().history);
-    expect(after.prefs).toEqual({ onboardingStep: 'done', menuOpened: true });
+    expect(after.prefs).toEqual({ onboardingStep: 'done', menuOpened: true, moveInVisible: false });
   });
 
   it('keeps one of two pieces with the same id and raises the counters above every piece', () => {
@@ -751,7 +763,7 @@ describe('restoreSaved in the reducer', () => {
   it('copies only the two known preference fields', () => {
     const prefs = { onboardingStep: 'done', menuOpened: true, theme: 'loud' } as unknown as AppState['prefs'];
     const after = reduce(initial(), restoreSaved({ ...good(), prefs }));
-    expect(Object.keys(after.prefs).sort()).toEqual(['menuOpened', 'onboardingStep']);
+    expect(Object.keys(after.prefs).sort()).toEqual(['menuOpened', 'moveInVisible', 'onboardingStep']);
   });
 
   it('survives a missing or null counter map', () => {

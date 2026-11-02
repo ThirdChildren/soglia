@@ -65,3 +65,21 @@ export function createIssueClock(time: string | null | undefined, wallClockMs: (
     },
   };
 }
+
+/**
+ * Tells the clock about every history date of `issues` (restored or seeded), so a fixed clock never hands out an
+ * instant before one that already exists. Returns how many dates it looked at.
+ */
+export function observeIssues(
+  clock: Pick<IssueClock, 'observe'>,
+  issues: readonly { readonly history: readonly { readonly at: string }[] }[],
+): number {
+  let n = 0;
+  for (const issue of issues) {
+    for (const entry of issue.history) {
+      clock.observe(entry.at);
+      n += 1;
+    }
+  }
+  return n;
+}

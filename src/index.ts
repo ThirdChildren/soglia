@@ -16,6 +16,7 @@ import { formatParamsLine, hasInvalidHouse, mergeParams, parseParams } from './l
 import { mergeCatalog, menuSections } from './logic/catalog';
 import { planRadius } from './logic/house-layout';
 import { createInitialState, createStore, setMiniature, setMiniatureOffset } from './logic/state';
+import { createIssueClock, observeIssues } from './logic/issue-clock';
 import { applyFurnish, createFurniture } from './systems/furniture';
 import { buildHouse } from './systems/house-builder';
 import { installLocalControllers } from './systems/local-controllers';
@@ -28,7 +29,13 @@ import { createMeasure } from './systems/measure';
 import { createMenuButton } from './systems/menu-button';
 import { createMenuItems, setMenuTabData } from './systems/menu-items';
 import { attachLifecycle } from './systems/lifecycle';
-import { attachPersistence, clearSavedState, restoreSavedState, type Persistence } from './systems/persistence';
+import {
+  attachPersistence,
+  clearSavedState,
+  restoreSavedState,
+  seedDemoIssues,
+  type Persistence,
+} from './systems/persistence';
 import { createMiniature, syncMiniature } from './systems/miniature';
 import { createMiniatureGesture } from './systems/miniature-gesture';
 import { createMiniaturePan } from './systems/miniature-pan';
@@ -49,7 +56,7 @@ import { strings } from './ui/strings';
 
 async function start(): Promise<void> {
   const devFileParams = await loadDevParams();
-  const { params, source, warnings } = mergeParams(
+  const { params, source, warnings, explicit } = mergeParams(
     parseParams(window.location.search),
     devFileParams,
   );
@@ -93,10 +100,21 @@ async function start(): Promise<void> {
     // Put the saved furniture and preferences back before the systems start, so the first-use hints and the
     // furniture see the restored state. `furnish=` runs later and wins over the saved pieces (D29).
     let persistence: Persistence = { flush: () => undefined, stop: () => undefined };
+    // An explicit `role=` beats the saved role (D41); without one the saved role comes back, else `visitor`.
+    const roleExplicit = explicit.includes('role');
+    let roleRestored = false;
     if (merged) {
-      const parked = restoreSavedState(store, storage, result.house, merged.items, params.furnish !== 'none');
-      persistence = attachPersistence(store, storage, parked);
+      const restored = restoreSavedState(store, storage, result.house, merged.items, params.furnish !== 'none', roleExplicit);
+      roleRestored = restored.roleRestored;
+      persistence = attachPersistence(store, storage, restored.parked);
     }
+    slog(`role set ${store.get().role} source=${roleExplicit ? 'url' : roleRestored ? 'saved' : 'default'}`);
+    // The demo issues come once, after the restore and after the saving started, so the seed is saved too (D42).
+    await seedDemoIssues(store);
+    // The clock for the history of the issues (D42): fixed by `time=`, else the real time. The systems that write
+    // history take it from here; it first learns the dates that already exist, so it never goes back before them.
+    const issueClock = createIssueClock(params.time, Date.now);
+    observeIssues(issueClock, store.get().issues);
     const miniature = createMiniature(world, (scale, yawDeg) => {
       store.dispatch(setMiniature(scale, yawDeg));
       // A new placement is a new anchor: the drag of the previous session is gone (decision D3).

@@ -75,6 +75,11 @@ export interface ParsedParams {
 
 export interface MergedParams {
   params: Params;
+  /**
+   * The keys that were named on purpose, in the URL or in the dev file (a valid value; `failmodels` / `failmy` dropped
+   * for lack of `debug=1` are not here). An explicit `role` beats the saved one (D41).
+   */
+  explicit: readonly ParamKey[];
   /** `url` if any key came from the URL, else `dev-file` if any came from the file, else `default`. */
   source: ParamsSource;
   warnings: readonly string[];
@@ -220,16 +225,19 @@ export function mergeParams(
   const source: ParamsSource =
     fromUrl.size > 0 ? 'url' : fromFile.size > 0 ? 'dev-file' : 'default';
   const warnings = [...urlParams.warnings, ...(devFileParams ? devFileParams.warnings : [])];
+  const explicit = KEYS.filter((key) => fromUrl.has(key) || fromFile.has(key));
   // A development aid that can hide real problems: it needs the debug switch.
   if (params.failmodels && !params.debug) {
     params.failmodels = false;
+    explicit.splice(explicit.indexOf('failmodels'), 1);
     warnings.push('param failmodels ignored: needs debug=1');
   }
   if (params.failmy && !params.debug) {
     params.failmy = false;
+    explicit.splice(explicit.indexOf('failmy'), 1);
     warnings.push('param failmy ignored: needs debug=1');
   }
-  return { params, source, warnings };
+  return { params, explicit, source, warnings };
 }
 
 /** The `[soglia] params ...` log line body (without the prefix), as in the log contract. */

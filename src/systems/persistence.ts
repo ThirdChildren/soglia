@@ -5,6 +5,7 @@
 // half-done pose is never saved. The full lifecycle (headset off, system menu) is T3.1b.
 
 import { clearSogliaKeys, type SafeStorage } from '../data/storage';
+import { loadIssues } from '../data/load-issues';
 import { slog, swarn } from '../log';
 import type { CatalogItem } from '../logic/catalog';
 import type { House } from '../logic/house';
@@ -18,7 +19,7 @@ import {
   type SaveReason,
 } from '../logic/persistence';
 import type { PlacedPiece } from '../logic/placement-rules';
-import { restoreSaved, type AppState, type Store } from '../logic/state';
+import { deserialize, restoreSaved, seedIssues, type AppState, type Store } from '../logic/state';
 
 /** `reset=1`: removes every saved state before anything is read. */
 export function clearSavedState(storage: SafeStorage): void {
@@ -26,12 +27,20 @@ export function clearSavedState(storage: SafeStorage): void {
   slog(`state cleared reason=reset keys=${keys}`);
 }
 
+export interface RestoreOutcome {
+  /** Parked pieces (D44), to hand to `attachPersistence`. */
+  parked: readonly PlacedPiece[];
+  /** True when the role of the store came from the saved state (not from the URL, not the default), D41. */
+  roleRestored: boolean;
+}
+
 /**
- * Puts the saved state of the open house back into the store (furniture, counters, history, preferences).
+ * Puts the saved state of the open house back into the store (furniture, counters, history, preferences, and
+ * since M4 the role, the issues, their counter and the seed flag; `roleExplicit`: the URL named a role, which wins).
  * Logs one of `state restored`, `state none` or `state discarded` (an unreadable state is also removed).
  * With `ignoreFurniture` (a staging preset will replace the pieces) only the preferences come back.
- * Returns the parked pieces (D44): saved pieces of a catalog item that is not available now. They are not put in the
- * store; pass them to `attachPersistence` so every save writes them again.
+ * `parked` (D44): saved pieces of a catalog item that is not available now. They are not put in the store; pass
+ * them to `attachPersistence` so every save writes them again.
  */
 export function restoreSavedState(
   store: Store,
@@ -39,13 +48,15 @@ export function restoreSavedState(
   house: House,
   catalog: readonly CatalogItem[],
   ignoreFurniture: boolean,
-): readonly PlacedPiece[] {
-  if (!storage.available()) return [];
+  roleExplicit = false,
+): RestoreOutcome {
+  const nothing: RestoreOutcome = { parked: [], roleRestored: false };
+  if (!storage.available()) return nothing;
   const key = storageKey(store.get().houseId);
   const saved = storage.get(key);
   if (saved === null) {
     slog(`state none key=${key}`);
-    return [];
+    return nothing;
   }
   const picked = pickRestorable(saved, {
     houseId: store.get().houseId,
@@ -53,17 +64,35 @@ export function restoreSavedState(
     roomIds: new Set(house.rooms.map((room) => room.id)),
     viewpointIds: new Set(house.viewpoints.map((viewpoint) => viewpoint.id)),
     ignoreFurniture,
+    roleExplicit,
   });
   if (picked === null) {
     swarn(`state discarded key=${key} reason=invalid`);
     storage.remove(key);
-    return [];
+    return nothing;
   }
   for (const piece of picked.dropped) swarn(`state piece discarded id=${piece.id} reason=${piece.reason}`);
   for (const piece of picked.parked) swarn(`state piece parked id=${piece.id} reason=unknown-catalog`);
+  for (const issue of picked.discardedIssues) swarn(`state issue discarded id=${issue.id} reason=${issue.reason}`);
   store.dispatch(restoreSaved(picked));
   slog(`state restored pieces=${store.get().furniture.length} key=${key}`);
-  return picked.parked;
+  if (store.get().issues.length > 0) slog(`issues restored count=${store.get().issues.length} key=${key}`);
+  return { parked: picked.parked, roleRestored: picked.role !== null };
+}
+
+/**
+ * Puts the demo issues of the open house in, once (D42): only when the store has not been seeded yet (no saved
+ * state, or a saved state of before M4). A house without a demo file asks for nothing; a file that cannot be used
+ * is a warning and the list stays empty (the seed is tried again next time). Call it after `attachPersistence`, so the
+ * seed is saved like any other change. Logs `issues seeded issues=<n> baseline=<n> source=demo`.
+ */
+export async function seedDemoIssues(store: Store): Promise<void> {
+  if (store.get().issuesSeeded) return;
+  const result = await loadIssues(store.get().houseId);
+  if (!result.ok) return;
+  store.dispatch(seedIssues(result.issues));
+  if (!store.get().issuesSeeded) return;
+  slog(`issues seeded issues=${result.counts.issue} baseline=${result.counts.baseline} source=demo`);
 }
 
 export interface Persistence {
@@ -80,7 +109,11 @@ function savedPartChanged(prev: AppState, next: AppState): boolean {
     prev.nextInstance !== next.nextInstance ||
     prev.history !== next.history ||
     prev.prefs !== next.prefs ||
-    prev.view !== next.view
+    prev.view !== next.view ||
+    prev.role !== next.role ||
+    prev.issues !== next.issues ||
+    prev.nextIssue !== next.nextIssue ||
+    prev.issuesSeeded !== next.issuesSeeded
   );
 }
 
@@ -104,8 +137,10 @@ export function attachPersistence(store: Store, storage: SafeStorage, parked: re
     if (!storage.set(key, text)) return;
     planner.confirm(text);
     const written = parkedToWrite(store.get().furniture, parked).length;
+    const state = store.get();
     slog(
-      `state saved key=${key} pieces=${store.get().furniture.length} bytes=${utf8Length(text)} reason=${reason} parked=${written}`,
+      `state saved key=${key} pieces=${state.furniture.length} bytes=${utf8Length(text)} reason=${reason} ` +
+        `issues=${state.issues.length} role=${state.role} parked=${written}`,
     );
   };
 
@@ -134,6 +169,16 @@ export function attachPersistence(store: Store, storage: SafeStorage, parked: re
     const text = planner.flush();
     if (text !== null) write(text, reason);
   };
+
+  // An explicit `role=` that differs from the saved role (D41) is a change the user asked for: write it, so the next
+  // start without `role=` keeps it. Everything else that differs after a restore stays unsaved until it changes.
+  const stored = storage.get(key);
+  const storedRole = stored === null ? null : deserialize(stored)?.role ?? null;
+  if (stored !== null && storedRole !== null && storedRole !== store.get().role) {
+    planner.baseline(stored); // what storage really holds, so the current text counts as a change
+    planner.update(serializeForSave(store.get(), parked));
+    schedule();
+  }
 
   let last = store.get();
   const unsubscribe = store.subscribe((state) => {

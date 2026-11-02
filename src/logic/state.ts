@@ -5,8 +5,16 @@ import { HOUSE_PATTERN, ROLES } from './params';
 import type { Params, Role } from './params';
 import { MAX_PIECES, type PlacedPiece } from './placement-rules';
 import { stableId } from './ids';
+import { MAX_ISSUES, isIssue, isStoredIssue } from './issues';
+import type { Issue, StoredIssue } from './issues';
+import { applyTransition } from './issue-state';
+import type { IssueAction, TransitionDenied, TransitionResult } from './issue-state';
+import { can, isRole } from './permissions';
 
-export type { PlacedPiece };
+export type { PlacedPiece, StoredIssue };
+
+/** The number the first new issue gets (D42): the demo file already holds `issue-010`, `-012` and `-013`. */
+export const FIRST_NEW_ISSUE = 14;
 
 const MAX_ROOM_ID_LENGTH = 64;
 
@@ -95,6 +103,8 @@ export interface AppState {
     readonly onboardingStep: OnboardingStep;
     /** True once the palm menu has been opened at least once (T2.16). */
     readonly menuOpened: boolean;
+    /** Show the move-in (`baseline`) pins on the model (D48). Saved. */
+    readonly moveInVisible: boolean;
   };
   /** Furniture placed in the house, in order of last placement or move (the evaluation order of collisions). */
   readonly furniture: readonly PlacedPiece[];
@@ -106,7 +116,16 @@ export interface AppState {
   readonly view: ViewState;
   /** The tool in the hands (D36). Never saved, never restored: every session starts with `furnish`. */
   readonly tool: ToolId;
+  /** The issues of the open house (D42), in order of arrival, at most MAX_ISSUES. `sample: true` marks the demo seed. */
+  readonly issues: readonly StoredIssue[];
+  /** Number the NEXT new issue gets (`formatIssueId`). Monotonic, and always above every `issue-<n>` in `issues`. */
+  readonly nextIssue: number;
+  /** True once the demo seed has been put in (once per saved state, D42). */
+  readonly issuesSeeded: boolean;
 }
+
+/** The saved preferences as a restore may give them: `moveInVisible` can be absent (an older state). */
+export type RestorePrefs = Pick<AppState['prefs'], 'onboardingStep' | 'menuOpened'> & { readonly moveInVisible?: boolean };
 
 export type Action =
   | { readonly type: 'setMiniature'; readonly scale: number; readonly yawDeg: number }
@@ -117,6 +136,18 @@ export type Action =
   | { readonly type: 'setView'; readonly view: ViewState }
   | { readonly type: 'setTool'; readonly tool: ToolId }
   | { readonly type: 'markMenuOpened' }
+  | { readonly type: 'setRole'; readonly role: Role }
+  | { readonly type: 'seedIssues'; readonly issues: readonly Issue[] }
+  | { readonly type: 'addIssue'; readonly issue: Issue }
+  | {
+      readonly type: 'transitionIssue';
+      readonly id: string;
+      readonly action: IssueAction;
+      readonly role: Role;
+      readonly nowIso: string;
+      readonly note?: string;
+    }
+  | { readonly type: 'setMoveIn'; readonly visible: boolean }
   | {
       readonly type: 'placeFurniture';
       readonly catalogId: string;
@@ -141,9 +172,15 @@ export type Action =
       readonly furniture: readonly PlacedPiece[];
       readonly nextInstance: Readonly<Record<string, number>>;
       readonly history: readonly FurnitureSnapshot[];
-      readonly prefs: AppState['prefs'];
+      readonly prefs: RestorePrefs;
       /** Absent: the view stays as it is. */
       readonly view?: ViewState;
+      /** Absent (or null, D41: the URL named a role): the role stays as the session set it. */
+      readonly role?: Role | null;
+      /** Absent: the issues, the counter and the seed flag stay as they are. */
+      readonly issues?: readonly StoredIssue[];
+      readonly nextIssue?: number;
+      readonly issuesSeeded?: boolean;
     };
 
 /** Action creators. */
@@ -176,6 +213,40 @@ export function setMiniatureOffset(dx: number, dz: number): Action {
 export function recenterMiniature(): Action {
   return { type: 'recenterMiniature' };
 }
+/** Changes the role (D41). An unknown role is ignored; the same role again changes nothing. Not undoable. */
+export function setRole(role: Role): Action {
+  return { type: 'setRole', role };
+}
+/**
+ * Puts the demo seed in, once (D42): only when `issuesSeeded` is false. Keeps the valid `issue` and `baseline`
+ * entries of this house (unique ids, at most MAX_ISSUES in all), marks them `sample: true`, raises `nextIssue`
+ * above them and sets `issuesSeeded`. With nothing to keep the state is unchanged (and the seed still pending).
+ */
+export function seedIssues(issues: readonly Issue[]): Action {
+  return { type: 'seedIssues', issues };
+}
+/**
+ * Adds a new issue of the open house. Ignored when it is not a valid `Issue`, belongs to another house, repeats
+ * an id, the list is full (MAX_ISSUES), or it is an `issue` and the current role may not create. An id
+ * `issue-<n>` raises `nextIssue` above `n`.
+ */
+export function addIssue(issue: Issue): Action {
+  return { type: 'addIssue', issue };
+}
+/**
+ * Applies a status action to the issue `id` as `role` at `nowIso` (`applyTransition`): on success the status and
+ * the history of that issue change, on any denial nothing changes. The reason is not visible through `dispatch`:
+ * a caller that needs it asks `planTransition` first.
+ */
+export function transitionIssue(id: string, action: IssueAction, role: Role, nowIso: string, note?: string): Action {
+  return note === undefined
+    ? { type: 'transitionIssue', id, action, role, nowIso }
+    : { type: 'transitionIssue', id, action, role, nowIso, note };
+}
+/** Show or hide the move-in pins on the model (D48). Not a boolean: ignored. */
+export function setMoveIn(visible: boolean): Action {
+  return { type: 'setMoveIn', visible };
+}
 /** Idempotent: only the first call changes the state. */
 export function markMenuOpened(): Action {
   return { type: 'markMenuOpened' };
@@ -198,17 +269,21 @@ export function setFurniture(pieces: readonly PlacedPiece[]): Action {
   return { type: 'setFurniture', pieces };
 }
 /**
- * Puts back the saved part of a state (D29): furniture, instance counters, undo history, the preferences and,
- * when given, the view. Nothing else changes (the model position, the selected room and the role stay as the
- * session set them).
- * Pieces are re-checked; counters never go below what the pieces need. Not an undoable action.
+ * Puts back the saved part of a state (D29, D44): furniture, instance counters, undo history, the preferences and,
+ * when given, the view, the role (not when null or absent: the URL named one, D41), the issues, their counter and
+ * the seed flag. Nothing else changes (the model position and the selected room stay as the session set them).
+ * Pieces and issues are re-checked; counters never go below what the pieces and the issues need. Not undoable.
  */
 export function restoreSaved(saved: {
   furniture: readonly PlacedPiece[];
   nextInstance: Readonly<Record<string, number>>;
   history: readonly FurnitureSnapshot[];
-  prefs: AppState['prefs'];
+  prefs: RestorePrefs;
   view?: ViewState;
+  role?: Role | null;
+  issues?: readonly StoredIssue[];
+  nextIssue?: number;
+  issuesSeeded?: boolean;
 }): Action {
   return { type: 'restoreSaved', ...saved };
 }
@@ -225,13 +300,118 @@ export function createInitialState(params: Params): AppState {
     role: params.role,
     miniature: { scale: SCALE, yawDeg: 0, offset: [0, 0] },
     selectedRoomId: null,
-    prefs: { onboardingStep: 'pinch', menuOpened: false },
+    prefs: { onboardingStep: 'pinch', menuOpened: false, moveInVisible: false },
     furniture: [],
     nextInstance: {},
     history: [],
     view: TABLETOP_VIEW,
     tool: DEFAULT_TOOL,
+    issues: [],
+    nextIssue: FIRST_NEW_ISSUE,
+    issuesSeeded: false,
   };
+}
+
+// --- issues ------------------------------------------------------------------------------------------------
+
+const ISSUE_NUMBER_PATTERN = /^issue-([0-9]+)$/;
+
+/** The `n` of an id `issue-<n>`, or null for any other id (e.g. `baseline-001`) or an unsafe number. */
+function issueNumber(id: string): number | null {
+  const m = ISSUE_NUMBER_PATTERN.exec(id);
+  if (m === null) return null;
+  const n = Number(m[1]);
+  return Number.isSafeInteger(n) ? n : null;
+}
+
+/** `next` raised, never lowered, to one above every `issue-<n>` of the list (so no existing id is handed out again). */
+function nextIssueFor(next: number, issues: readonly { readonly id: string }[]): number {
+  let result = Number.isSafeInteger(next) && next >= 1 ? next : FIRST_NEW_ISSUE;
+  for (const issue of issues) {
+    const n = issueNumber(issue.id);
+    if (n !== null && n + 1 > result) result = n + 1;
+  }
+  return result;
+}
+
+/** A copy of an issue that shares nothing with the input. `sample` is kept only when it is `true`. */
+function cloneIssue(issue: StoredIssue, sample: boolean): StoredIssue {
+  const copy: Issue = {
+    id: issue.id,
+    houseId: issue.houseId,
+    kind: issue.kind,
+    position: [issue.position[0] + 0, issue.position[1] + 0, issue.position[2] + 0],
+    ...(issue.fixtureId === undefined ? {} : { fixtureId: issue.fixtureId }),
+    category: issue.category,
+    urgency: issue.urgency,
+    text: issue.text,
+    ...(issue.audio === undefined ? {} : { audio: issue.audio }),
+    ...(issue.status === undefined ? {} : { status: issue.status }),
+    history: issue.history.map((h) => (h.note === undefined ? { at: h.at, by: h.by, event: h.event } : { ...h })),
+  };
+  return sample ? { ...copy, sample: true } : copy;
+}
+
+export type IssueDiscardReason = 'invalid' | 'duplicate' | 'limit';
+
+export interface DiscardedIssue {
+  /** The id if the entry had a readable one, else `-`. Safe to print. */
+  readonly id: string;
+  readonly reason: IssueDiscardReason;
+}
+
+function printableId(v: unknown): string {
+  if (typeof v !== 'string' || v === '') return '-';
+  const clean = v.replace(/[^A-Za-z0-9_.-]/g, '?');
+  return clean.length > 64 ? `${clean.slice(0, 64)}...` : clean;
+}
+
+/**
+ * Keeps the issues of `houseId` that pass `isStoredIssue`, with a unique id, at most MAX_ISSUES, as copies; says what
+ * it left out. A `sample` marker survives only as `true`.
+ */
+function sanitizeIssues(
+  list: readonly unknown[],
+  houseId: string,
+): { issues: StoredIssue[]; discarded: DiscardedIssue[] } {
+  const issues: StoredIssue[] = [];
+  const discarded: DiscardedIssue[] = [];
+  const seen = new Set<string>();
+  for (const entry of list) {
+    if (!isStoredIssue(entry) || entry.houseId !== houseId) {
+      discarded.push({ id: printableId((entry as { id?: unknown } | null)?.id), reason: 'invalid' });
+    } else if (seen.has(entry.id)) {
+      discarded.push({ id: entry.id, reason: 'duplicate' });
+    } else if (issues.length >= MAX_ISSUES) {
+      discarded.push({ id: entry.id, reason: 'limit' });
+    } else {
+      seen.add(entry.id);
+      issues.push(cloneIssue(entry, entry.sample === true));
+    }
+  }
+  return { issues, discarded };
+}
+
+/** What `planTransition` answers: the `applyTransition` result, or `not-found` when the id is not in the store. */
+export type IssueTransitionOutcome =
+  | TransitionResult<StoredIssue>
+  | { readonly ok: false; readonly reason: TransitionDenied | 'not-found' };
+
+/**
+ * Asks, without changing anything, what `transitionIssue` with these arguments would do: the new issue and the
+ * history entry on success, the reason on a denial. The reducer uses the same function, so the answer is the effect.
+ */
+export function planTransition(
+  state: AppState,
+  id: string,
+  action: IssueAction,
+  role: Role,
+  nowIso: string,
+  note?: string,
+): IssueTransitionOutcome {
+  const issue = state.issues.find((i) => i.id === id);
+  if (issue === undefined) return { ok: false, reason: 'not-found' };
+  return applyTransition<StoredIssue>(issue, action, role, nowIso, note);
 }
 
 const CATALOG_ID_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
@@ -362,6 +542,35 @@ export function reduce(state: AppState, action: Action): AppState {
       if (state.prefs.menuOpened) return state;
       return { ...state, prefs: { ...state.prefs, menuOpened: true } };
     }
+    case 'setRole': {
+      if (!isRole(action.role) || action.role === state.role) return state;
+      return { ...state, role: action.role };
+    }
+    case 'setMoveIn': {
+      if (typeof action.visible !== 'boolean' || action.visible === state.prefs.moveInVisible) return state;
+      return { ...state, prefs: { ...state.prefs, moveInVisible: action.visible } };
+    }
+    case 'seedIssues': {
+      if (state.issuesSeeded || !Array.isArray(action.issues)) return state;
+      const wanted = action.issues.filter((i) => isIssue(i) && (i.kind === 'issue' || i.kind === 'baseline'));
+      // The entries already in the store come first; a seed entry with a used id is left out.
+      const { issues } = sanitizeIssues([...state.issues, ...wanted.map((i) => ({ ...i, sample: true }))], state.houseId);
+      if (issues.length === state.issues.length) return state;
+      return { ...state, issues, nextIssue: nextIssueFor(state.nextIssue, issues), issuesSeeded: true };
+    }
+    case 'addIssue': {
+      const issue = action.issue;
+      if (!isIssue(issue) || issue.houseId !== state.houseId) return state;
+      if (state.issues.length >= MAX_ISSUES || state.issues.some((i) => i.id === issue.id)) return state;
+      if (issue.kind === 'issue' && !can(state.role, 'create')) return state;
+      const issues = [...state.issues, cloneIssue(issue, false)];
+      return { ...state, issues, nextIssue: nextIssueFor(state.nextIssue, issues) };
+    }
+    case 'transitionIssue': {
+      const result = planTransition(state, action.id, action.action, action.role, action.nowIso, action.note);
+      if (!result.ok) return state;
+      return { ...state, issues: state.issues.map((i) => (i.id === action.id ? result.issue : i)) };
+    }
     case 'placeFurniture': {
       const { catalogId, x, z, rotationDeg, roomId } = action;
       if (typeof catalogId !== 'string' || !CATALOG_ID_PATTERN.test(catalogId)) return state;
@@ -423,17 +632,26 @@ export function reduce(state: AppState, action: Action): AppState {
       if (!(ONBOARDING_STEPS as readonly string[]).includes(prefs?.onboardingStep) || typeof prefs.menuOpened !== 'boolean') {
         return state;
       }
+      if (action.issues !== undefined && !Array.isArray(action.issues)) return state;
       const furniture = sanitizePieces(action.furniture);
       const nextInstance = withInstancesOf({ ...action.nextInstance }, furniture);
       const history = action.history.slice(-HISTORY_LIMIT);
       const view = action.view !== undefined && isViewState(action.view) ? cleanView(action.view) : state.view;
+      const role = action.role !== undefined && action.role !== null && isRole(action.role) ? action.role : state.role;
+      const issues = action.issues === undefined ? state.issues : sanitizeIssues(action.issues, state.houseId).issues;
+      const counter = action.nextIssue === undefined ? state.nextIssue : Math.max(state.nextIssue, action.nextIssue);
+      const moveInVisible = typeof prefs.moveInVisible === 'boolean' ? prefs.moveInVisible : state.prefs.moveInVisible;
       return {
         ...state,
+        role,
         furniture,
         nextInstance,
         history,
-        prefs: { onboardingStep: prefs.onboardingStep, menuOpened: prefs.menuOpened },
+        prefs: { onboardingStep: prefs.onboardingStep, menuOpened: prefs.menuOpened, moveInVisible },
         view,
+        issues,
+        nextIssue: nextIssueFor(counter, issues),
+        issuesSeeded: typeof action.issuesSeeded === 'boolean' ? action.issuesSeeded : state.issuesSeeded,
       };
     }
     default:
@@ -492,6 +710,11 @@ function isRecord(v: unknown): v is Record<string, unknown> {
  * Unknown extra keys are dropped.
  */
 export function deserialize(json: string): AppState | null {
+  return deserializeWithReport(json)?.state ?? null;
+}
+
+/** `deserialize` that also says which saved issues were left out (the caller logs them). */
+export function deserializeWithReport(json: string): { state: AppState; discardedIssues: DiscardedIssue[] } | null {
   if (typeof json !== 'string') return null;
   let data: unknown;
   try {
@@ -543,6 +766,8 @@ export function deserialize(json: string): AppState | null {
     if (typeof prefs.menuOpened !== 'boolean') return null;
     menuOpened = prefs.menuOpened;
   }
+  // Added in M4: absent means hidden; a broken value also means hidden (a convenience, not worth the whole state).
+  const moveInVisible = prefs.moveInVisible === true;
 
   let furniture: PlacedPiece[] = [];
   if ('furniture' in data) {
@@ -585,17 +810,34 @@ export function deserialize(json: string): AppState | null {
   // (it is a convenience, not worth losing the furniture of the whole saved state).
   const view: ViewState = 'view' in data && isViewState(data.view) ? cleanView(data.view) : TABLETOP_VIEW;
 
+  // Added in M4 (D44): absent means none. One broken issue goes away alone; the counter is never below what the
+  // issues need; a broken counter or flag takes its default.
+  let issues: StoredIssue[] = [];
+  let discardedIssues: DiscardedIssue[] = [];
+  if ('issues' in data) {
+    if (!Array.isArray(data.issues)) return null;
+    ({ issues, discarded: discardedIssues } = sanitizeIssues(data.issues, houseId));
+  }
+  const nextIssue = nextIssueFor(typeof data.nextIssue === 'number' ? data.nextIssue : FIRST_NEW_ISSUE, issues);
+  const issuesSeeded = data.issuesSeeded === true;
+
   return {
-    version: 1,
-    houseId,
-    role: role as Role,
-    miniature: { scale: clampScale(scale), yawDeg: yawDeg + 0, offset },
-    selectedRoomId,
-    prefs: { onboardingStep: step as OnboardingStep, menuOpened },
-    furniture,
-    nextInstance,
-    history,
-    view,
-    tool: DEFAULT_TOOL,
+    state: {
+      version: 1,
+      houseId,
+      role: role as Role,
+      miniature: { scale: clampScale(scale), yawDeg: yawDeg + 0, offset },
+      selectedRoomId,
+      prefs: { onboardingStep: step as OnboardingStep, menuOpened, moveInVisible },
+      furniture,
+      nextInstance,
+      history,
+      view,
+      tool: DEFAULT_TOOL,
+      issues,
+      nextIssue,
+      issuesSeeded,
+    },
+    discardedIssues,
   };
 }
