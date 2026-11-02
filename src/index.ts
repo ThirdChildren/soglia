@@ -42,6 +42,7 @@ import { createMiniaturePan } from './systems/miniature-pan';
 import { createMenuHint } from './systems/menu-hint';
 import { createOnboarding } from './systems/onboarding';
 import { createPalmMenu } from './systems/palm-menu';
+import { createFixtureAnchors } from './systems/fixtures';
 import { PanelDisposalSystem } from './systems/panel-disposal';
 import { installPinchInput } from './systems/pinch-input';
 import { createRoomLabel } from './systems/room-label';
@@ -121,6 +122,8 @@ async function start(): Promise<void> {
       store.dispatch(setMiniatureOffset(0, 0));
     });
     const built = buildHouse(world, result.house, miniature.root);
+    // Light anchors for the fixtures of the house (no mesh): the places where an issue can snap (T4.3).
+    createFixtureAnchors(world, result.house, built.entity);
     // The joints first: pinch input and the palm menu read their sample in the same frame.
     installHandJoints(world, params.pinch);
     installPinchInput(world);
