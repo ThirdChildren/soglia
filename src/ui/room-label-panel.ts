@@ -19,7 +19,8 @@ import {
 } from '@iwsdk/core';
 import { tagEntity } from '../components/tag-entity';
 import { stableId } from '../logic/ids';
-import { placeRoomLabel } from '../logic/room-label';
+import { slog } from '../log';
+import { placeRoomLabel, roomLabelMinY } from '../logic/room-label';
 import { yawTowardHead } from '../logic/view-fit';
 import { applyPanelFont } from './fonts';
 
@@ -27,6 +28,13 @@ import { applyPanelFont } from './fonts';
 const PANEL_ASSET = 'room-label';
 const TEXT_ELEMENT = 'room-label-text';
 const ROOT_ELEMENT = 'room-label-root';
+
+/**
+ * Drawn above the markers of the viewpoints (1) and the pins (2), which the label would otherwise hide when a pillar
+ * stands between the head and the text (M3 gate C2: "Hallway - 13_ m2"). The depth test is off, like the reason label
+ * and the fit label. Below the palm menu (1000), so an open menu still covers the label.
+ */
+export const ROOM_LABEL_RENDER_ORDER = 900;
 
 interface UiDocument {
   getElementById: <T>(id: string) => T | null;
@@ -37,9 +45,11 @@ export class RoomLabelPanel {
   private text = '';
   private appliedText: string | null = null;
   private fontApplied = false;
+  private layerLogged = false;
   private anchor: Object3D | null = null;
   private shown = false;
   private readonly target = new Vector3();
+  private readonly floorScale = new Vector3();
   private readonly headPosition = new Vector3();
   private readonly headForward = new Vector3();
   private readonly headQuaternion = new Quaternion();
@@ -95,6 +105,14 @@ export class RoomLabelPanel {
           applyPanelFont(doc, ROOT_ELEMENT);
           this.fontApplied = true;
         }
+        doc?.getElementById<UIKit.Container>(ROOT_ELEMENT)?.setProperties({
+          depthTest: false,
+          renderOrder: ROOM_LABEL_RENDER_ORDER,
+        });
+        if (!this.layerLogged) {
+          this.layerLogged = true;
+          slog('room label layer markers=below');
+        }
         element.setProperties({ text: this.text });
         this.appliedText = this.text;
       }
@@ -108,7 +126,10 @@ export class RoomLabelPanel {
     head.getWorldQuaternion(this.headQuaternion);
     this.headForward.set(0, 0, -1).applyQuaternion(this.headQuaternion);
     this.anchor.getWorldPosition(this.target);
-    placeRoomLabel(this.target, this.headPosition, this.headForward, this.target);
+    // Never lower than the top of the walls (T4.R5): floor + wall height at the current scale + half the label.
+    this.anchor.getWorldScale(this.floorScale);
+    const minY = roomLabelMinY(this.target.y, this.floorScale.y);
+    placeRoomLabel(this.target, this.headPosition, this.headForward, this.target, minY);
     object.position.copy(this.target);
     // Turned toward the head about the vertical axis only (no tilt, so the text never looks slanted).
     object.rotation.set(0, yawTowardHead(this.target, this.headPosition), 0);

@@ -64,21 +64,21 @@ describe('pickMarker', () => {
   const c = (id: string, x: number, y: number, z: number): MarkerCandidate => ({ id, x, y, z });
   const markers = [c('V1', 0, 1, 0), c('V2', 0.05, 1, 0), c('V3', 1, 1, 1)];
 
-  it('uses a radius of 0.04 m', () => {
-    expect(VIEWPOINT_PICK_RADIUS).toBe(0.04);
+  it('uses a radius of 0.025 m', () => {
+    expect(VIEWPOINT_PICK_RADIUS).toBe(0.025);
   });
 
   it('picks the marker within the radius and nothing beyond it', () => {
     expect(pickMarker(0, 1, 0, markers)).toBe('V1');
-    expect(pickMarker(0.039, 1, 0, [c('V1', 0, 1, 0)])).toBe('V1');
-    expect(pickMarker(0.041, 1, 0, [c('V1', 0, 1, 0)])).toBeNull();
+    expect(pickMarker(0.024, 1, 0, [c('V1', 0, 1, 0)])).toBe('V1');
+    expect(pickMarker(0.026, 1, 0, [c('V1', 0, 1, 0)])).toBeNull();
     expect(pickMarker(0, 1.05, 0, [c('V1', 0, 1, 0)])).toBeNull();
     expect(pickMarker(2, 2, 2, markers)).toBeNull();
   });
 
   it('measures in three dimensions (height counts)', () => {
     expect(pickMarker(0.03, 1.03, 0, [c('V1', 0, 1, 0)])).toBeNull(); // 0.0424 m away
-    expect(pickMarker(0.02, 1.02, 0, [c('V1', 0, 1, 0)])).toBe('V1'); // 0.0283 m away
+    expect(pickMarker(0.015, 1.015, 0, [c('V1', 0, 1, 0)])).toBe('V1'); // 0.0212 m away
   });
 
   it('picks the nearest of two markers, and the earlier one on a tie', () => {

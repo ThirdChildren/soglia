@@ -69,7 +69,7 @@ describe('markers of every viewpoint of both houses', () => {
     }
   });
 
-  it('a pinch 0.039 m from a centre picks it and 0.041 m does not, in any direction (seeded)', () => {
+  it('a pinch 0.024 m from a centre picks it and 0.026 m does not, in any direction (seeded)', () => {
     const rnd = lcg(12);
     for (const house of HOUSES) {
       for (const root of ROOTS) {
@@ -81,8 +81,8 @@ describe('markers of every viewpoint of both houses', () => {
             const a = rnd() * 2 * Math.PI;
             const r = Math.sqrt(1 - z * z);
             const dir = [r * Math.cos(a), z, r * Math.sin(a)];
-            const near = pickMarker(c.x + dir[0] * 0.039, c.y + dir[1] * 0.039, c.z + dir[2] * 0.039, all);
-            const far = pickMarker(c.x + dir[0] * 0.041, c.y + dir[1] * 0.041, c.z + dir[2] * 0.041, all);
+            const near = pickMarker(c.x + dir[0] * 0.024, c.y + dir[1] * 0.024, c.z + dir[2] * 0.024, all);
+            const far = pickMarker(c.x + dir[0] * 0.026, c.y + dir[1] * 0.026, c.z + dir[2] * 0.026, all);
             expect(near, `${house.id}/${c.id} near`).toBe(c.id);
             expect(far, `${house.id}/${c.id} far`).toBeNull();
           }
@@ -91,14 +91,14 @@ describe('markers of every viewpoint of both houses', () => {
     }
   });
 
-  it('the radius does not depend on the zoom: it is 0.04 world metres at 1:33 and at 1:8', () => {
-    expect(VIEWPOINT_PICK_RADIUS).toBe(0.04);
+  it('the radius does not depend on the zoom: it is 0.025 world metres at 1:33 and at 1:8', () => {
+    expect(VIEWPOINT_PICK_RADIUS).toBe(0.025);
     for (const scale of [ZOOM_MIN, ZOOM_MAX]) {
       const root: MiniatureRoot = { x: 0, y: 1, z: 0, yawRad: 0, scale };
       const all = candidatesOf(houseA, root);
       const c = all[0];
-      expect(pickMarker(c.x + 0.0399, c.y, c.z, all)).toBe(c.id);
-      expect(pickMarker(c.x + 0.0401, c.y, c.z, all)).toBeNull();
+      expect(pickMarker(c.x + 0.0249, c.y, c.z, all)).toBe(c.id);
+      expect(pickMarker(c.x + 0.0251, c.y, c.z, all)).toBeNull();
     }
   });
 
@@ -137,25 +137,25 @@ describe('pickMarker: boundaries and several markers close together', () => {
     expect(pickMarker(VIEWPOINT_PICK_RADIUS + 1e-9, 0, 0, one)).toBeNull();
   });
 
-  it('the pinch at 0.039 m on each axis, both signs, picks; at 0.041 m picks nothing', () => {
+  it('the pinch at 0.024 m on each axis, both signs, picks; at 0.026 m picks nothing', () => {
     const one = [c('V1', 0.5, 1.2, -0.3)];
     for (const [dx, dy, dz] of [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]]) {
-      expect(pickMarker(0.5 + dx * 0.039, 1.2 + dy * 0.039, -0.3 + dz * 0.039, one)).toBe('V1');
-      expect(pickMarker(0.5 + dx * 0.041, 1.2 + dy * 0.041, -0.3 + dz * 0.041, one)).toBeNull();
+      expect(pickMarker(0.5 + dx * 0.024, 1.2 + dy * 0.024, -0.3 + dz * 0.024, one)).toBe('V1');
+      expect(pickMarker(0.5 + dx * 0.026, 1.2 + dy * 0.026, -0.3 + dz * 0.026, one)).toBeNull();
     }
   });
 
   it('with three markers 0.05 m apart the nearest centre wins wherever the pinch is', () => {
     const row = [c('V1', 0, 1, 0), c('V2', 0.05, 1, 0), c('V3', 0.1, 1, 0)];
     const expectations: Array<[number, string]> = [
-      [-0.03, 'V1'],
+      [-0.02, 'V1'],
       [0.0, 'V1'],
       [0.024, 'V1'],
       [0.026, 'V2'],
       [0.05, 'V2'],
       [0.074, 'V2'],
       [0.076, 'V3'],
-      [0.13, 'V3'],
+      [0.12, 'V3'],
     ];
     for (const [x, id] of expectations) expect(pickMarker(x, 1, 0, row), `x = ${x}`).toBe(id);
     expect(pickMarker(-0.05, 1, 0, row)).toBeNull();

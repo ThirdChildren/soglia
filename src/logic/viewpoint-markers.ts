@@ -5,7 +5,7 @@
 // viewpoint, with a small flat "nose" on top that points where the viewpoint looks. The pillar and the nose are two
 // instances of the same instanced mesh (reduction R-B: all markers are one draw call). The marker is picked by a pinch
 // whose point is within `VIEWPOINT_PICK_RADIUS` (WORLD metres) of the centre of the pillar: the radius is the same at
-// every zoom, so it is 0.8 m of plan at 1:20 and a bit over 0.3 m at 1:8.
+// every zoom, so it is 0.5 m of plan at 1:20 and 0.2 m at 1:8 (T4.R6 fallback: 0.04 was too easy to hit by mistake).
 //
 // Coordinates here are in the frame of the house node (plan metres, y up from the floor), the frame the instanced mesh
 // and the marker anchors live in.
@@ -13,7 +13,7 @@
 import { CUT_HEIGHT } from './constants';
 
 /** A pinch within this distance (world metres) of the centre of a marker picks it. */
-export const VIEWPOINT_PICK_RADIUS = 0.04;
+export const VIEWPOINT_PICK_RADIUS = 0.025;
 
 /** Size of the pillar (plan metres): about 2.3 x 4.5 cm on the table at 1:20, readable and small enough not to hide a room. */
 export const MARKER_BODY = { sx: 0.45, sy: 0.9, sz: 0.45 } as const;

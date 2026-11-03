@@ -1,5 +1,6 @@
 // Pure text (T1.10) and placement (T3.6) of the room label: no imports from @iwsdk/core or three.
 
+import { CUT_HEIGHT } from './constants';
 import { formatArea } from './geometry';
 import type { PanelExtent } from './menu';
 import { ROOM_LABEL_MIN_DISTANCE, VIEW_CONE_HALF_ANGLE_DEG } from './menu-thresholds';
@@ -18,9 +19,49 @@ export const ROOM_LABEL_FIT: ConeFit = {
   maxDistance: ROOM_LABEL_MAX_DISTANCE,
 };
 
+/**
+ * Lowest allowed height of the centre of the label (T4.R5, D49 R3): the floor plus the walls cut at `CUT_HEIGHT` plus the
+ * half height of the label, so its bottom edge never goes below the top of the walls. `floorY` is the height of the room
+ * floor in world metres and `scale` the world scale of the model (the walls are `CUT_HEIGHT * scale` tall). 1.35 + 0.05
+ * + 0.047 = 1.447 at 1:20 on the default table. A non-finite or negative `scale` counts as 0.
+ */
+export function roomLabelMinY(floorY: number, scale: number): number {
+  const wall = Number.isFinite(scale) && scale > 0 ? CUT_HEIGHT * scale : 0;
+  return floorY + wall + ROOM_LABEL_EXTENT.top;
+}
+
 const scratch: Point3Like = { x: 0, y: 0, z: 0 };
 const BISECTION_STEPS = 16;
 const MIN_HORIZONTAL = 1e-6;
+
+/**
+ * Raises `p` to `minY` when it is lower, keeping its distance from the head: the point slides along the sphere around the
+ * head to the height `minY`, on the same side (the horizontal bearing from the head, or the gaze when it is straight below
+ * or above the head). Does nothing for a point at or above `minY` and for a non-finite `minY`. Allocates nothing.
+ */
+function raiseToFloor(p: Point3Like, head: Readonly<Point3Like>, forward: Readonly<Point3Like>, minY: number): void {
+  if (!Number.isFinite(minY) || !(p.y < minY)) return;
+  const d = Math.hypot(p.x - head.x, p.y - head.y, p.z - head.z);
+  if (!Number.isFinite(d)) return;
+  const dy = minY - head.y;
+  const rho = Math.sqrt(Math.max(d * d - dy * dy, 0));
+  let hx = p.x - head.x;
+  let hz = p.z - head.z;
+  let hl = Math.hypot(hx, hz);
+  if (!(hl > MIN_HORIZONTAL)) {
+    hx = forward.x;
+    hz = forward.z;
+    hl = Math.hypot(hx, hz);
+  }
+  if (!(hl > MIN_HORIZONTAL)) {
+    hx = 0;
+    hz = -1;
+    hl = 1;
+  }
+  p.x = head.x + (hx / hl) * rho;
+  p.y = minY;
+  p.z = head.z + (hz / hl) * rho;
+}
 
 /** True when the whole label centred at `p` (a vertical panel turned toward the head) is inside the cone. */
 function fits(p: Readonly<Point3Like>, head: Readonly<Point3Like>, forward: Readonly<Point3Like>): boolean {
@@ -76,6 +117,9 @@ function turnTowardGaze(p: Point3Like, head: Readonly<Point3Like>, forward: Read
  * not enough (the gaze is far above or below the room), it is turned along the cone toward the forward direction at
  * the same distance, by the smallest turn that fits (the anchoring of the reason labels and the hint, `anchorInCone`).
  * The label only turns about the vertical axis itself (`yawTowardHead`), so the cone is checked for a vertical panel.
+ * `minY` (default none, see `roomLabelMinY`) is the lowest height of the centre of the label (T4.R5): a label that would
+ * sink lower (a room nearer than 0.52 m to the head, seen from above) is raised to it at the same distance from the head.
+ * That has priority over the cone only in the rare case where raising the label leaves no way to fit it.
  * Writes into `out` (which may be `roomCentre`). Allocates nothing.
  */
 export function placeRoomLabel(
@@ -83,6 +127,7 @@ export function placeRoomLabel(
   head: Readonly<Point3Like>,
   forward: Readonly<Point3Like>,
   out: Point3Like,
+  minY: number = Number.NEGATIVE_INFINITY,
 ): Point3Like {
   scratch.x = roomCentre.x;
   scratch.y = roomCentre.y + ROOM_LABEL_LIFT;
@@ -90,9 +135,12 @@ export function placeRoomLabel(
   clampDistanceFromHead(scratch, head, ROOM_LABEL_FIT.minDistance, ROOM_LABEL_FIT.maxDistance, forward, out);
   const fl = Math.hypot(forward.x, forward.y, forward.z);
   if (!(fl > 1e-9) || !Number.isFinite(out.x + out.y + out.z)) return out;
+  raiseToFloor(out, head, forward, minY);
   if (fits(out, head, forward)) return out;
   if (turnTowardGaze(out, head, forward)) return out;
-  return anchorInCone(out, head, forward, ROOM_LABEL_EXTENT, ROOM_LABEL_FIT, out, true);
+  anchorInCone(out, head, forward, ROOM_LABEL_EXTENT, ROOM_LABEL_FIT, out, true);
+  raiseToFloor(out, head, forward, minY);
+  return out;
 }
 
 /**

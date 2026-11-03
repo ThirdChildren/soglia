@@ -7,7 +7,7 @@
 // turned or zoomed. They exist only on the table-top model: at real scale they are hidden. The pure part (sizes, pick
 // radius, nearest marker) is in src/logic/viewpoint-markers.ts.
 //
-// ENTERING. A pinch whose point is within 0.04 m of a marker claims the hand as `viewpoint` (priority between `furniture`
+// ENTERING. A pinch whose point is within 0.025 m of a marker claims the hand as `viewpoint` (priority between `furniture`
 // and `two-hands`; refused while a piece is in a hand) and starts the transition: fade out (0.2 s), then, with the screen
 // black, the model is placed at real scale around the head (src/logic/viewpoint-pose.ts: the point of the plan falls
 // under the head, the floor is `eyeHeight` below it), the walls are rebuilt at ceiling height, the table base and the
