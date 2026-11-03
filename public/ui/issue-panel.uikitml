@@ -198,6 +198,48 @@
       </div>
       </div>
     </div>
+    <div id="issue-panel-movein" style="display: none; flex-direction: column; align-items: center; width: 35.2;">
+      <div id="issue-panel-mvt" style="display: flex; flex-direction: row; align-items: center; justify-content: space-between; width: 35.2; height: 4; padding-left: 0.8; padding-right: 0.8; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a;">
+        <span id="issue-panel-mvt-label" style="font-size: 2.4; font-weight: bold; color: #1a1a1a; line-height: 1;">-</span>
+        <span id="issue-panel-mvt-state" style="font-size: 2.4; font-weight: bold; color: #1a1a1a; line-height: 1;">-</span>
+      </div>
+      <div id="issue-panel-mvrows" style="display: flex; flex-direction: column; width: 35.2; margin-top: 0.3;">
+      <div id="issue-panel-mvr-0" style="display: none; flex-direction: row; align-items: center; justify-content: space-between; width: 35.2; height: 4; padding-left: 0.4; padding-right: 0.4; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a;">
+        <div id="issue-panel-mvg-0" style="display: flex; flex-direction: row; align-items: center;">
+          <div id="issue-panel-mvd-0" style="width: 1.8; height: 1.8; border-radius: 0.9; background-color: #2f7bf5;"></div>
+          <span id="issue-panel-mvx-0" style="font-size: 2.4; font-weight: normal; color: #1a1a1a; line-height: 1; margin-left: 0.4;">-</span>
+        </div>
+        <span id="issue-panel-mvu-0" style="font-size: 2.4; font-weight: bold; color: #1a1a1a; line-height: 1;">-</span>
+      </div>
+      <div id="issue-panel-mvr-1" style="display: none; flex-direction: row; align-items: center; justify-content: space-between; width: 35.2; height: 4; margin-top: 0.3; padding-left: 0.4; padding-right: 0.4; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a;">
+        <div id="issue-panel-mvg-1" style="display: flex; flex-direction: row; align-items: center;">
+          <div id="issue-panel-mvd-1" style="width: 1.8; height: 1.8; border-radius: 0.9; background-color: #2f7bf5;"></div>
+          <span id="issue-panel-mvx-1" style="font-size: 2.4; font-weight: normal; color: #1a1a1a; line-height: 1; margin-left: 0.4;">-</span>
+        </div>
+        <span id="issue-panel-mvu-1" style="font-size: 2.4; font-weight: bold; color: #1a1a1a; line-height: 1;">-</span>
+      </div>
+      <div id="issue-panel-mvr-2" style="display: none; flex-direction: row; align-items: center; justify-content: space-between; width: 35.2; height: 4; margin-top: 0.3; padding-left: 0.4; padding-right: 0.4; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a;">
+        <div id="issue-panel-mvg-2" style="display: flex; flex-direction: row; align-items: center;">
+          <div id="issue-panel-mvd-2" style="width: 1.8; height: 1.8; border-radius: 0.9; background-color: #2f7bf5;"></div>
+          <span id="issue-panel-mvx-2" style="font-size: 2.4; font-weight: normal; color: #1a1a1a; line-height: 1; margin-left: 0.4;">-</span>
+        </div>
+        <span id="issue-panel-mvu-2" style="font-size: 2.4; font-weight: bold; color: #1a1a1a; line-height: 1;">-</span>
+      </div>
+      <div id="issue-panel-mvr-3" style="display: none; flex-direction: row; align-items: center; justify-content: space-between; width: 35.2; height: 4; margin-top: 0.3; padding-left: 0.4; padding-right: 0.4; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a;">
+        <div id="issue-panel-mvg-3" style="display: flex; flex-direction: row; align-items: center;">
+          <div id="issue-panel-mvd-3" style="width: 1.8; height: 1.8; border-radius: 0.9; background-color: #2f7bf5;"></div>
+          <span id="issue-panel-mvx-3" style="font-size: 2.4; font-weight: normal; color: #1a1a1a; line-height: 1; margin-left: 0.4;">-</span>
+        </div>
+        <span id="issue-panel-mvu-3" style="font-size: 2.4; font-weight: bold; color: #1a1a1a; line-height: 1;">-</span>
+      </div>
+      </div>
+      <div id="issue-panel-mve-box" style="display: none; flex-direction: column; align-items: center; justify-content: center; width: 35.2; height: 6; margin-top: 0.3;">
+        <span id="issue-panel-mve" style="font-size: 2.4; font-weight: normal; color: #1a1a1a; line-height: 1.1; text-align: center;">-</span>
+      </div>
+      <div id="issue-panel-mvm-box" style="display: none; flex-direction: column; align-items: center; justify-content: center; width: 35.2; height: 2.7; margin-top: 0.3;">
+        <span id="issue-panel-mvm" style="font-size: 2.4; font-weight: bold; color: #3a3f47; line-height: 1.1; text-align: center;">-</span>
+      </div>
+    </div>
     <div id="issue-panel-note-box" style="display: none; flex-direction: column; align-items: center; width: 34.4; margin-top: 1;">
       <span id="issue-panel-note" style="font-size: 2.4; font-weight: normal; color: #1a1a1a; line-height: 1.1; text-align: center; width: 34.4;">-</span>
     </div>

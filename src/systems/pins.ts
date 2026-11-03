@@ -19,6 +19,7 @@ import { tagEntity } from '../components/tag-entity';
 import { slog } from '../log';
 import type { House } from '../logic/house';
 import { planCenter } from '../logic/house-layout';
+import { formatMoveInHidden, formatMoveInShown, moveInLayer } from '../logic/issue-movein';
 import { stableId } from '../logic/ids';
 import type { MiniatureRoot, Vec3Tuple } from '../logic/furniture-pose';
 import {
@@ -70,6 +71,8 @@ interface PinsContext {
   /** Scale of the root the instances were last written for. */
   scale: number;
   lastLayerLog: string;
+  /** The move-in layer (the blue pins) was last announced as shown (`movein shown` / `movein hidden`, T4.10). */
+  moveInAnnounced: boolean;
   dirty: boolean;
 }
 
@@ -102,6 +105,7 @@ export function createPins(world: World, store: Store, house: House, houseEntity
     written: 0,
     scale: 0,
     lastLayerLog: '',
+    moveInAnnounced: false,
     dirty: true,
   };
   rebuild(context);
@@ -189,6 +193,12 @@ function rebuild(ctx: PinsContext): void {
   if (layer !== ctx.lastLayerLog) {
     ctx.lastLayerLog = layer;
     slog(`pins layer ${layer}`);
+  }
+  // The blue layer, once per change of the switch (or of the role / entries): the real scale only hides it for a while.
+  const moveInState = moveInLayer(state.issues, state.role, state.prefs.moveInVisible);
+  if (moveInState.shown !== ctx.moveInAnnounced) {
+    ctx.moveInAnnounced = moveInState.shown;
+    slog(moveInState.shown ? formatMoveInShown(moveInState) : formatMoveInHidden());
   }
   for (const pin of ctx.pins) {
     if (ctx.loggedColors.get(pin.id) === pin.colorName) continue;

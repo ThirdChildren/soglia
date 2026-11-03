@@ -140,8 +140,23 @@ export const strings = {
       /** The buttons: only the ones the role may press on this issue exist. */
       actions: { 'take-on': 'Take on', resolve: 'Resolved', confirm: 'Confirm', reopen: 'Reopen' },
       more: (count: number): string => `+${count} more`,
+      /** Title and status word of the detail of a move-in entry (a `baseline`: not an issue, so no Open / Resolved). */
+      moveIn: 'Move-in',
     },
-    /** Body of a screen that a later task fills (move-in T4.10). */
+    /** The move-in report (T4.10, D48): the entries of the day the tenant moved in, and the switch that shows them on the model. */
+    movein: {
+      title: 'Move-in report',
+      /** The title when the entries are sample data: the full title with "Sample data" would not fit one line. */
+      shortTitle: 'Move-in',
+      sampleData: 'Sample data',
+      empty: 'No move-in entries',
+      toggle: 'Show on model',
+      on: 'On',
+      off: 'Off',
+      back: 'Back',
+      close: 'Close',
+    },
+    /** Body of a screen that has no content yet (shown only for the instant before its model is written). */
     comingSoon: 'Coming soon',
     /** Title of each screen. */
     screens: {

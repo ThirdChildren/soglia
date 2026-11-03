@@ -150,7 +150,8 @@ describe('the text is at least 2.4 cm and fits where it is drawn', () => {
     // the form of a new issue (T4.7): the context line, eight boxes of the grid, three urgencies, the summary and the middle Back (14)
     // the list (T4.8): five headings, five texts and five urgencies, the empty text and the middle Next (17)
     // the detail (T4.9): the status, the urgency, the category and room, a second line for the room, three lines of text, three history lines, "more" and two buttons (13)
-    expect(all.length).toBe(57);
+    // the move-in report (T4.10): the switch (label and state), four rows of a text and a date, the empty text and "+n more" (12)
+    expect(all.length).toBe(69);
     for (const size of all) expect(size).toBeGreaterThanOrEqual(ISSUE_MIN_TEXT_SIZE);
   });
 
@@ -268,6 +269,28 @@ describe('the model of the screens', () => {
     for (const role of ['visitor', 'agent', 'tenant', 'landlord'] as const) expect(screenControls('new', role)).toEqual([]);
     expect(controlStableId('close')).toBe('ui:issue-close');
     expect(controlStableId('back')).toBe('ui:issue-back');
+  });
+
+  it('Back from a detail goes to where it was opened from: the list, or the move-in report for a baseline (T4.10)', () => {
+    const nav = createScreenNavigator();
+    nav.go('movein');
+    nav.go('detail');
+    expect(nav.back('movein')).toBe('movein');
+    expect(nav.back()).toBe('home');
+    nav.go('list');
+    nav.go('detail');
+    expect(nav.back()).toBe('list');
+    // The origin only matters from a detail.
+    nav.go('movein');
+    expect(nav.back('movein')).toBe('home');
+    expect(backTarget('detail', 'movein')).toBe('movein');
+    expect(backTarget('detail')).toBe('list');
+    expect(backTarget('home', 'movein')).toBeNull();
+  });
+
+  it('the panel closes with a reason the log can say: also `view` (a viewpoint was entered, T4.11) and `suspend`', () => {
+    expect(formatPanelClosed('view')).toBe('issues panel closed via=view');
+    expect(formatPanelClosed('suspend')).toBe('issues panel closed via=suspend');
   });
 
   it('every screen has a title in the strings', () => {

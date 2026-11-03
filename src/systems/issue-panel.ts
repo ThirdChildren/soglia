@@ -6,8 +6,11 @@
 // The role lives in the store (`setRole`, D41): a pinch on a chip changes it there and nothing else. The system watches the
 // store, so whoever changes the role (a chip now, anything later): the panel goes back to `home` and redraws for the new role,
 // and the listeners of `onRoleChanged` hear of it (the form of a new issue drops its draft with
-// `issue draft cancelled reason=role`, T4.5-T4.7). The buttons lead to `list` and `movein`, which show "Coming soon" until
-// T4.8 and T4.10 fill them.
+// `issue draft cancelled reason=role`, T4.5-T4.7). The buttons lead to `list` and `movein`.
+//
+// The move-in report (T4.10, D48): `Move-in report` shows the `baseline` entries and the switch `Show on model`
+// (`ui:issue-movein-toggle`, `setMoveIn`, saved); a press on a row selects it and a second press opens its detail (read-only, no
+// buttons); `Back` from that detail returns to the report, not to the list.
 //
 // It opens with a pinch of one hand on an "Issues" button (src/systems/menu-button.ts calls `openIssuePanel`/`closeIssuePanel`)
 // and never together with the menu: opening the panel closes the menu that is open (palm or pinned) and a menu that opens
@@ -70,6 +73,7 @@ import {
   roleOfControl,
   screenControls,
   type ControlSlot,
+  type DetailOrigin,
   type IssueControlId,
   type IssuePanelCloseVia,
   type IssueScreen,
@@ -106,7 +110,18 @@ import {
   type ListPage,
   type ListTexts,
 } from '../logic/issue-list';
-import { planTransition, setRole, transitionIssue, type AppState, type Store } from '../logic/state';
+import {
+  buildMoveInPage,
+  formatMoveInDenied,
+  formatMoveInToggle,
+  moveInRowId,
+  moveInSlots,
+  moveInVisibleTo,
+  MOVEIN_TOGGLE_ID,
+  type MoveInPage,
+  type MoveInTexts,
+} from '../logic/issue-movein';
+import { planTransition, setMoveIn, setRole, transitionIssue, type AppState, type Store } from '../logic/state';
 import { pickRect, type PickSlot } from '../logic/menu';
 import { pinnedPanelPoint } from '../logic/menu-anchor';
 import type { Role } from '../logic/params';
@@ -117,10 +132,13 @@ import { closeOpenMenu, onMenuOpening } from './palm-menu';
 import { panelFontSupports } from '../ui/fonts';
 import { onPinchStart, pinchClaims, pinchPoint, type Hand } from './pinch-input';
 import { pickPinAt, setPinRing } from './pins';
-import { isViewTransitioning } from './view-mode';
+import { isRealScale, isViewTransitioning } from './view-mode';
 
 /** The texts of the list (src/ui/strings.ts): the logic builds the rows from them. */
 const LIST_TEXTS: ListTexts = strings.issues.list;
+
+/** The texts of the move-in report (src/ui/strings.ts). */
+const MOVEIN_TEXTS: MoveInTexts = strings.issues.movein;
 
 /** The texts of the detail: the separator is the middle dot when the panel font has it, else a dash (read when the detail is built). */
 function detailTexts(): DetailTexts {
@@ -146,6 +164,12 @@ interface IssuePanelContext {
   detailId: string | null;
   detailModel: DetailModel | null;
   detailIssues: unknown;
+  /** Where the detail was opened from, so `Back` returns there: the list, or the move-in report for a `baseline` (T4.10). */
+  detailOrigin: DetailOrigin;
+  /** The move-in report (T4.10): its model and what it was made from (the issues and the switch). */
+  moveInModel: MoveInPage | null;
+  moveInIssues: unknown;
+  moveInVisible: boolean;
   /** The house (for the room of an issue) and the clock of the history. */
   house: House;
   clock: IssueClock;
@@ -188,6 +212,10 @@ export function createIssuePanel(world: World, store: Store, house: House, clock
     detailId: null,
     detailModel: null,
     detailIssues: null,
+    detailOrigin: 'list',
+    moveInModel: null,
+    moveInIssues: null,
+    moveInVisible: false,
     house,
     clock,
   };
@@ -324,6 +352,14 @@ export class IssuePanelSystem extends createSystem({}) {
       if (!change && ctx.navigator.screen === 'list' && state.issues !== ctx.listIssues) this.syncList(ctx);
       // The detail follows the issue (a transition, a restore): redrawn in place while it is the screen.
       if (!change && ctx.navigator.screen === 'detail' && state.issues !== ctx.detailIssues) this.syncList(ctx);
+      // The move-in report follows the entries and its switch (T4.10).
+      if (
+        !change &&
+        ctx.navigator.screen === 'movein' &&
+        (state.issues !== ctx.moveInIssues || state.prefs.moveInVisible !== ctx.moveInVisible)
+      ) {
+        this.syncList(ctx);
+      }
     }
     if (!change) return;
     // The panel goes back to `home` (it was on `home` when the chip was pinched; another way of changing the role may find it elsewhere).
@@ -350,6 +386,11 @@ export class IssuePanelSystem extends createSystem({}) {
     if (!ctx || ctx.panel.isOpen) return;
     if (this.suspended || !this.world.renderer.xr.isPresenting) {
       slog('issues panel unavailable reason=no-session');
+      return;
+    }
+    // The panel belongs to the table-top model (its pins and fixtures): never opened at real scale or while the view changes.
+    if (isRealScale() || isViewTransitioning()) {
+      slog('issues panel unavailable reason=real-scale');
       return;
     }
     // One panel at a time: the menu that is open (palm or pinned) closes first.
@@ -382,6 +423,11 @@ export class IssuePanelSystem extends createSystem({}) {
       slog(formatListDenied(ctx.store.get().role));
       return;
     }
+    // The move-in report is for the roles that see it (`view-move-in`); `home` has no button for the others, so this is a safety net.
+    if (screen === 'movein' && !moveInVisibleTo(ctx.store.get().role)) {
+      slog(formatMoveInDenied(ctx.store.get().role));
+      return;
+    }
     if (ctx.navigator.go(screen) === null) return;
     if (screen !== 'new') this.dropForm(ctx);
     this.syncList(ctx);
@@ -396,6 +442,28 @@ export class IssuePanelSystem extends createSystem({}) {
    */
   private syncList(ctx: IssuePanelContext): void {
     const screen = ctx.panel.isOpen ? ctx.navigator.screen : null;
+    if (screen !== 'movein' && ctx.moveInModel !== null) {
+      ctx.moveInModel = null;
+      ctx.moveInIssues = null;
+      ctx.panel.setMoveIn(null);
+    }
+    if (screen === 'movein') {
+      // Back from the detail of a move-in entry: its row stays selected (the ring stays on its pin).
+      if (ctx.detailId !== null) this.clearDetail(ctx);
+      ctx.listPage = 0;
+      ctx.listModel = null;
+      ctx.listIssues = null;
+      ctx.lastListLine = '';
+      ctx.panel.setList(null);
+      const state = ctx.store.get();
+      const page = buildMoveInPage(state.issues, state.role, state.prefs.moveInVisible, ctx.selectedId, MOVEIN_TEXTS);
+      ctx.moveInModel = page;
+      ctx.moveInIssues = state.issues;
+      ctx.moveInVisible = state.prefs.moveInVisible;
+      ctx.panel.setMoveIn(page, page.hidden > 0 ? strings.issues.detail.more(page.hidden) : '');
+      ctx.formRev += 1;
+      return;
+    }
     if (screen === 'detail') {
       ctx.panel.setList(null);
       ctx.listModel = null;
@@ -442,6 +510,7 @@ export class IssuePanelSystem extends createSystem({}) {
     ctx.detailId = null;
     ctx.detailModel = null;
     ctx.detailIssues = null;
+    ctx.detailOrigin = 'list';
     ctx.panel.setDetail(null);
     ctx.formRev += 1;
   }
@@ -473,6 +542,7 @@ export class IssuePanelSystem extends createSystem({}) {
     }
     this.dropForm(ctx);
     ctx.detailId = id;
+    ctx.detailOrigin = ctx.store.get().issues.find((issue) => issue.id === id)?.kind === 'baseline' ? 'movein' : 'list';
     ctx.selectedId = id;
     setPinRing(id);
     ctx.navigator.go('detail');
@@ -547,6 +617,12 @@ export class IssuePanelSystem extends createSystem({}) {
       this.close('suspend');
       return;
     }
+    // A pinch on a viewpoint marker takes the user to real scale with the panel open (T4.6a doubt, T4.11): the panel is closed from
+    // the moment the fade starts, so no panel is left in the real-size house with controls for a model that is not there.
+    if (isRealScale() || isViewTransitioning()) {
+      this.close('view');
+      return;
+    }
     ctx.panel.update(this.world.player.head);
     if (ctx.panel.hasFrame && this.anchorsStale(ctx)) this.placeAnchors(ctx);
   }
@@ -562,6 +638,7 @@ export class IssuePanelSystem extends createSystem({}) {
     if (screen === 'new' && ctx.form) return formSlots(formLayout(ctx.form, strings.issues.form));
     if (screen === 'list' && ctx.listModel) return listSlots(ctx.listModel);
     if (screen === 'detail' && ctx.detailModel) return detailSlots(ctx.detailModel);
+    if (screen === 'movein' && ctx.moveInModel) return moveInSlots(ctx.moveInModel);
     return screenControls(screen, ctx.store.get().role).map((id) => CONTROL_SLOTS[id]);
   }
 
@@ -659,6 +736,21 @@ export class IssuePanelSystem extends createSystem({}) {
         return;
       }
     }
+    if (ctx.navigator.screen === 'movein' && ctx.moveInModel) {
+      if (hit.id === MOVEIN_TOGGLE_ID) {
+        // The switch is a preference of the viewer (also for the landlord, who reads the report but may look at it on the model).
+        const visible = !ctx.store.get().prefs.moveInVisible;
+        slog(formatMoveInToggle(visible));
+        ctx.store.dispatch(setMoveIn(visible));
+        return;
+      }
+      const row = rowOfControl(hit.id);
+      if (row !== null) {
+        const id = moveInRowId(ctx.moveInModel, row);
+        if (id !== null) this.selectRow(ctx, id);
+        return;
+      }
+    }
     if (ctx.navigator.screen === 'detail') {
       const action = actionOfControl(hit.id);
       if (action !== null) {
@@ -667,7 +759,7 @@ export class IssuePanelSystem extends createSystem({}) {
       }
     }
     if (hit.id === 'back') {
-      const target = ctx.navigator.back();
+      const target = ctx.navigator.back(ctx.detailOrigin);
       if (target === null) return;
       // `navigator.back()` already moved on: write the screen into the panel and tell the log.
       this.syncList(ctx);

@@ -199,14 +199,43 @@ describe('what the detail says', () => {
     expect(detail(mine(14), 'landlord', '').meta).toBe('Appliances');
   });
 
-  it('answers "Issue not found" for an unknown id, a move-in entry and a role without the issues', () => {
-    const baseline = seed().find((i) => i.kind === 'baseline');
-    for (const model of [detail(undefined, 'landlord'), detail(baseline, 'landlord'), detail(mine(14), 'visitor'), detail(mine(14), 'agent')]) {
+  it('answers "Issue not found" for an unknown id and a role without the issues', () => {
+    for (const model of [detail(undefined, 'landlord'), detail(mine(14), 'visitor'), detail(mine(14), 'agent')]) {
       expect(model.missing).toBe(true);
       expect(model.missingText).toBe('Issue not found');
       expect(model.actions).toEqual([]);
     }
     expect(missingDetail('x', TEXTS, 'Back', 'Close').historyLines).toEqual([]);
+  });
+
+  it('shows a move-in entry read-only (T4.10, D48): blue, "Move-in", no urgency, no status of an issue, no buttons', () => {
+    const baseline = seed().find((i) => i.kind === 'baseline');
+    for (const role of ['tenant', 'landlord'] as const) {
+      const model = detail(baseline, role, 'Living room');
+      expect(model.missing).toBe(false);
+      expect(model.kind).toBe('baseline');
+      expect(model.status).toBeNull();
+      expect(model.statusText).toBe('Move-in');
+      expect(model.colorName).toBe('blue');
+      expect(model.color).toBe(0x2f7bf5);
+      expect(model.urgencyText).toBe('');
+      expect(model.title).toBe('Move-in - Sample data');
+      expect(model.textLines.join(' ')).toBe('Scratch on the parquet, present at move-in.');
+      expect(model.historyLines).toEqual(['1 Oct \u00b7 tenant \u00b7 Created']);
+      expect(model.actions).toEqual([]);
+      expect(detailControlIds(model)).toEqual(['back', 'close']);
+    }
+  });
+
+  it('a move-in entry that is not sample data has the plain title', () => {
+    const baseline = seed().find((i) => i.kind === 'baseline') as StoredIssue;
+    const { sample: _sample, ...own } = baseline;
+    expect(detail(own, 'tenant').title).toBe('Move-in');
+  });
+
+  it('keeps the move-in entry away from the roles that do not have the report', () => {
+    const baseline = seed().find((i) => i.kind === 'baseline');
+    for (const role of ['visitor', 'agent'] as const) expect(detail(baseline, role).missing).toBe(true);
   });
 });
 

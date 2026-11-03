@@ -34,6 +34,7 @@ import {
   type DetailModel,
 } from '../logic/issue-detail';
 import { LIST_BAR_BUTTON_WIDTH, LIST_PAGE_SIZE, listBarWidth, type ListPage, type ListRow } from '../logic/issue-list';
+import { MOVEIN_MAX_ROWS, type MoveInPage } from '../logic/issue-movein';
 import { ISSUE_URGENCIES } from '../logic/issues';
 import type { Role } from '../logic/params';
 import { PANEL_CENTER } from '../logic/menu';
@@ -73,6 +74,7 @@ const LIST_EMPTY_BOX_ELEMENT = 'issue-panel-list-empty-box';
 const LIST_EMPTY_ELEMENT = 'issue-panel-list-empty';
 const DETAIL_ELEMENT = 'issue-panel-detail';
 const DETAIL_ACTIONS_ELEMENT = 'issue-panel-dactions';
+const MOVEIN_ELEMENT = 'issue-panel-movein';
 /** Most action buttons of the detail (a resolved issue has two for the tenant: Confirm and Reopen). */
 const DETAIL_ACTION_SLOTS = 2;
 /** The colour of a row's status dot as the style string UIKit takes (`#e5322d`). */
@@ -133,6 +135,19 @@ interface ListRowElements {
   urgency: UIKit.Text | null;
 }
 
+/** The parts of the move-in report (T4.10): the container, the switch (label and state word), the rows, the empty line and "+n more". */
+interface MoveInElements {
+  box: UIKit.Container | null;
+  toggle: UIKit.Container | null;
+  toggleLabel: UIKit.Text | null;
+  toggleState: UIKit.Text | null;
+  rows: ListRowElements[];
+  emptyBox: UIKit.Container | null;
+  empty: UIKit.Text | null;
+  moreBox: UIKit.Container | null;
+  more: UIKit.Text | null;
+}
+
 export class IssuePanel {
   private entity: Entity | null = null;
   private applied = false;
@@ -162,6 +177,19 @@ export class IssuePanel {
   private readonly listRows: ListRowElements[] = [];
   private listModel: ListPage | null = null;
   private detailModel: DetailModel | null = null;
+  private moveInModel: MoveInPage | null = null;
+  private moveInMore = '';
+  private readonly movein: MoveInElements = {
+    box: null,
+    toggle: null,
+    toggleLabel: null,
+    toggleState: null,
+    rows: [],
+    emptyBox: null,
+    empty: null,
+    moreBox: null,
+    more: null,
+  };
   private readonly detail: DetailElements = {
     box: null,
     dot: null,
@@ -269,6 +297,8 @@ export class IssuePanel {
     this.listRows.length = 0;
     this.listModel = null;
     this.detailModel = null;
+    this.moveInModel = null;
+    this.clearMoveIn();
     this.clearDetail();
     this.gridRows.length = 0;
     this.gridBoxes.length = 0;
@@ -294,6 +324,22 @@ export class IssuePanel {
   setDetail(detail: DetailModel | null): void {
     this.detailModel = detail;
     if (this.applied) this.writeScreen();
+  }
+
+  /**
+   * The move-in report that the `movein` screen shows (null: none). `more` is the text of the "+n more" line (the panel does not
+   * know the strings of the report). Written in place; kept until the layout is loaded.
+   */
+  setMoveIn(page: MoveInPage | null, more: string = ''): void {
+    this.moveInModel = page;
+    this.moveInMore = more;
+    if (this.applied) this.writeScreen();
+  }
+
+  private clearMoveIn(): void {
+    const m = this.movein;
+    m.box = m.toggle = m.toggleLabel = m.toggleState = m.emptyBox = m.empty = m.moreBox = m.more = null;
+    m.rows.length = 0;
   }
 
   private clearDetail(): void {
@@ -375,6 +421,26 @@ export class IssuePanel {
         urgency: doc.getElementById<UIKit.Text>(`issue-panel-lu-${i}`),
       });
     }
+    const m = this.movein;
+    m.box = doc.getElementById<UIKit.Container>(MOVEIN_ELEMENT);
+    m.toggle = doc.getElementById<UIKit.Container>('issue-panel-mvt');
+    m.toggleLabel = doc.getElementById<UIKit.Text>('issue-panel-mvt-label');
+    m.toggleState = doc.getElementById<UIKit.Text>('issue-panel-mvt-state');
+    m.emptyBox = doc.getElementById<UIKit.Container>('issue-panel-mve-box');
+    m.empty = doc.getElementById<UIKit.Text>('issue-panel-mve');
+    m.moreBox = doc.getElementById<UIKit.Container>('issue-panel-mvm-box');
+    m.more = doc.getElementById<UIKit.Text>('issue-panel-mvm');
+    for (let i = 0; i < MOVEIN_MAX_ROWS; i += 1) {
+      m.rows.push({
+        wrapper: null,
+        heading: null,
+        headingLabel: null,
+        row: doc.getElementById<UIKit.Container>(`issue-panel-mvr-${i}`),
+        dot: doc.getElementById<UIKit.Container>(`issue-panel-mvd-${i}`),
+        text: doc.getElementById<UIKit.Text>(`issue-panel-mvx-${i}`),
+        urgency: doc.getElementById<UIKit.Text>(`issue-panel-mvu-${i}`),
+      });
+    }
     const d = this.detail;
     d.box = doc.getElementById<UIKit.Container>(DETAIL_ELEMENT);
     d.dot = doc.getElementById<UIKit.Container>('issue-panel-ddot');
@@ -443,19 +509,25 @@ export class IssuePanel {
     const list = screen === 'list' ? this.listModel : null;
     const detail = screen === 'detail' ? this.detailModel : null;
     const detailShown = detail !== null && !detail.missing;
+    const movein = screen === 'movein' ? this.moveInModel : null;
     // The title of the form is the name of the fixture (a free spot keeps "New issue"); the list says "Sample data" and its page,
     // the detail says "Issue" or "Issue - Sample data".
-    const title = form?.fixtureName ? clipName(form.fixtureName, TITLE_MAX_LENGTH) : (list?.title ?? detail?.title ?? strings.issues.screens[screen]);
+    const title = form?.fixtureName ? clipName(form.fixtureName, TITLE_MAX_LENGTH) : (list?.title ?? detail?.title ?? movein?.title ?? strings.issues.screens[screen]);
     this.title?.setProperties({ text: title });
     this.footer?.setProperties({ text: isHome ? strings.issues.footer : '', display: isHome ? 'flex' : 'none' });
     this.home?.setProperties({ display: isHome ? 'flex' : 'none' });
-    this.noteBox?.setProperties({ display: isHome || form || list || detailShown ? 'none' : 'flex' });
+    this.noteBox?.setProperties({ display: isHome || form || list || detailShown || movein ? 'none' : 'flex' });
+    this.movein.box?.setProperties({ display: movein ? 'flex' : 'none' });
     this.detail.box?.setProperties({ display: detailShown ? 'flex' : 'none' });
     this.newBox?.setProperties({ display: form ? 'flex' : 'none' });
     this.listBox?.setProperties({ display: list ? 'flex' : 'none' });
     this.writeBar(form, list);
     if (list) {
       this.writeList(list);
+      return;
+    }
+    if (movein) {
+      this.writeMoveIn(movein);
       return;
     }
     if (form) {
@@ -558,6 +630,34 @@ export class IssuePanel {
       const action = detail.actions[i];
       d.actions[i]?.box?.setProperties({ display: action === undefined ? 'none' : 'flex', width: action?.width });
       if (action !== undefined) d.actions[i]?.label?.setProperties({ text: action.label });
+    }
+  }
+
+  /**
+   * The move-in report: the switch (its label and the word for its state, dark when on like a chosen chip), the entries (a blue dot,
+   * the text, the date) and "+n more" when some did not fit.
+   */
+  private writeMoveIn(page: MoveInPage): void {
+    const m = this.movein;
+    const look = page.toggleOn ? CHIP_ACTIVE : CHIP_IDLE;
+    m.toggle?.setProperties({ backgroundColor: look.backgroundColor });
+    m.toggleLabel?.setProperties({ text: page.toggleLabel, color: look.color });
+    m.toggleState?.setProperties({ text: page.toggleState, color: look.color });
+    m.emptyBox?.setProperties({ display: page.empty ? 'flex' : 'none' });
+    m.empty?.setProperties({ text: page.emptyText });
+    m.moreBox?.setProperties({ display: page.hidden > 0 ? 'flex' : 'none' });
+    if (page.hidden > 0) m.more?.setProperties({ text: this.moveInMore });
+    for (let i = 0; i < MOVEIN_MAX_ROWS; i += 1) {
+      const elements = m.rows[i];
+      if (!elements) continue;
+      const row = page.rows[i];
+      elements.row?.setProperties({ display: row ? 'flex' : 'none' });
+      if (!row) continue;
+      const rowLook = row.selected ? CHIP_ACTIVE : CHIP_IDLE;
+      elements.row?.setProperties({ backgroundColor: rowLook.backgroundColor });
+      elements.dot?.setProperties({ backgroundColor: hexColor(row.color) });
+      elements.text?.setProperties({ text: row.text, color: rowLook.color });
+      elements.urgency?.setProperties({ text: row.date, color: rowLook.color });
     }
   }
 

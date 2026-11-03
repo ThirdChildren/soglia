@@ -31,6 +31,7 @@ import {
   type HistoryEntry,
   type HistoryEvent,
   type IssueCategory,
+  type IssueKind,
   type IssueStatus,
   type IssueUrgency,
   type StatusColorName,
@@ -101,6 +102,8 @@ export interface DetailTexts {
   readonly events: Readonly<Record<HistoryEvent, string>>;
   readonly actions: Readonly<Record<IssueAction, string>>;
   readonly more: (count: number) => string;
+  /** Title and status word of a move-in entry (`baseline`): it is read-only and has no status of an issue. */
+  readonly moveIn: string;
   /** Between the date, the actor and the event, and between the category and the room (` · ` or, without the glyph, ` - `). */
   readonly separator: string;
 }
@@ -115,12 +118,15 @@ export interface DetailAction {
 
 export interface DetailModel {
   readonly id: string;
+  /** `issue`, or `baseline` for an entry of the move-in report (T4.10: read-only, blue, no urgency and no buttons). */
+  readonly kind: IssueKind;
   /** The issue is not in the store (or the role cannot see it): only `missingText` is shown. */
   readonly missing: boolean;
   readonly missingText: string;
-  /** `Issue` or `Issue - Sample data`. */
+  /** `Issue` or `Issue - Sample data` (`Move-in` for a baseline). */
   readonly title: string;
-  readonly status: IssueStatus;
+  /** The status of the issue, or null for a move-in entry (it has none). */
+  readonly status: IssueStatus | null;
   readonly statusText: string;
   /** Colour of the dot: the colour of the pin (0xRRGGBB) and its name. */
   readonly color: number;
@@ -247,10 +253,11 @@ function infoHeightFor(textLines: number, historyLines: number, more: boolean, m
 export function missingDetail(id: string, texts: DetailTexts, backText: string, closeText: string): DetailModel {
   return {
     id,
+    kind: 'issue',
     missing: true,
     missingText: texts.missing,
     title: texts.title,
-    status: 'archived',
+    status: null,
     statusText: '',
     color: statusColor({ kind: 'issue', status: 'archived' }),
     colorName: 'grey',
@@ -281,11 +288,13 @@ export function buildDetail(
   backText: string,
   closeText: string,
 ): DetailModel {
-  if (issue === undefined || issue.kind !== 'issue' || issue.status === undefined || !can(role, 'view-pins')) {
+  const baseline = issue !== undefined && issue.kind === 'baseline' && can(role, 'view-move-in');
+  if (issue === undefined || !can(role, 'view-pins') || (!baseline && (issue.kind !== 'issue' || issue.status === undefined))) {
     return missingDetail(id, texts, backText, closeText);
   }
-  const status = issue.status;
-  const actionIds = availableActions(role, issue);
+  // A move-in entry is read-only: no status of an issue, no urgency, no buttons (D48). Its colour is the blue of its pin.
+  const status = baseline ? null : (issue.status as IssueStatus);
+  const actionIds = baseline ? [] : availableActions(role, issue);
   const { entries, older } = lastHistory(issue.history);
   const more = older > 0;
   const room = infoRoomFor(actionIds.length > 0);
@@ -305,14 +314,15 @@ export function buildDetail(
   const sample = issue.sample === true;
   return {
     id: issue.id,
+    kind: baseline ? 'baseline' : 'issue',
     missing: false,
     missingText: texts.missing,
-    title: sample ? `${texts.title} - ${texts.sampleData}` : texts.title,
+    title: `${baseline ? texts.moveIn : texts.title}${sample ? ` - ${texts.sampleData}` : ''}`,
     status,
-    statusText: texts.status[status],
+    statusText: status === null ? texts.moveIn : texts.status[status],
     color: statusColor(issue),
     colorName: statusColorName(issue),
-    urgencyText: texts.urgency[issue.urgency],
+    urgencyText: baseline ? '' : texts.urgency[issue.urgency],
     meta,
     meta2,
     textLines: lines,

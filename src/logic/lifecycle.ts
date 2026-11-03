@@ -3,11 +3,12 @@
 //
 // The system (src/systems/lifecycle.ts) reports what happened as an event and `reduceLifecycle` says what to do:
 //   - `save-now`      write the state at once (the page may be gone);
+//   - `close-issue-ui` drop the draft of a new issue and close the Issues panel (T4.11): nothing half-made is left open or saved;
 //   - `suspend-input` cancel the grab, end the gestures, close the menu, clear the pinch flags and claims;
 //   - `resume-input`  accept input again (nothing opens by itself; the menu needs the palm up again).
 //
 // Rules (D30):
-//   - hidden / visible-blurred: save, then suspend. Two such events in a row suspend only once.
+//   - hidden / visible-blurred: save, close the Issues UI, then suspend. Two such events in a row suspend only once.
 //   - visible after a suspension: resume. Without a suspension: nothing.
 //   - the document hidden while the session stays visible: save only (nothing is held away from the user).
 //   - the session ends (or the visibility falls back to non-immersive after being immersive): save, suspend.
@@ -27,7 +28,7 @@ export type LifecycleEvent =
   | 'session:start'
   | 'pagehide';
 
-export type LifecycleAction = 'save-now' | 'suspend-input' | 'resume-input';
+export type LifecycleAction = 'save-now' | 'close-issue-ui' | 'suspend-input' | 'resume-input';
 
 export interface LifecycleState {
   /** The last visibility reported (by the session or by the development keys). */
@@ -46,7 +47,9 @@ export interface LifecycleResult {
 
 const NONE: readonly LifecycleAction[] = Object.freeze([]);
 const SAVE: readonly LifecycleAction[] = Object.freeze<LifecycleAction[]>(['save-now']);
-const SAVE_AND_SUSPEND: readonly LifecycleAction[] = Object.freeze<LifecycleAction[]>(['save-now', 'suspend-input']);
+// The order is the contract: save first (the page may be gone), then the Issues UI closes (its draft is dropped with
+// `reason=suspend` BEFORE the panel closes, so the log reads draft then panel), then the rest of the input is suspended.
+const SAVE_AND_SUSPEND: readonly LifecycleAction[] = Object.freeze<LifecycleAction[]>(['save-now', 'close-issue-ui', 'suspend-input']);
 const RESUME: readonly LifecycleAction[] = Object.freeze<LifecycleAction[]>(['resume-input']);
 
 export function createLifecycleState(): LifecycleState {
@@ -72,6 +75,11 @@ export function visibilityEvent(value: string): LifecycleEvent | null {
 /** True for an event that suspends the input (the system logs `lifecycle suspended` for it). */
 export function suspends(actions: readonly LifecycleAction[]): boolean {
   return actions.includes('suspend-input');
+}
+
+/** True for an event that closes the Issues panel and drops the draft (the same events that suspend the input). */
+export function closesIssueUi(actions: readonly LifecycleAction[]): boolean {
+  return actions.includes('close-issue-ui');
 }
 
 function result(state: LifecycleState, actions: readonly LifecycleAction[]): LifecycleResult {

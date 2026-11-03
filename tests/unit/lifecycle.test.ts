@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  closesIssueUi,
   createLifecycleState,
   reduceLifecycle,
   suspends,
@@ -30,18 +31,18 @@ describe('reduceLifecycle', () => {
 
   it('hidden saves and then suspends, in that order', () => {
     const { state, steps } = run(['session:start', 'visibility:visible', 'visibility:hidden']);
-    expect(steps[2]).toEqual(['save-now', 'suspend-input']);
+    expect(steps[2]).toEqual(['save-now', 'close-issue-ui', 'suspend-input']);
     expect(state).toEqual({ visibility: 'hidden', sessionActive: true, suspended: true });
   });
 
   it('visible-blurred suspends the same way', () => {
     const { steps } = run(['visibility:visible', 'visibility:visible-blurred']);
-    expect(steps[1]).toEqual(['save-now', 'suspend-input']);
+    expect(steps[1]).toEqual(['save-now', 'close-issue-ui', 'suspend-input']);
   });
 
   it('two hidden in a row suspend once', () => {
     const { steps } = run(['visibility:visible', 'visibility:hidden', 'visibility:hidden']);
-    expect(steps[1]).toEqual(['save-now', 'suspend-input']);
+    expect(steps[1]).toEqual(['save-now', 'close-issue-ui', 'suspend-input']);
     expect(steps[2]).toEqual([]);
   });
 
@@ -81,14 +82,14 @@ describe('reduceLifecycle', () => {
 
   it('the end of the session saves and suspends, and its non-immersive report adds nothing', () => {
     const { state, steps } = run(['session:start', 'visibility:visible', 'session:end', 'visibility:non-immersive']);
-    expect(steps[2]).toEqual(['save-now', 'suspend-input']);
+    expect(steps[2]).toEqual(['save-now', 'close-issue-ui', 'suspend-input']);
     expect(steps[3]).toEqual([]);
     expect(state).toEqual({ visibility: 'non-immersive', sessionActive: false, suspended: true });
   });
 
   it('falling to non-immersive after an immersive state is an end even without a session event', () => {
     const { steps } = run(['visibility:visible', 'visibility:non-immersive']);
-    expect(steps[1]).toEqual(['save-now', 'suspend-input']);
+    expect(steps[1]).toEqual(['save-now', 'close-issue-ui', 'suspend-input']);
   });
 
   it('a session that starts after the end resumes', () => {
@@ -151,7 +152,7 @@ const ALL_EVENTS: readonly LifecycleEvent[] = [
   'pagehide',
 ];
 const ALL_VISIBILITIES: readonly LifecycleState['visibility'][] = ['non-immersive', 'visible', 'visible-blurred', 'hidden'];
-const KNOWN_ACTIONS: readonly LifecycleAction[] = ['save-now', 'suspend-input', 'resume-input'];
+const KNOWN_ACTIONS: readonly LifecycleAction[] = ['save-now', 'close-issue-ui', 'suspend-input', 'resume-input'];
 
 /** The 16 combinations of the three fields, reachable or not. */
 function allStates(): LifecycleState[] {
@@ -164,7 +165,7 @@ function allStates(): LifecycleState[] {
   return states;
 }
 
-const SAVE_THEN_SUSPEND: readonly LifecycleAction[] = ['save-now', 'suspend-input'];
+const SAVE_THEN_SUSPEND: readonly LifecycleAction[] = ['save-now', 'close-issue-ui', 'suspend-input'];
 const fallsAway = (before: LifecycleState): readonly LifecycleAction[] => (before.suspended ? [] : SAVE_THEN_SUSPEND);
 const comesBack = (before: LifecycleState): readonly LifecycleAction[] => (before.suspended ? ['resume-input'] : []);
 
@@ -290,10 +291,50 @@ describe('reduceLifecycle, every state and event (D30 table)', () => {
         if (!actions.includes('suspend-input')) continue;
         both += 1;
         expect(actions.indexOf('save-now'), `${JSON.stringify(before)} + ${event}`).toBe(0);
-        expect(actions.indexOf('suspend-input')).toBe(1);
+        expect(actions.indexOf('close-issue-ui')).toBe(1);
+        expect(actions.indexOf('suspend-input')).toBe(2);
       }
     }
     expect(both).toBeGreaterThan(0);
+  });
+
+  // T4.11: the Issues panel and the draft of a new issue close with EVERY suspension, before the input is suspended (so the log
+  // reads `issue draft cancelled reason=suspend` and then `issues panel closed via=suspend`), and never without one.
+  it('closes the Issues UI exactly when it suspends, once, between the save and the suspension', () => {
+    let closed = 0;
+    for (const before of allStates()) {
+      for (const event of ALL_EVENTS) {
+        const { actions } = reduceLifecycle(before, event);
+        const label = `${JSON.stringify(before)} + ${event}`;
+        expect(closesIssueUi(actions), label).toBe(actions.includes('suspend-input'));
+        expect(actions.filter((action) => action === 'close-issue-ui').length, label).toBeLessThanOrEqual(1);
+        if (closesIssueUi(actions)) {
+          closed += 1;
+          expect(actions.indexOf('save-now'), label).toBeLessThan(actions.indexOf('close-issue-ui'));
+          expect(actions.indexOf('close-issue-ui'), label).toBeLessThan(actions.indexOf('suspend-input'));
+        }
+        // A resume, a page that is only hidden and a pagehide leave the panel alone.
+        if (actions.includes('resume-input') || (actions.length === 1 && actions[0] === 'save-now')) expect(closesIssueUi(actions), label).toBe(false);
+      }
+    }
+    expect(closed).toBeGreaterThan(0);
+  });
+
+  it('closes the Issues UI for the four ways of being away: hidden, blurred, the end of the session and the fall to non-immersive', () => {
+    const visible = { visibility: 'visible', sessionActive: true, suspended: false } as const;
+    for (const event of ['visibility:hidden', 'visibility:visible-blurred', 'session:end', 'visibility:non-immersive'] as const) {
+      expect(closesIssueUi(reduceLifecycle(visible, event).actions), event).toBe(true);
+    }
+    for (const event of ['visibility:visible', 'document:hidden', 'document:visible', 'pagehide', 'session:start'] as const) {
+      expect(closesIssueUi(reduceLifecycle(visible, event).actions), event).toBe(false);
+    }
+  });
+
+  it('does not close the Issues UI a second time while the input is already suspended', () => {
+    const away = { visibility: 'hidden', sessionActive: true, suspended: true } as const;
+    for (const event of ['visibility:hidden', 'visibility:visible-blurred', 'session:end'] as const) {
+      expect(reduceLifecycle(away, event).actions, event).toEqual([]);
+    }
   });
 
   it('never suspends and resumes in the same list, and each one only changes the suspended flag the right way', () => {
@@ -337,18 +378,18 @@ describe('reduceLifecycle, every state and event (D30 table)', () => {
 describe('reduceLifecycle, sequences', () => {
   it('hidden, blurred, visible: one suspension and one resume', () => {
     const { state, steps } = run(['visibility:visible', 'visibility:hidden', 'visibility:visible-blurred', 'visibility:visible']);
-    expect(steps).toEqual([[], ['save-now', 'suspend-input'], [], ['resume-input']]);
+    expect(steps).toEqual([[], ['save-now', 'close-issue-ui', 'suspend-input'], [], ['resume-input']]);
     expect(state.suspended).toBe(false);
   });
 
   it('blurred, hidden, visible: one suspension and one resume', () => {
     const { steps } = run(['visibility:visible', 'visibility:visible-blurred', 'visibility:hidden', 'visibility:visible']);
-    expect(steps).toEqual([[], ['save-now', 'suspend-input'], [], ['resume-input']]);
+    expect(steps).toEqual([[], ['save-now', 'close-issue-ui', 'suspend-input'], [], ['resume-input']]);
   });
 
   it('hidden, visible, hidden: the second fall suspends and saves again', () => {
     const { steps } = run(['visibility:visible', 'visibility:hidden', 'visibility:visible', 'visibility:hidden']);
-    expect(steps[3]).toEqual(['save-now', 'suspend-input']);
+    expect(steps[3]).toEqual(['save-now', 'close-issue-ui', 'suspend-input']);
   });
 
   it('a blurred state followed by a visible one resumes, without going through hidden', () => {
@@ -382,13 +423,13 @@ describe('reduceLifecycle, sequences', () => {
   it('non-immersive after a start is a suspension, even if no visible report came before', () => {
     const { state, steps } = run(['session:start', 'visibility:non-immersive']);
     expect(steps[0]).toEqual([]);
-    expect(steps[1]).toEqual(['save-now', 'suspend-input']);
+    expect(steps[1]).toEqual(['save-now', 'close-issue-ui', 'suspend-input']);
     expect(state).toEqual({ visibility: 'non-immersive', sessionActive: false, suspended: true });
   });
 
   it('non-immersive twice in a row suspends once', () => {
     const { steps } = run(['visibility:visible', 'visibility:non-immersive', 'visibility:non-immersive']);
-    expect(steps.slice(1)).toEqual([['save-now', 'suspend-input'], []]);
+    expect(steps.slice(1)).toEqual([['save-now', 'close-issue-ui', 'suspend-input'], []]);
   });
 
   it('non-immersive before the end event, or the end event before it: one suspension either way', () => {
@@ -403,12 +444,12 @@ describe('reduceLifecycle, sequences', () => {
 
   it('the end of a session suspends only once, however many times it is reported', () => {
     const { steps } = run(['visibility:visible', 'session:end', 'session:end', 'session:end']);
-    expect(steps.slice(1)).toEqual([['save-now', 'suspend-input'], [], []]);
+    expect(steps.slice(1)).toEqual([['save-now', 'close-issue-ui', 'suspend-input'], [], []]);
   });
 
   it('a session end without any visibility report still saves and suspends', () => {
     const { state, steps } = run(['session:end']);
-    expect(steps[0]).toEqual(['save-now', 'suspend-input']);
+    expect(steps[0]).toEqual(['save-now', 'close-issue-ui', 'suspend-input']);
     expect(state.suspended).toBe(true);
   });
 
@@ -425,7 +466,7 @@ describe('reduceLifecycle, sequences', () => {
 
   it('end, start, visible: one resume, and a hidden afterwards suspends again', () => {
     const { steps } = run(['visibility:visible', 'session:end', 'session:start', 'visibility:visible', 'visibility:hidden']);
-    expect(steps.slice(1)).toEqual([['save-now', 'suspend-input'], ['resume-input'], [], ['save-now', 'suspend-input']]);
+    expect(steps.slice(1)).toEqual([['save-now', 'close-issue-ui', 'suspend-input'], ['resume-input'], [], ['save-now', 'close-issue-ui', 'suspend-input']]);
   });
 
   it('a hidden session that ends and starts again resumes at the start', () => {
@@ -522,7 +563,7 @@ describe('reduceLifecycle, idempotence and immutability', () => {
     expect(() => (first.actions as LifecycleAction[]).push('resume-input')).toThrow(TypeError);
     expect(() => (first.actions as LifecycleAction[]).pop()).toThrow(TypeError);
     const second = reduceLifecycle(createLifecycleState(), 'visibility:hidden');
-    expect(second.actions).toEqual(['save-now', 'suspend-input']);
+    expect(second.actions).toEqual(['save-now', 'close-issue-ui', 'suspend-input']);
   });
 
   it('gives frozen empty and single-save lists too', () => {
@@ -630,5 +671,13 @@ describe('suspends, every input', () => {
     const list = deepFreeze<LifecycleAction[]>(['save-now', 'suspend-input']);
     expect(() => suspends(list)).not.toThrow();
     expect(list).toEqual(['save-now', 'suspend-input']);
+  });
+
+  it('closesIssueUi reads only close-issue-ui, whatever else is in the list, and does not change it', () => {
+    const list = deepFreeze<LifecycleAction[]>(['save-now', 'close-issue-ui', 'suspend-input']);
+    expect(closesIssueUi(list)).toBe(true);
+    expect(closesIssueUi(['save-now', 'suspend-input'])).toBe(false);
+    expect(closesIssueUi([])).toBe(false);
+    expect(list).toEqual(['save-now', 'close-issue-ui', 'suspend-input']);
   });
 });

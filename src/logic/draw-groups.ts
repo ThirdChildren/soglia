@@ -29,6 +29,13 @@ const HOUSE_IDS: ReadonlySet<string> = new Set(['table:plinth']);
  */
 const MARKER_UI_PREFIXES: readonly string[] = ['ui:fit-marker-', 'ui:measure-instances'];
 
+/*
+ * M4 (T4.12): the pins of the issues are ONE instanced mesh named `pin:instances` (src/ui/pin-markers.ts) and so `markers`, like every
+ * `pin:*` entity (`pin:issue-014`, `pin:baseline-001`, `pin:draft`: no mesh). The Issues panel and its controls (`ui:issue-panel`,
+ * `ui:issue-*`), the two "Issues" buttons and the `ui:tabletop-button` are UIKit panels or light anchors: `ui`. Nothing here needs a
+ * new rule; tests/unit/draw-groups.test.ts keeps the names, and the measured numbers are in docs/plans/M4.md.
+ */
+
 /** Group of a named object, or `'other'` when the name says nothing (the caller then keeps the parent's group). */
 export function classifyGroup(name: string | null | undefined): DrawGroup {
   if (typeof name !== 'string' || name.length === 0) return 'other';

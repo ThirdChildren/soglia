@@ -9,7 +9,7 @@
 // T4.6a made the structure: the title, the bar (`Back` outside `home`, `Close`). T4.6b adds the `home` screen: a grid of the
 // four roles (the current one drawn dark, like the active tab of the menu) and, for the roles the permission table lets see
 // the issues, the buttons `Issues (n)` and `Move-in report`. T4.7 added `new` and T4.8 adds `list` (src/logic/issue-list.ts);
-// `detail` and `movein` arrive with the tasks that fill them (T4.9 filled `detail`, T4.10 fills `movein`).
+// T4.9 filled `detail` and T4.10 fills `movein` (src/logic/issue-movein.ts).
 
 import { MENU_EXTENT, MENU_PANEL, MIN_TEXT_SIZE, type HalfSize, type Offset, type PanelExtent } from './menu';
 import type { Issue } from './issues';
@@ -27,13 +27,17 @@ export function isIssueScreen(value: unknown): value is IssueScreen {
   return typeof value === 'string' && (ISSUE_SCREENS as readonly string[]).includes(value);
 }
 
+/** Where a `detail` was opened from: the list of issues, or the move-in report (the detail of a `baseline`, T4.10). */
+export type DetailOrigin = 'list' | 'movein';
+
 /**
- * Where `Back` goes from `screen`: `home` has no way back (null), a detail goes back to the list, everything else to
- * `home` (`new` is left with `Back` or `Cancel`, which drops the draft: T4.7).
+ * Where `Back` goes from `screen`: `home` has no way back (null), a detail goes back to where it was opened from (the list of
+ * issues, or the move-in report for a `baseline`), everything else to `home` (`new` is left with `Back` or `Cancel`, which
+ * drops the draft: T4.7).
  */
-export function backTarget(screen: IssueScreen): IssueScreen | null {
+export function backTarget(screen: IssueScreen, origin: DetailOrigin = 'list'): IssueScreen | null {
   if (screen === 'home') return null;
-  if (screen === 'detail') return 'list';
+  if (screen === 'detail') return origin;
   return 'home';
 }
 
@@ -61,8 +65,10 @@ export type ListControlId = `row-${number}` | 'page-prev' | 'page-next';
 export type DetailActionControlId = 'action-take-on' | 'action-resolved' | 'action-confirm' | 'action-reopen';
 /** The controls of the detail: the action buttons and the bar. */
 export type DetailControlId = DetailActionControlId | 'back' | 'close';
+/** The switch of the move-in report (T4.10, src/logic/issue-movein.ts places it): `ui:issue-movein-toggle`. */
+export type MoveInControlId = 'movein-toggle';
 /** Every control of the panel. */
-export type IssueControlId = StaticControlId | FormControlId | ListControlId | DetailActionControlId;
+export type IssueControlId = StaticControlId | FormControlId | ListControlId | DetailActionControlId | MoveInControlId;
 
 export function roleControlId(role: Role): RoleControlId {
   return `role-${role}`;
@@ -175,8 +181,8 @@ export interface ScreenNavigator {
   readonly screen: IssueScreen;
   /** Shows `screen`. Returns it, or null when it is already the current one (nothing changes). */
   go(screen: IssueScreen): IssueScreen | null;
-  /** Goes to `backTarget(screen)`. Returns the new screen, or null on `home`. */
-  back(): IssueScreen | null;
+  /** Goes to `backTarget(screen, origin)`. Returns the new screen, or null on `home`. */
+  back(origin?: DetailOrigin): IssueScreen | null;
   /** Back to `home` (the panel is closed and opens again). */
   reset(): void;
 }
@@ -192,8 +198,8 @@ export function createScreenNavigator(initial: IssueScreen = HOME_SCREEN): Scree
       current = screen;
       return current;
     },
-    back(): IssueScreen | null {
-      const target = backTarget(current);
+    back(origin: DetailOrigin = 'list'): IssueScreen | null {
+      const target = backTarget(current, origin);
       if (target === null) return null;
       current = target;
       return current;
@@ -292,7 +298,7 @@ export function formatScreenLine(screen: IssueScreen): string {
 }
 
 /** Why the panel closed (the `via=` of the `issues panel closed` line, D47 contract). */
-export type IssuePanelCloseVia = 'button' | 'close' | 'report' | 'menu' | 'suspend';
+export type IssuePanelCloseVia = 'button' | 'close' | 'report' | 'menu' | 'suspend' | 'view';
 
 export function formatPanelClosed(via: IssuePanelCloseVia): string {
   return `issues panel closed via=${via}`;
