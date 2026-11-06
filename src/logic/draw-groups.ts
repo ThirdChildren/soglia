@@ -9,9 +9,9 @@
 // two meshes of a model, the outline frame of a piece). So the walker classifies the named object and lets its
 // subtree inherit the group: `classifyGroup` returns `'other'` for "no opinion", and `other` means "inherit".
 
-export type DrawGroup = 'house' | 'furniture' | 'hands' | 'ui' | 'markers' | 'other';
+export type DrawGroup = 'house' | 'furniture' | 'hands' | 'ui' | 'markers' | 'sun' | 'other';
 
-export const DRAW_GROUPS: readonly DrawGroup[] = ['house', 'furniture', 'hands', 'ui', 'markers', 'other'];
+export const DRAW_GROUPS: readonly DrawGroup[] = ['house', 'furniture', 'hands', 'ui', 'markers', 'sun', 'other'];
 
 export type GroupCounts = Record<DrawGroup, number>;
 
@@ -46,6 +46,8 @@ export function classifyGroup(name: string | null | undefined): DrawGroup {
   if (HOUSE_KINDS.has(kind)) return 'house';
   if (kind === 'furniture') return 'furniture';
   if (kind === 'viewpoint' || kind === 'pin') return 'markers';
+  // M5: the dial (`sun:dial`, `sun:marker`) and the patches of light (`light:patches`, `light:<window>`), D55.
+  if (kind === 'sun' || kind === 'light') return 'sun';
   if (kind === 'ui') {
     for (const prefix of MARKER_UI_PREFIXES) {
       if (name.startsWith(prefix)) return 'markers';
@@ -56,7 +58,7 @@ export function classifyGroup(name: string | null | undefined): DrawGroup {
 }
 
 export function emptyGroupCounts(): GroupCounts {
-  return { house: 0, furniture: 0, hands: 0, ui: 0, markers: 0, other: 0 };
+  return { house: 0, furniture: 0, hands: 0, ui: 0, markers: 0, sun: 0, other: 0 };
 }
 
 /** Sets every counter to 0 in place (the debug system reuses one object). */
@@ -75,7 +77,7 @@ function whole(value: number): number {
   return Number.isFinite(value) && value > 0 ? Math.round(value) : 0;
 }
 
-/** `house=24 furniture=14 hands=7 ui=9 markers=0 other=1` (the `[soglia:stats:groups] ` prefix is added by the caller). */
+/** `house=24 furniture=14 hands=7 ui=9 markers=0 sun=2 other=1` (the `[soglia:stats:groups] ` prefix is added by the caller). */
 export function formatGroupsLine(counts: GroupCounts): string {
   return DRAW_GROUPS.map((group) => `${group}=${whole(counts[group])}`).join(' ');
 }

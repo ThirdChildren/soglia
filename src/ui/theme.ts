@@ -30,7 +30,18 @@ export const palette = {
   /** The tape measure (T3.14): amber points over a dark tape, both readable on the light walls and on the dark base. */
   measurePoint: 0xffc400,
   measureTape: 0x1a1a1a,
+  /** The sun dial (T5.4): a light ring on the dark base, a blue north tick, an amber disc. */
+  sunRing: 0xd9d4c7,
+  sunNorth: 0x7fd1ff,
+  sunDisc: 0xffd23f,
+  /** The patches of sunlight on the floors: a warm light yellow, drawn translucent. */
+  sunLight: 0xffe27a,
 } as const;
+
+/** The colours of the model now. M5 (T5.12) makes this follow the contrast preference; for now it is `palette`. */
+export function getPalette(): typeof palette {
+  return palette;
+}
 
 /**
  * Colours of the flat UI panels, as CSS strings (UIKit takes strings, not numbers). Opaque on purpose: a panel must

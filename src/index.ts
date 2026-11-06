@@ -53,6 +53,7 @@ import { installPinchInput } from './systems/pinch-input';
 import { createRoomLabel } from './systems/room-label';
 import { createTabletopButton } from './systems/tabletop-button';
 import { createPins } from './systems/pins';
+import { createSun } from './systems/sun';
 import { createViewpoint } from './systems/viewpoint';
 import { isRealScale } from './systems/view-mode';
 import { createFadeOverlay } from './ui/fade-overlay';
@@ -159,6 +160,8 @@ async function start(): Promise<void> {
     const built = buildHouse(world, result.house, miniature.root);
     // Light anchors for the fixtures of the house (no mesh): the places where an issue can snap (T4.3).
     createFixtureAnchors(world, result.house, built.entity);
+    // The sun (T5.4): the dial around the model and the patches of light on the floors, before the buttons.
+    createSun(world, store, result.house, built.entity);
     // The joints first: pinch input and the palm menu read their sample in the same frame.
     installHandJoints(world, params.pinch);
     installPinchInput(world);
