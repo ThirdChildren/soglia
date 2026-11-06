@@ -305,13 +305,13 @@ export interface ViewInputs {
   readonly largeText?: boolean;
 }
 
-/** The line that says where the sun is: `Sun 14° SE` (altitude rounded down to whole degrees), or that it is below the horizon. */
+/** The line that says where the sun is: `Sun 14° SE` (altitude rounded to the nearest whole degree, like the log reads it), or that it is below the horizon. */
 export function sunSummary(sunTime: string, lat: number, lon: number, texts: Pick<ViewTexts, 'sun' | 'sunDown'>): string {
   const utc = localToUtcMs(sunTime);
   if (utc === null) return texts.sunDown;
   const pos = sunPosition(utc, lat, lon);
   if (!(pos.altitudeDeg > 0)) return texts.sunDown;
-  return texts.sun(Math.max(0, Math.floor(pos.altitudeDeg)), compassName(pos.azimuthDeg));
+  return texts.sun(Math.max(0, Math.round(pos.altitudeDeg)), compassName(pos.azimuthDeg));
 }
 
 /** The model of the panel for `inputs`. */

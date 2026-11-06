@@ -312,8 +312,12 @@ describe('the model of the rows', () => {
     const m = buildViewModel({ ...inputs, contrast: true, largeText: true }, TEXTS);
     expect(m.rows.slice(4).map((r) => r.value)).toEqual(['On', 'Large']);
   });
-  it('says where the sun is: 21 Dec 10:00 is 13 degrees up in the south-east', () => {
-    expect(buildViewModel(inputs, TEXTS).summary).toBe('Sun 13° SE');
+  it('says where the sun is: 21 Dec 10:00 is 13.7 degrees up, written as 14, in the south-east', () => {
+    expect(buildViewModel(inputs, TEXTS).summary).toBe('Sun 14° SE');
+  });
+  it('rounds the altitude to the nearest degree, up as well as down (21 Dec 12:00 is 21.2, 21 Dec 14:00 is 18.3)', () => {
+    expect(buildViewModel({ ...inputs, sunTime: '2026-12-21T12:00' }, TEXTS).summary).toMatch(/^Sun 21° /);
+    expect(buildViewModel({ ...inputs, sunTime: '2026-12-21T14:00' }, TEXTS).summary).toMatch(/^Sun 18° /);
   });
   it('says the sun is below the horizon at night', () => {
     expect(buildViewModel({ ...inputs, sunTime: '2026-12-21T22:00' }, TEXTS).summary).toBe('Sun below the horizon');
