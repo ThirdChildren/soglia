@@ -6,6 +6,8 @@
 // `Drop it in the house`) until the first piece is put down, then `done`. The step is saved (`prefs.coach`). Whoever has already
 // opened the menu starts from `grab`, whoever has pieces in the house starts from `done` (`deserialize` chooses it). The coach also
 // ends by itself, `COACH_TIMEOUT_SECONDS` after its current step began, whatever the user does or does not do, so nobody is nagged.
+// While the Issues or the View panel is open the clock of the step is paused (`coachResumedStart`): somebody who opens a panel out of
+// curiosity in the first seconds finds the coach again, in the same step, when the panel is closed.
 // It is not interactive: it never takes a pinch.
 
 import type { CoachStep, OnboardingStep } from './state';
@@ -36,13 +38,15 @@ export interface CoachInputs {
   readonly presenting: boolean;
   /** The real scale view is on (the model is the room around the head): the coach waits. */
   readonly realScale: boolean;
-  /** A piece is in a hand, or a panel that stands where the coach is (Issues, View) is open: the coach waits (the hand is busy, the text would be over it). */
+  /** A piece is in a hand: the coach waits out of sight (the hand is busy), and its clock keeps running. */
   readonly holding: boolean;
+  /** The Issues or the View panel is open (they stand where the text and the hand are): the coach waits out of sight AND its clock stops. */
+  readonly panelOpen: boolean;
 }
 
 /** True when the hand and the text of `step` are on screen: the first onboarding is over, there is a session and nothing is in the way. */
 export function coachVisible(step: CoachStep, inputs: Readonly<CoachInputs>): boolean {
-  return step !== 'done' && inputs.onboardingStep === 'done' && inputs.presenting && !inputs.realScale && !inputs.holding;
+  return step !== 'done' && inputs.onboardingStep === 'done' && inputs.presenting && !inputs.realScale && !inputs.holding && !inputs.panelOpen;
 }
 
 /**
@@ -52,6 +56,15 @@ export function coachVisible(step: CoachStep, inputs: Readonly<CoachInputs>): bo
 export function coachTimedOut(stepStartedAt: number, now: number): boolean {
   const elapsed = now - stepStartedAt;
   return Number.isFinite(elapsed) && elapsed > COACH_TIMEOUT_SECONDS;
+}
+
+/**
+ * The start of a step whose clock was paused from `pausedAt` to `now` (seconds, one clock): moved forward by the time of the pause, so
+ * the seconds already spent stay spent and the pause adds none. A clock that is not usable, or that went back, leaves it as it was.
+ */
+export function coachResumedStart(stepStartedAt: number, pausedAt: number, now: number): number {
+  const paused = now - pausedAt;
+  return Number.isFinite(paused) && paused > 0 ? stepStartedAt + paused : stepStartedAt;
 }
 
 /** The stable id of the text panel of a step: `ui:coach-menu-button` or `ui:coach-grab` (none for `done`). */

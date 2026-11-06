@@ -6,6 +6,7 @@ import {
   coachNext,
   coachPanelId,
   coachProgress,
+  coachResumedStart,
   coachTimedOut,
   coachVisible,
   formatCoachStep,
@@ -32,7 +33,7 @@ import {
 
 // Task T5.15, decision D60: the coach of the Menu button.
 
-const ready: CoachInputs = { onboardingStep: 'done', presenting: true, realScale: false, holding: false };
+const ready: CoachInputs = { onboardingStep: 'done', presenting: true, realScale: false, holding: false, panelOpen: false };
 const initial = (): AppState => createInitialState({ ...DEFAULT_PARAMS });
 
 describe('the steps of the coach', () => {
@@ -68,6 +69,26 @@ describe('when the coach is on screen', () => {
     expect(coachVisible('menu-button', { ...ready, presenting: false })).toBe(false);
     expect(coachVisible('menu-button', { ...ready, realScale: true })).toBe(false);
     expect(coachVisible('grab', { ...ready, holding: true })).toBe(false);
+    expect(coachVisible('menu-button', { ...ready, panelOpen: true })).toBe(false);
+    expect(coachVisible('grab', { ...ready, panelOpen: true })).toBe(false);
+  });
+
+  it('moves the start of a step forward by the time of a pause, so the coach comes back with the same seconds left', () => {
+    // 5 s spent, a panel open from t = 105 to t = 205: the step has 15 s left at 205, not 0.
+    const resumed = coachResumedStart(100, 105, 205);
+    expect(resumed).toBe(200);
+    expect(coachTimedOut(resumed, 205 + 15)).toBe(false);
+    expect(coachTimedOut(resumed, 205 + 15.001)).toBe(true);
+    // Several pauses add up; no time paused changes nothing.
+    expect(coachResumedStart(coachResumedStart(100, 105, 125), 130, 140)).toBe(130);
+    expect(coachResumedStart(100, 105, 105)).toBe(100);
+  });
+
+  it('leaves the start alone on a clock that is not usable or went back', () => {
+    expect(coachResumedStart(100, 105, 90)).toBe(100);
+    expect(coachResumedStart(100, 105, Number.NaN)).toBe(100);
+    expect(coachResumedStart(100, Number.NaN, 120)).toBe(100);
+    expect(coachResumedStart(Number.NaN, 105, 120)).toBeNaN();
   });
 
   it('runs out strictly after 20 seconds of a step, on any clock, and never on a clock that is not usable', () => {

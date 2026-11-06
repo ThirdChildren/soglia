@@ -16,6 +16,7 @@ import {
   coachNext,
   coachPanelId,
   coachProgress,
+  coachResumedStart,
   coachTimedOut,
   coachVisible,
   formatCoachStep,
@@ -80,6 +81,8 @@ export class CoachSystem extends createSystem({ named: { required: [StableId] } 
   private shownStep: CoachStep = 'done';
   /** When the step that is on began to be on screen (seconds, the clock of `update`), or null before. */
   private startedAt: number | null = null;
+  /** Since when a panel (Issues, View) has been open and the clock of the step is paused, or null. */
+  private pausedAt: number | null = null;
   /** Why the step that is on was reached, for the first line of the log about it. */
   private arrivedBy: CoachReason = 'start';
   /** The step whose first line was written to the log. */
@@ -135,6 +138,7 @@ export class CoachSystem extends createSystem({ named: { required: [StableId] } 
     slog(formatCoachStep(next, event));
     this.arrivedBy = event;
     this.startedAt = null;
+    this.pausedAt = null;
     this.loggedStep = next;
   }
 
@@ -153,25 +157,37 @@ export class CoachSystem extends createSystem({ named: { required: [StableId] } 
       this.dispose();
       return;
     }
+    const panelOpen = isIssuePanelOpen() || isViewPanelOpen();
     const visible = coachVisible(step, {
       onboardingStep: state.prefs.onboardingStep,
       presenting: this.world.renderer.xr.isPresenting,
       realScale: isRealScale() || isViewTransitioning(),
-      // A piece in a hand, or the Issues or View panel open (they stand where the text and the hand are): the coach waits.
-      holding: pinchClaims.anyClaimed('furniture') || isIssuePanelOpen() || isViewPanelOpen(),
+      // A piece in a hand: the coach waits out of sight, the clock runs.
+      holding: pinchClaims.anyClaimed('furniture'),
+      // The Issues or View panel open (they stand where the text and the hand are): the coach waits out of sight, the clock stops.
+      panelOpen,
     });
     if (state.prefs.onboardingStep === 'done' && this.world.renderer.xr.isPresenting && this.world.player.head.position.lengthSq() > 0) {
-      // The twenty seconds count from the first moment the step could be seen, and keep running while it waits for a free hand.
+      // The twenty seconds count from the first moment the step could be seen, and keep running while it waits for a free hand. They
+      // stop while a panel is open: the start of the step moves forward by the time of the pause, so the coach comes back in the same step.
       if (this.startedAt === null) {
         this.startedAt = time;
         if (this.loggedStep !== step) {
           slog(formatCoachStep(step, this.arrivedBy));
           this.loggedStep = step;
         }
-      } else if (coachTimedOut(this.startedAt, time)) {
-        this.handle('timeout');
-        this.dispose();
-        return;
+      } else if (panelOpen) {
+        if (this.pausedAt === null) this.pausedAt = time;
+      } else {
+        if (this.pausedAt !== null) {
+          this.startedAt = coachResumedStart(this.startedAt, this.pausedAt, time);
+          this.pausedAt = null;
+        }
+        if (coachTimedOut(this.startedAt, time)) {
+          this.handle('timeout');
+          this.dispose();
+          return;
+        }
       }
     }
     if (!visible || this.startedAt === null) {
