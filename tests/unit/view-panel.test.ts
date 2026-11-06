@@ -54,9 +54,13 @@ import {
   sunSummary,
   viewControlSlots,
   viewControlStableId,
+  viewStepFor,
   type ViewControlId,
+  type ViewRowId,
   type ViewTexts,
 } from '../../src/logic/view-panel';
+import { DEFAULT_PARAMS } from '../../src/logic/params';
+import { ZOOM_MAX, ZOOM_MIN, createInitialState, reduce, setMiniature, setSunTime, type AppState } from '../../src/logic/state';
 import { strings } from '../../src/ui/strings';
 import { loadJson, repoPath } from '../helpers/load-json';
 
@@ -394,5 +398,76 @@ describe('types', () => {
   it('ViewControlId covers the row ids', () => {
     const id: ViewControlId = 'zoom-more';
     expect(rowOfControl(id)?.row).toBe('zoom');
+  });
+});
+
+describe('viewStepFor (T5.6: the rows act on the store)', () => {
+  const base = () => createInitialState({ ...DEFAULT_PARAMS, house: 'apartment-a', time: '2026-12-21T10:00' });
+  const press = (state: AppState, row: ViewRowId, delta: -1 | 1) => {
+    const step = viewStepFor(state, row, delta);
+    return { step, next: reduce(state, step.action) };
+  };
+
+  it('hour: one hour on, the sun time changes and the value says it', () => {
+    const { step, next } = press(base(), 'hour', 1);
+    expect(next.sunTime).toBe('2026-12-21T11:00');
+    expect(step.value).toBe('11:00');
+    expect(formatViewStep('hour', step.value, step.extra)).toBe('view step row=hour value=11:00');
+  });
+  it('hour wraps 23 -> 00 and 00 -> 23 on the same day', () => {
+    expect(press(reduce(base(), setSunTime('2026-12-21T23:00')), 'hour', 1).next.sunTime).toBe('2026-12-21T00:00');
+    expect(press(reduce(base(), setSunTime('2026-12-21T00:00')), 'hour', -1).next.sunTime).toBe('2026-12-21T23:00');
+  });
+  it('month: Dec + goes to Jan of the same year; Jan - goes to Dec', () => {
+    const { step, next } = press(base(), 'month', 1);
+    expect(next.sunTime).toBe('2026-01-21T10:00');
+    expect(step.value).toBe('Jan');
+    expect(press(next, 'month', -1).next.sunTime).toBe('2026-12-21T10:00');
+  });
+  it('zoom: one rung of the ladder, keeping the yaw and the offset', () => {
+    const start = reduce(base(), setMiniature(0.05, 40));
+    const { step, next } = press(start, 'zoom', 1);
+    expect(next.miniature.scale).toBe(0.065);
+    expect(next.miniature.yawDeg).toBe(40);
+    expect(next.miniature.offset).toEqual(start.miniature.offset);
+    expect(step.value).toBe('130%');
+    expect(formatViewStep('zoom', step.value, step.extra)).toBe('view step row=zoom value=130% scale=0.065');
+  });
+  it('zoom at the end of the ladder changes nothing and says limit=1', () => {
+    const top = reduce(base(), setMiniature(0.12, 0));
+    const { step, next } = press(top, 'zoom', 1);
+    expect(next).toBe(top);
+    expect(step.extra).toBe('scale=0.12 limit=1');
+    const bottom = reduce(base(), setMiniature(0.03, 0));
+    expect(press(bottom, 'zoom', -1).next).toBe(bottom);
+  });
+  it('zoom never leaves the limits of the store, whatever the presses', () => {
+    let s = base();
+    for (let i = 0; i < 30; i++) s = press(s, 'zoom', i % 7 === 6 ? -1 : 1).next;
+    expect(s.miniature.scale).toBeGreaterThanOrEqual(ZOOM_MIN);
+    expect(s.miniature.scale).toBeLessThanOrEqual(ZOOM_MAX);
+  });
+  it('turn: 15 degrees at a time, keeping the scale and the offset; 24 presses are a full turn', () => {
+    const start = reduce(base(), setMiniature(0.065, 0));
+    const { step, next } = press(start, 'turn', 1);
+    expect(next.miniature.yawDeg).toBe(15);
+    expect(next.miniature.scale).toBe(0.065);
+    expect(step.value).toBe('15');
+    expect(formatViewStep('turn', step.value, step.extra)).toBe('view step row=turn value=15');
+    let s = next;
+    for (let i = 0; i < 24; i++) s = press(s, 'turn', 1).next;
+    expect(s.miniature.yawDeg).toBe(15);
+  });
+  it('turn lines up a yaw that came from the two-hand gesture', () => {
+    const s = reduce(base(), setMiniature(0.05, 37.4));
+    expect(press(s, 'turn', 1).next.miniature.yawDeg).toBe(45);
+    expect(press(s, 'turn', -1).next.miniature.yawDeg).toBe(30);
+  });
+  it('the sun rows change nothing but the sun time, the model rows nothing but the model', () => {
+    const s = base();
+    const sun = press(s, 'hour', 1).next;
+    expect(sun.miniature).toBe(s.miniature);
+    const model = press(s, 'turn', 1).next;
+    expect(model.sunTime).toBe(s.sunTime);
   });
 });

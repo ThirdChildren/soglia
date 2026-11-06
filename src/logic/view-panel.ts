@@ -10,9 +10,10 @@
 
 import { MENU_EXTENT, MENU_PANEL, MIN_TEXT_SIZE, type HalfSize, type Offset, type PanelExtent } from './menu';
 import { ISSUE_BAR_BUTTON_WIDTH, ISSUE_BAR_HEIGHT, ISSUE_BODY_BORDER, ISSUE_HEADER_HEIGHT, ISSUE_SECTION_GAP } from './issue-panel';
+import { setMiniature, stepSunTime, type Action, type AppState } from './state';
 import { compassName, localToUtcMs, sunPosition } from './sun';
-import { MONTH_NAMES, hourLabel, monthLabel } from './sun-time';
-import { formatTurn, formatZoom } from './view-steps';
+import { MONTH_NAMES, hourLabel, monthLabel, stepHour, stepMonth } from './sun-time';
+import { formatTurn, formatZoom, stepTurn, stepZoom } from './view-steps';
 
 /** The rows of the panel, top to bottom. T5.11 appends `contrast` and `text`. */
 export const VIEW_ROWS = ['zoom', 'turn', 'month', 'hour'] as const;
@@ -176,6 +177,42 @@ export function buildViewModel(inputs: Readonly<ViewInputs>, texts: ViewTexts): 
 }
 
 export { MONTH_NAMES };
+
+/** What a press on `-` or `+` does (D56): the store action, and the value and extra of its `view step` log line. */
+export interface ViewStep {
+  readonly action: Action;
+  readonly value: string;
+  readonly extra: string;
+}
+
+/**
+ * The step a press on a row makes, from the state before it. `hour` and `month` step the sun time (hour wraps on the same day, month
+ * wraps in the same year), `zoom` goes one rung of the ladder and `turn` 15 degrees. The `value` is what the row will show after it.
+ */
+export function viewStepFor(state: Pick<AppState, 'miniature' | 'sunTime'>, row: ViewRowId, delta: -1 | 1): ViewStep {
+  switch (row) {
+    case 'hour': {
+      const action = stepSunTime('hour', delta);
+      return { action, value: hourLabel(stepHour(state.sunTime, delta)), extra: '' };
+    }
+    case 'month': {
+      const action = stepSunTime('month', delta);
+      return { action, value: monthLabel(stepMonth(state.sunTime, delta)), extra: '' };
+    }
+    case 'zoom': {
+      const scale = stepZoom(state.miniature.scale, delta);
+      return {
+        action: setMiniature(scale, state.miniature.yawDeg),
+        value: formatZoom(scale),
+        extra: `scale=${scale}${scale === state.miniature.scale ? ' limit=1' : ''}`,
+      };
+    }
+    case 'turn': {
+      const yaw = stepTurn(state.miniature.yawDeg, delta);
+      return { action: setMiniature(state.miniature.scale, yaw), value: formatTurn(yaw), extra: '' };
+    }
+  }
+}
 
 // --- Log lines ----------------------------------------------------------------------------------------------------------
 

@@ -25,9 +25,11 @@ import {
   buildViewModel,
   formatViewPanelClosed,
   formatViewPanelOpened,
+  formatViewStep,
   rowOfControl,
   viewControlSlots,
   viewControlStableId,
+  viewStepFor,
   type ViewControlId,
   type ViewPanelCloseVia,
   type ViewRowId,
@@ -253,6 +255,15 @@ export class ViewPanelSystem extends createSystem({}) {
     if (press !== null) this.pressRow(ctx, press.row, press.delta);
   }
 
-  /** A `-` or `+` was pressed. The rows act in T5.6; until then the press only reaches the log. */
-  private pressRow(_ctx: ViewPanelContext, _row: ViewRowId, _delta: -1 | 1): void {}
+  /**
+   * A `-` or `+` was pressed: the row acts on the store (D56, `viewStepFor`). `hour` and `month` step the sun time (the Sun system
+   * redraws the dial and the patches), `zoom` and `turn` set the scale (one rung of the ladder) and the yaw (15 degrees) of the
+   * model, which `index.ts` applies to `miniature:root`. The panel follows the store, so the value on screen is the one that was set.
+   * A step that cannot go on (the end of the ladder) leaves the state as it is and says `limit=1`.
+   */
+  private pressRow(ctx: ViewPanelContext, row: ViewRowId, delta: -1 | 1): void {
+    const step = viewStepFor(ctx.store.get(), row, delta);
+    ctx.store.dispatch(step.action);
+    slog(formatViewStep(row, step.value, step.extra));
+  }
 }

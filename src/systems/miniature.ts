@@ -88,11 +88,18 @@ export function getMiniatureAnchor(out: { x: number; y: number; z: number }): { 
   return out;
 }
 
-/** Puts the model at `anchor + offset` (the height of the anchor) with `scale`. Allocation-free. */
-export function syncMiniature(root: Entity, scale: number, offset: readonly [number, number]): void {
+/**
+ * Puts the model at `anchor + offset` (the height of the anchor) with `scale` and, when given, turned by `yawDeg` about the vertical axis
+ * (the View panel turns the model from the store, T5.6). Allocation-free.
+ */
+export function syncMiniature(root: Entity, scale: number, offset: readonly [number, number], yawDeg?: number): void {
   const object = root.object3D;
   if (!object) return;
   if (Math.abs(object.scale.x - scale) > 1e-6) object.scale.setScalar(scale);
+  if (yawDeg !== undefined && Number.isFinite(yawDeg)) {
+    const yawRad = (yawDeg * Math.PI) / 180;
+    if (Math.abs(object.rotation.y - yawRad) > 1e-6) object.rotation.set(0, yawRad, 0);
+  }
   object.position.set(anchor.x + offset[0], anchor.y, anchor.z + offset[1]);
 }
 

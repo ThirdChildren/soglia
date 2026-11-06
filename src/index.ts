@@ -180,7 +180,7 @@ async function start(): Promise<void> {
       if (state.miniature === appliedMiniature) return;
       appliedMiniature = state.miniature;
       if (isRealScale()) return;
-      syncMiniature(miniature.root, state.miniature.scale, state.miniature.offset);
+      syncMiniature(miniature.root, state.miniature.scale, state.miniature.offset, state.miniature.yawDeg);
     });
     // Without a catalog the house is still usable: no furniture (the menu will say so, T2.12).
     if (merged && catalogResult.ok) {
