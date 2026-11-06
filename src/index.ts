@@ -92,10 +92,10 @@ async function start(): Promise<void> {
   installLocalControllers(world);
   world.registerSystem(ErrorPanelSystem);
   world.registerSystem(PanelDisposalSystem);
-  await loadPanelFonts();
+  // The fonts load alongside the house and the catalog (below); no panel is built before all of them are there.
+  const fontsReady = loadPanelFonts();
   slog('world ready');
   if (params.debug) attachStats(world);
-  if (params.glyphs) showGlyphTest(world);
 
   // `failmy=1` (with `debug=1`): the file of the own pieces is not even requested, as if it failed (D44).
   let myLoad: Promise<LoadMyFurnitureResult>;
@@ -113,7 +113,8 @@ async function start(): Promise<void> {
   } else {
     catalogLoad = loadCatalog();
   }
-  const [result, catalogResult, myResult] = await Promise.all([loadHouse(params.house), catalogLoad, myLoad]);
+  const [result, catalogResult, myResult] = await Promise.all([loadHouse(params.house), catalogLoad, myLoad, fontsReady]);
+  if (params.glyphs) showGlyphTest(world);
   // The catalog the whole app works with: the catalog items plus the user's own pieces (T3.8, D34). A failed load of
   // the own pieces only hides their tab; an own id that the catalog already uses is left out (the catalog wins).
   const merged = catalogResult.ok ? mergeCatalog(catalogResult.items, myResult.ok ? myResult.items : []) : null;

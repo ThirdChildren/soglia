@@ -10,8 +10,12 @@
 /** Asks the toolkit to load the atlas at `url`; `onLoad` is called when it is in the cache (at once if it already is). */
 export type FontLoader = (url: string, onLoad: () => void) => void;
 
-/** How long the start waits for the atlases before it goes on without them (the panels then work as before). */
-export const FONT_PRELOAD_TIMEOUT_MS = 5000;
+/**
+ * How long the start waits for the atlases before it goes on without them (the panels then work as before). The atlases are local
+ * files of a few tens of kB, and the wait runs alongside the loading of the house and the catalog (review warning 7): 1.5 s is
+ * plenty on a good start and is all a slow one may lose.
+ */
+export const FONT_PRELOAD_TIMEOUT_MS = 1500;
 
 /** Which atlases arrived and which did not (a loader that threw counts as not arrived). */
 export interface FontPreloadResult {

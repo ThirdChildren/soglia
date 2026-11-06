@@ -92,9 +92,9 @@ describe('preloadFonts', () => {
     expect(load.mock.calls.map((c) => c[0])).toEqual([A, B]);
   });
 
-  it('has a limit that is a few seconds (a slow device still starts)', () => {
-    expect(FONT_PRELOAD_TIMEOUT_MS).toBeGreaterThanOrEqual(2000);
-    expect(FONT_PRELOAD_TIMEOUT_MS).toBeLessThanOrEqual(10000);
+  it('has a limit of about a second and a half: a slow device still starts quickly (review warning 7)', () => {
+    expect(FONT_PRELOAD_TIMEOUT_MS).toBeGreaterThanOrEqual(1000);
+    expect(FONT_PRELOAD_TIMEOUT_MS).toBeLessThanOrEqual(2000);
   });
 });
 
@@ -117,3 +117,28 @@ describe('the start-up order of the panel font (src/ui/fonts.ts)', () => {
     expect(source).toMatch(/probe\.dispose\(\)/);
   });
 });
+
+describe('the start-up of the app (src/index.ts, review warning 7)', () => {
+  const index = readFileSync(repoPath('src/index.ts'), 'utf8');
+  const fonts = readFileSync(repoPath('src/ui/fonts.ts'), 'utf8');
+
+  it('does not wait for the fonts before it asks for the house and the catalog: they load at the same time', () => {
+    expect(index).not.toMatch(/await loadPanelFonts\(\)/);
+    const started = index.indexOf('const fontsReady = loadPanelFonts()');
+    const house = index.indexOf('loadHouse(params.house)');
+    expect(started).toBeGreaterThan(0);
+    expect(house).toBeGreaterThan(started);
+  });
+
+  it('still waits for the fonts before any panel is built (the glyph test and the house are built after the wait)', () => {
+    const wait = index.indexOf('await Promise.all([loadHouse(params.house), catalogLoad, myLoad, fontsReady])');
+    expect(wait).toBeGreaterThan(0);
+    expect(index.indexOf('showGlyphTest(world)')).toBeGreaterThan(wait);
+    expect(index.indexOf('createPalmMenu(', wait)).toBeGreaterThan(wait);
+  });
+
+  it('checks the two weights at the same time', () => {
+    expect(fonts).toMatch(/Promise\.all\(WEIGHTS\.map/);
+  });
+});
+

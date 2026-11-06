@@ -3,7 +3,8 @@
 // the right arrow and almost-equal (see CREDITS.md, tools/font-gen and assets-src/fonts).
 // The atlases are local files in public/fonts, so nothing is fetched from a CDN.
 //
-// `loadPanelFonts()` runs once at start-up and checks the files. If anything is missing or invalid,
+// `loadPanelFonts()` runs once at start-up, alongside the loading of the house and the catalog (src/index.ts awaits all of them before
+// any panel is built), and checks the files. If anything is missing or invalid,
 // the panels keep UIKit's bundled Inter (ASCII only) and the app logs `[soglia] font fallback`. When the files are good it also
 // loads both atlases into UIKit's font cache BEFORE any panel exists (`font preload ready`): UIKit keeps the font a text had until
 // the new one has arrived, so without this a panel whose text was written before our atlas was loaded laid it out with the bundled
@@ -87,8 +88,10 @@ export async function loadPanelFonts(): Promise<void> {
   try {
     const families: Record<string, string> = {};
     let all = '';
-    for (const weight of WEIGHTS) {
-      const info = await checkWeight(weight.file);
+    // Both weights are checked at the same time (the start-up is a few round trips shorter); the log keeps the weight order.
+    const infos = await Promise.all(WEIGHTS.map((weight) => checkWeight(weight.file)));
+    for (const [index, weight] of WEIGHTS.entries()) {
+      const info = infos[index];
       families[weight.name] = `${baseUrl()}${weight.file}.json`;
       all += info.charset;
       slog(
