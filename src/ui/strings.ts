@@ -105,6 +105,13 @@ export const strings = {
     hints: {
       report: 'Hold a pinch on an appliance or a spot to report an issue.',
       'pick-role': 'Pick Tenant to report an issue or Landlord to manage them.',
+      stage: 'Furnish sets up the house in one pinch. Undo brings it back.',
+      'stage-clear': 'Clear empties the house. Undo brings it back.',
+    },
+    /** The agent's buttons on `home` (T5.10, D57): a whole layout in one gesture, one undo step. */
+    agent: {
+      furnish: 'Furnish',
+      clear: 'Clear',
     },
     /** The categories and the phrases of the form of a new issue (D40): the tables live in src/logic/issue-text.ts, which builds the saved sentence from the same labels. */
     categories: CATEGORY_LABELS,

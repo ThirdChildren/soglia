@@ -60,6 +60,7 @@ import {
 } from '../logic/issue-detail';
 import type { IssueClock } from '../logic/issue-clock';
 import { roomAt } from '../logic/placement-rules';
+import { hasStaging } from '../logic/staging';
 import {
   CONTROL_SLOTS,
   HOME_SCREEN,
@@ -132,6 +133,7 @@ import { strings } from '../ui/strings';
 import { closeOpenMenu, onMenuOpening } from './palm-menu';
 import { panelFontSupports } from '../ui/fonts';
 import { onPinchStart, pinchClaims, pinchPoint, type Hand } from './pinch-input';
+import { runAgentStaging } from './furniture';
 import { pickPinAt, setPinRing } from './pins';
 import { isRealScale, isViewTransitioning } from './view-mode';
 
@@ -352,7 +354,7 @@ export class IssuePanelSystem extends createSystem({}) {
     if (!ctx) return;
     const change = ctx.roles.observe(state.role);
     if (ctx.panel.isOpen) {
-      ctx.panel.setHome({ role: state.role, issueCount: issueCount(state.issues) });
+      ctx.panel.setHome({ role: state.role, issueCount: issueCount(state.issues), staging: hasStaging(ctx.house) });
       // The list follows the issues (a new one, a transition): redrawn in place while it is the screen.
       if (!change && ctx.navigator.screen === 'list' && state.issues !== ctx.listIssues) this.syncList(ctx);
       // The detail follows the issue (a transition, a restore): redrawn in place while it is the screen.
@@ -402,7 +404,7 @@ export class IssuePanelSystem extends createSystem({}) {
     closeOpenMenu();
     ctx.navigator.reset();
     const state = ctx.store.get();
-    ctx.panel.setHome({ role: state.role, issueCount: issueCount(state.issues) });
+    ctx.panel.setHome({ role: state.role, issueCount: issueCount(state.issues), staging: hasStaging(ctx.house) });
     ctx.panel.open(this.world.player.head, HOME_SCREEN);
     slog(formatPanelOpened(hand));
     slog(formatScreenLine(HOME_SCREEN));
@@ -684,7 +686,7 @@ export class IssuePanelSystem extends createSystem({}) {
     if (screen === 'list' && ctx.listModel) return listSlots(ctx.listModel);
     if (screen === 'detail' && ctx.detailModel) return detailSlots(ctx.detailModel);
     if (screen === 'movein' && ctx.moveInModel) return moveInSlots(ctx.moveInModel);
-    return screenControls(screen, ctx.store.get().role).map((id) => CONTROL_SLOTS[id]);
+    return screenControls(screen, ctx.store.get().role, hasStaging(ctx.house)).map((id) => CONTROL_SLOTS[id]);
   }
 
   /** Makes the anchors of the controls of the current screen and puts them (and their pick slots) in the plane of the panel. */
@@ -812,6 +814,10 @@ export class IssuePanelSystem extends createSystem({}) {
       if (target !== 'list') slog(formatScreenLine(target));
       return;
     }
+    if (hit.id === 'agent-furnish' || hit.id === 'agent-clear') {
+      this.pressStage(hit.id === 'agent-furnish' ? 'furnish' : 'clear');
+      return;
+    }
     if (hit.id === 'open-list') {
       this.show('list');
       return;
@@ -828,6 +834,14 @@ export class IssuePanelSystem extends createSystem({}) {
     slog(formatRoleChanged({ from, to: role }, 'ui'));
     slog(formatRoleSet(role, 'panel'));
     ctx.store.dispatch(setRole(role));
+  }
+
+  /**
+   * `Furnish` or `Clear` (T5.10): the whole layout in one gesture, one undo step. The panel closes so the house can be seen;
+   * a refusal (logged by `runAgentStaging`) leaves it open.
+   */
+  private pressStage(action: 'furnish' | 'clear'): void {
+    if (runAgentStaging(action).ok) this.close('stage');
   }
 
   /**

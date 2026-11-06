@@ -140,8 +140,11 @@ export function pickRestorable(saved: string, ctx: RestoreContext): Restorable |
 
   const history: FurnitureSnapshot[] = [];
   for (const step of state.history) {
-    const catalogId = PIECE_ID_CATALOG.exec(step.id)?.[1];
-    if (droppedIds.has(step.id) || catalogId === undefined || !ctx.catalogIds.has(catalogId)) continue;
+    // A `stage` step (the agent's Furnish / Clear) is named by its label, not by a piece: it stays, with the pieces it holds checked.
+    if (step.action !== 'stage') {
+      const catalogId = PIECE_ID_CATALOG.exec(step.id)?.[1];
+      if (droppedIds.has(step.id) || catalogId === undefined || !ctx.catalogIds.has(catalogId)) continue;
+    }
     history.push({
       action: step.action,
       id: step.id,

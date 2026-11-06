@@ -16,6 +16,7 @@ import {
   backVisible,
   homeActions,
   homeHint,
+  homeSlotIds,
   type HomeActionId,
   type IssueScreen,
 } from '../logic/issue-panel';
@@ -61,7 +62,8 @@ const NOTE_ELEMENT = 'issue-panel-note';
 /** The active chip is drawn dark with light text, the others light with dark text (the same look as the active tab of the menu). */
 const CHIP_ACTIVE = { backgroundColor: '#1a1a1a', color: '#ffffff' } as const;
 const CHIP_IDLE = { backgroundColor: uiColors.surface, color: uiColors.ink } as const;
-const HOME_ACTION_IDS: readonly HomeActionId[] = ['open-list', 'open-movein'];
+/** The two boxes of the row of buttons of `home`, left and right: the layout calls them after the buttons of the roles that see issues. */
+const HOME_ACTION_ELEMENTS: readonly string[] = ['open-list', 'open-movein'];
 const NEW_ELEMENT = 'issue-panel-new';
 const CONTEXT_ELEMENT = 'issue-panel-context';
 const URGENCY_ROW_ELEMENT = 'issue-panel-urg';
@@ -101,6 +103,8 @@ interface UiDocument {
 export interface HomeModel {
   readonly role: Role;
   readonly issueCount: number;
+  /** The house has a staging preset: the agent's `Furnish` exists (T5.10). */
+  readonly staging: boolean;
 }
 
 interface ChipElements {
@@ -226,8 +230,9 @@ export class IssuePanel {
   private readonly urgencies = new Map<string, ChipElements>();
   private form: IssueForm | null = null;
   private readonly chips = new Map<Role, ChipElements>();
-  private readonly actions = new Map<HomeActionId, ChipElements>();
-  private homeModel: HomeModel = { role: 'visitor', issueCount: 0 };
+  /** The left and the right box of the row of buttons of `home`. */
+  private readonly actions: ChipElements[] = [];
+  private homeModel: HomeModel = { role: 'visitor', issueCount: 0, staging: false };
   private readonly headPosition = new Vector3();
   private readonly headForward = new Vector3();
   private readonly headQuaternion = new Quaternion();
@@ -322,7 +327,7 @@ export class IssuePanel {
     this.urgencies.clear();
     this.form = null;
     this.chips.clear();
-    this.actions.clear();
+    this.actions.length = 0;
   }
 
   /** The form of a new issue that the `new` screen shows (null: none). Written in place; kept until the layout is loaded. */
@@ -522,8 +527,8 @@ export class IssuePanel {
       if (!HOME_ROLES.includes(role)) box?.setProperties({ display: 'none' });
       else this.chips.set(role, { box, label });
     }
-    for (const id of HOME_ACTION_IDS) {
-      this.actions.set(id, {
+    for (const id of HOME_ACTION_ELEMENTS) {
+      this.actions.push({
         box: doc.getElementById<UIKit.Container>(`issue-panel-${id}`),
         label: doc.getElementById<UIKit.Text>(`issue-panel-${id}-label`),
       });
@@ -582,19 +587,35 @@ export class IssuePanel {
       else this.note?.setProperties({ text: detail.missingText });
       return;
     }
-    const { role, issueCount } = this.homeModel;
+    const { role, issueCount, staging } = this.homeModel;
     for (const [chipRole, chip] of this.chips) {
       const look = chipRole === role ? CHIP_ACTIVE : CHIP_IDLE;
       chip.box?.setProperties({ backgroundColor: look.backgroundColor });
       chip.label?.setProperties({ color: look.color });
     }
-    const hint = homeHint(role);
+    const hint = homeHint(role, staging);
     this.hint?.setProperties({ text: hint ? strings.issues.hints[hint] : '' });
-    const shown = homeActions(role);
-    for (const [id, action] of this.actions) {
+    const shown = homeActions(role, staging);
+    const slots = homeSlotIds(role);
+    for (let i = 0; i < this.actions.length; i += 1) {
+      const action = this.actions[i];
+      const id = slots[i];
       // A button the role does not have keeps its place and is not drawn (the other one does not move).
       action.box?.setProperties({ opacity: shown.includes(id) ? undefined : 0 });
-      action.label?.setProperties({ text: id === 'open-list' ? strings.issues.openList(issueCount) : strings.issues.openMoveIn });
+      action.label?.setProperties({ text: this.homeActionText(id, issueCount) });
+    }
+  }
+
+  private homeActionText(id: HomeActionId, issueCount: number): string {
+    switch (id) {
+      case 'open-list':
+        return strings.issues.openList(issueCount);
+      case 'open-movein':
+        return strings.issues.openMoveIn;
+      case 'agent-furnish':
+        return strings.issues.agent.furnish;
+      case 'agent-clear':
+        return strings.issues.agent.clear;
     }
   }
 

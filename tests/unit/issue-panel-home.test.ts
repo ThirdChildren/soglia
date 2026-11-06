@@ -19,6 +19,7 @@ import {
   ISSUE_PANEL_EXTENT,
   ISSUE_SECTION_GAP,
   controlStableId,
+  homeSlotIds,
   createRoleObserver,
   formatRoleChanged,
   formatRoleSet,
@@ -62,11 +63,36 @@ describe('the controls of home for each role', () => {
     expect(homeControls('agent')).toEqual([...chips, 'close']);
   });
 
-  it('the visitor and the agent have the chips and Close, nothing else', () => {
-    for (const role of ['visitor', 'agent'] as const) {
-      expect(homeControls(role), role).toEqual([...chips, 'close']);
-      expect(homeActions(role), role).toEqual([]);
+  it('the visitor has the chips and Close, nothing else', () => {
+    expect(homeControls('visitor')).toEqual([...chips, 'close']);
+    expect(homeActions('visitor')).toEqual([]);
+    expect(homeActions('visitor', true)).toEqual([]);
+  });
+
+  it('the agent has Furnish only in a house with staging, and Clear always (no dead button, T5.10)', () => {
+    expect(homeActions('agent', true)).toEqual(['agent-furnish', 'agent-clear']);
+    expect(homeActions('agent', false)).toEqual(['agent-clear']);
+    expect(homeControls('agent', true)).toEqual([...chips, 'agent-furnish', 'agent-clear', 'close']);
+    expect(homeControls('agent', false)).toEqual([...chips, 'agent-clear', 'close']);
+    expect(screenControls('home', 'agent', true)).toEqual(homeControls('agent', true));
+    // Nobody else may stage, whatever the house has.
+    for (const role of ['visitor', 'tenant', 'landlord'] as const) {
+      expect(homeActions(role, true), role).not.toContain('agent-furnish');
+      expect(homeActions(role, true), role).not.toContain('agent-clear');
     }
+  });
+
+  it('the buttons of the agent take the two places of the row and keep them (Clear stays on the right without Furnish)', () => {
+    expect(homeSlotIds('agent')).toEqual(['agent-furnish', 'agent-clear']);
+    for (const role of ['visitor', 'tenant', 'landlord'] as const) expect(homeSlotIds(role)).toEqual(['open-list', 'open-movein']);
+    expect(CONTROL_SLOTS['agent-furnish']).toEqual({ ...CONTROL_SLOTS['open-list'], id: 'agent-furnish' });
+    expect(CONTROL_SLOTS['agent-clear']).toEqual({ ...CONTROL_SLOTS['open-movein'], id: 'agent-clear' });
+  });
+
+  it('names the buttons of the agent ui:agent-furnish and ui:agent-clear', () => {
+    expect(controlStableId('agent-furnish')).toBe('ui:agent-furnish');
+    expect(controlStableId('agent-clear')).toBe('ui:agent-clear');
+    expect(controlStableId('open-list')).toBe('ui:issue-open-list');
   });
 
   it('the tenant and the landlord have the chips, the list, the move-in report and Close', () => {
@@ -122,10 +148,11 @@ describe('the controls of home for each role', () => {
 });
 
 describe('the hint of home', () => {
-  it('the tenant is told how to report, the visitor to pick a role, the agent and the landlord nothing (no "coming soon")', () => {
+  it('the tenant is told how to report, the visitor to pick a role, the agent what its buttons do, the landlord nothing', () => {
     expect(homeHint('tenant')).toBe('report');
     expect(homeHint('visitor')).toBe('pick-role');
-    expect(homeHint('agent')).toBeNull();
+    expect(homeHint('agent', true)).toBe('stage');
+    expect(homeHint('agent', false)).toBe('stage-clear');
     expect(homeHint('landlord')).toBeNull();
   });
 
@@ -212,11 +239,14 @@ describe('the slots of home', () => {
       for (const id of Object.keys(CONTROL_SLOTS) as StaticControlId[]) {
         const hit = pickRect({ x: CONTROL_SLOTS[id].dx, y: CONTROL_SLOTS[id].dy, z: 0 }, slots, frame);
         if (screenControls('home', role).includes(id)) expect(hit?.id, `${role} ${id}`).toBe(id);
-        else if (id !== 'back') expect(hit, `${role} ${id}`).toBeNull();
+        // The two buttons of the agent share the places of Issues and Move-in report: another role's button may sit there.
+        else if (id !== 'back' && !BUTTON_PLACES.includes(id)) expect(hit, `${role} ${id}`).toBeNull();
       }
     }
   });
 });
+
+const BUTTON_PLACES: readonly StaticControlId[] = ['open-list', 'open-movein', 'agent-furnish', 'agent-clear'];
 
 describe('the layout file says the same as the slots', () => {
   const source = readText('public', 'ui', 'issue-panel.uikitml');

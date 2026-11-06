@@ -34,7 +34,8 @@ export const DEFAULT_SUN_TIME = '2026-12-21T10:00';
 /** Undo keeps this many furniture states (D17). */
 export const HISTORY_LIMIT = 20;
 
-export type FurnitureAction = 'place' | 'move' | 'remove';
+/** `stage` is a whole layout set at once by the agent (Furnish / Clear, T5.10): one undo step for all of it. */
+export type FurnitureAction = 'place' | 'move' | 'remove' | 'stage';
 
 /** The furniture BEFORE an undoable action, with what that action was (used by `undo` and its log line). */
 export interface FurnitureSnapshot {
@@ -174,6 +175,7 @@ export type Action =
   | { readonly type: 'removeFurniture'; readonly id: string }
   | { readonly type: 'undo' }
   | { readonly type: 'setFurniture'; readonly pieces: readonly PlacedPiece[] }
+  | { readonly type: 'stageFurniture'; readonly pieces: readonly PlacedPiece[]; readonly label: string }
   | {
       readonly type: 'restoreSaved';
       readonly furniture: readonly PlacedPiece[];
@@ -290,6 +292,15 @@ export function undo(): Action {
 /** Replaces all furniture (a staging preset). Writes no history. Invalid or duplicate pieces are dropped. */
 export function setFurniture(pieces: readonly PlacedPiece[]): Action {
   return { type: 'setFurniture', pieces };
+}
+/**
+ * Replaces all furniture with `pieces` as ONE undoable step (the agent's Furnish and Clear, T5.10, D57): the history gets an entry
+ * `stage` named `label` that holds the furniture from before, so Undo brings it all back at once. Invalid or duplicate pieces are
+ * dropped, at most MAX_PIECES. Instance counters never go down (a piece id is not handed out twice). Nothing happens, and no history
+ * entry is written, when both the old and the new furniture are empty or `label` is empty.
+ */
+export function stageFurniture(pieces: readonly PlacedPiece[], label: string): Action {
+  return { type: 'stageFurniture', pieces, label };
 }
 /**
  * Puts back the saved part of a state (D29, D44): furniture, instance counters, undo history, the preferences and,
@@ -662,6 +673,17 @@ export function reduce(state: AppState, action: Action): AppState {
       if (furniture.length === 0 && state.furniture.length === 0 && nextInstance === state.nextInstance) return state;
       return { ...state, furniture, nextInstance };
     }
+    case 'stageFurniture': {
+      if (!Array.isArray(action.pieces) || typeof action.label !== 'string' || action.label.length === 0) return state;
+      const furniture = sanitizePieces(action.pieces);
+      if (furniture.length === 0 && state.furniture.length === 0) return state;
+      return {
+        ...state,
+        furniture,
+        nextInstance: withInstancesOf(state.nextInstance, furniture),
+        history: pushHistory(state.history, { action: 'stage', id: action.label, furniture: state.furniture }),
+      };
+    }
     case 'restoreSaved': {
       const { prefs } = action;
       if (!Array.isArray(action.furniture) || !Array.isArray(action.history)) return state;
@@ -834,7 +856,7 @@ export function deserializeWithReport(
     for (const entry of data.history) {
       if (
         !isRecord(entry) ||
-        !(entry.action === 'place' || entry.action === 'move' || entry.action === 'remove') ||
+        !(entry.action === 'place' || entry.action === 'move' || entry.action === 'remove' || entry.action === 'stage') ||
         typeof entry.id !== 'string' ||
         !Array.isArray(entry.furniture)
       ) {
