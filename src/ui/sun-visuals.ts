@@ -61,7 +61,8 @@ function fillColor(array: Float32Array, start: number, count: number, hex: numbe
 export function createSunDial(centre: Point2, northAngleDeg: number, ringRadius: number): SunDialMesh {
   const ring = ringTriangles(centre, ringRadius, DIAL_RING_WIDTH, DIAL_RING_SEGMENTS, DIAL_RING_Y);
   const tick = northTickTriangle(centre, northAngleDeg, ringRadius, DIAL_RING_Y);
-  const template = new IcosahedronGeometry(1, 0).toNonIndexed();
+  // An icosahedron is already non-indexed (one triangle after another), so no conversion: toNonIndexed() only warned.
+  const template = new IcosahedronGeometry(1, 0);
   const unit = template.getAttribute('position').array as Float32Array;
   const ringVerts = ring.length / 3;
   const tickVerts = tick.length / 3;
