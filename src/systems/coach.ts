@@ -35,8 +35,10 @@ import { GhostHand } from '../ui/ghost-hand';
 import { strings } from '../ui/strings';
 import { isLargeText, LARGE_TEXT_FACTOR } from '../ui/theme';
 import { onFurnitureReleased } from './furniture-grab';
+import { isIssuePanelOpen } from './issue-panel';
 import { pinchClaims } from './pinch-input';
 import { isRealScale, isViewTransitioning } from './view-mode';
+import { isViewPanelOpen } from './view-panel';
 
 /** The text of the Menu step hangs this far under the button, metres (the QA wants it within 0.15 m of the button). */
 const TEXT_BELOW = 0.07;
@@ -155,7 +157,8 @@ export class CoachSystem extends createSystem({ named: { required: [StableId] } 
       onboardingStep: state.prefs.onboardingStep,
       presenting: this.world.renderer.xr.isPresenting,
       realScale: isRealScale() || isViewTransitioning(),
-      holding: pinchClaims.anyClaimed('furniture'),
+      // A piece in a hand, or the Issues or View panel open (they stand where the text and the hand are): the coach waits.
+      holding: pinchClaims.anyClaimed('furniture') || isIssuePanelOpen() || isViewPanelOpen(),
     });
     if (state.prefs.onboardingStep === 'done' && this.world.renderer.xr.isPresenting && this.world.player.head.position.lengthSq() > 0) {
       // The twenty seconds count from the first moment the step could be seen, and keep running while it waits for a free hand.

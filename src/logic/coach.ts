@@ -36,7 +36,7 @@ export interface CoachInputs {
   readonly presenting: boolean;
   /** The real scale view is on (the model is the room around the head): the coach waits. */
   readonly realScale: boolean;
-  /** A piece is in a hand: the coach waits (the hand is busy, the text would be over it). */
+  /** A piece is in a hand, or a panel that stands where the coach is (Issues, View) is open: the coach waits (the hand is busy, the text would be over it). */
   readonly holding: boolean;
 }
 
