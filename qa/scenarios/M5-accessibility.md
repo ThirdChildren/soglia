@@ -1,6 +1,7 @@
 # S5.6 · Alto contrasto e testo grande
 
 > **Changelog 2026-11-06**: scenario creato dal piano M5 (D58; T5.11–T5.13, T5.16 opzionale).
+> **Changelog 2026-11-06 (esiti di T5.1–T5.7)**: il pannello View ha oggi **4 righe** (`Zoom`, `Turn`, `Month`, `Hour`); le righe `Contrast` (`ui:view-contrast`) e `Text` (`ui:view-text`) arrivano con T5.11 e **questo scenario non si esegue prima**. Il pannello View si chiude da solo quando si apre il menu o il pannello Issues: al passo 2 e 3 riaprirlo dopo ogni verifica degli altri pannelli. Le righe `−`/`+` del pannello sono da 3,3 cm: usare la calibrazione IWER della sorgente `joints` (mano a `T + (0; 0,0245; 0,012)`, `pinch=auto`; il punto reale è nel log `[soglia:hands] … event=pinch-start point=`); per i pulsanti 8 × 6 cm basta anche `T − D_GRIP`. Se il layout a testo grande o le righe cambiano durante la sessione, la pagina si ricarica e la sessione XR va ripresa.
 
 **Milestone**: M5 · **Tipo**: PC (emulatore IWER via MCP `iwsdk-runtime`) · **Regole di `CLAUDE.md`**: 8 (campo visivo), 9 (accessibilità)
 Prerequisiti di implementazione: T5.11–T5.13. Il menu v2 a testo grande richiede T5.16: senza, vale la verifica 7 "B". Convenzioni: `qa/scenarios/M4-issue-create.md`.

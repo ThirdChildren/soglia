@@ -2,6 +2,8 @@
 
 > **Changelog 2026-11-06**: scenario creato dal piano M5 (ROADMAP S5.5). Il "meno di 10 minuti" del primo ROADMAP vale per una persona sul visore: **il tempo di orologio non è un criterio PC** (ogni chiamata MCP costa 0,5–3 s). Il criterio PC è: percorso completo, zero errori, e un conteggio di pizzichi.
 
+> **Changelog 2026-11-06 (esiti di T5.1–T5.7)**: passo 6 allineato ai golden del sole (alle 15:00 del 21 dic in A non ci sono chiazze); vedi `qa/scenarios/M5-sun.md`.
+
 **Milestone**: M5 · **Tipo**: PC (emulatore IWER via MCP `iwsdk-runtime`) · **Regole di `CLAUDE.md`**: tutte le non negoziabili (1, 2, 4, 5, 7, 8, 9, 10) · Vedi `docs/plans/M5.md`. Si esegue **per ultimo** (dopo S5.1–S5.9). Convenzioni: `qa/scenarios/M4-issue-create.md`.
 
 ## Precondizioni
@@ -15,7 +17,7 @@
 3. I propri mobili: scheda `Mine`, `my-sofa` verso il soggiorno: `Won't fit: the door is 80 cm wide, the sofa's shortest side is 85 cm` (S3.3); in B la stessa prova passa (S3.4: ricarica con `house=apartment-b`, **un solo** cambio di casa nell'intero percorso, passo 3b).
 4. Misura: finestra dello studio 140 cm (S3.2).
 5. Punto di vista V1: entrare, vedere le chiazze sul pavimento (S5.1 passo 7), tornare con "Tabletop".
-6. Sole: pannello "View", 10:00 → 15:00 (5 pressioni), soggiorno in ombra e studio al sole; mese a giugno.
+6. Sole: pannello "View", 10:00 → 15:00 (5 pressioni), soggiorno al sole alle 10:00 (2,3 m²) e **nessuna chiazza** alle 15:00 (correzione 2026-11-06: lo studio non è al sole alle 15:00); mese a giugno e ore 18:00 (studio al sole, 1,16 m²). Il pannello View ha 4 righe prima di T5.11 (poi 6) e si chiude da solo se si apre un altro pannello.
 **Atto 2 · Presentare (agente)**
 7. Pannello Issues → `Agent`: `Clear`, `Furnish` (14 pezzi), Undo; un punto informativo (`pin:info-001`) con "Sample data".
 **Atto 3 · Vivere (inquilino → proprietario → inquilino)**
