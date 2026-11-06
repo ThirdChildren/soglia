@@ -2,22 +2,39 @@ import { describe, expect, it } from 'vitest';
 import type { CatalogItem } from '../../src/logic/catalog';
 import { furnitureItems } from '../../src/logic/catalog';
 import {
+  BAR_GAP,
+  BAR_HEIGHT,
+  BUTTON_WIDTH,
   BUTTONS,
   PAGE_SIZE,
-  BUTTON_HALF,
-  BUTTON_PANEL,
+  BUTTON_HALVES,
   BUTTON_SLOTS,
+  GRID_COLUMNS,
+  GRID_ROWS,
+  HEADER_HEIGHT,
   ITEM_HALF,
   ITEM_PANEL,
   ITEM_SLOTS,
+  MENU_EXTENT,
+  MENU_TABS,
+  MENU_WIDTH,
   PICK_DEPTH,
+  TAB_WIDTH,
   TITLE_OFFSET,
+  barButtons,
   clampPage,
   formatPageLine,
+  formatTabLine,
+  menuTabs,
   pageCount,
   pageItems,
   pickRect,
+  tabPieces,
+  tabRowVisible,
+  tabSlots,
   turnPage,
+  validTab,
+  type MenuTabId,
 } from '../../src/logic/menu';
 import { loadJson } from '../helpers/load-json';
 
@@ -112,30 +129,140 @@ describe('layout', () => {
 describe('panel sizes', () => {
   const gap = (a: number, b: number): number => Math.abs(a - b);
 
+  it('has a grid of two columns and three rows that holds one page', () => {
+    expect(GRID_COLUMNS * GRID_ROWS).toBe(PAGE_SIZE);
+    expect(new Set(ITEM_SLOTS.map((slot) => slot.dx)).size).toBe(GRID_COLUMNS);
+    expect(new Set(ITEM_SLOTS.map((slot) => slot.dy)).size).toBe(GRID_ROWS);
+  });
+
   it('keeps the item panels from touching: sideways and up and down', () => {
     expect(ITEM_PANEL.width / 100).toBeLessThan(gap(ITEM_SLOTS[0].dx, ITEM_SLOTS[1].dx));
-    expect(ITEM_PANEL.height / 100).toBeLessThan(gap(ITEM_SLOTS[0].dy, ITEM_SLOTS[3].dy));
+    expect(ITEM_PANEL.height / 100).toBeLessThan(gap(ITEM_SLOTS[0].dy, ITEM_SLOTS[2].dy));
+    expect(ITEM_PANEL.height / 100).toBeLessThan(gap(ITEM_SLOTS[2].dy, ITEM_SLOTS[4].dy));
   });
 
   it('keeps the bar buttons from touching each other and the item rows', () => {
-    expect(BUTTON_PANEL.width / 100).toBeLessThan(gap(BUTTON_SLOTS[0].dx, BUTTON_SLOTS[1].dx));
-    const barTop = BUTTON_SLOTS[0].dy + BUTTON_PANEL.height / 200;
-    const lowRowBottom = ITEM_SLOTS[3].dy - ITEM_PANEL.height / 200;
+    for (let i = 0; i + 1 < BUTTONS.length; i += 1) {
+      const right = BUTTON_SLOTS[i].dx + BUTTON_HALVES[BUTTONS[i]].halfWidth;
+      const nextLeft = BUTTON_SLOTS[i + 1].dx - BUTTON_HALVES[BUTTONS[i + 1]].halfWidth;
+      expect(nextLeft - right).toBeCloseTo(BAR_GAP / 100, 9);
+    }
+    const barTop = BUTTON_SLOTS[0].dy + BUTTON_HALVES.undo.halfHeight;
+    const lowRowBottom = ITEM_SLOTS[4].dy - ITEM_PANEL.height / 200;
     expect(barTop).toBeLessThan(lowRowBottom);
+  });
+
+  it('puts the header above the top row and fills the width of the menu with the bar and with the four tabs', () => {
+    expect(TITLE_OFFSET.dy - HEADER_HEIGHT / 200).toBeGreaterThan(ITEM_SLOTS[0].dy + ITEM_PANEL.height / 200);
+    const bar = BUTTONS.reduce((sum, b) => sum + BUTTON_HALVES[b].halfWidth * 200, 0) + BAR_GAP * (BUTTONS.length - 1);
+    expect(bar).toBeCloseTo(MENU_WIDTH, 9);
+    const tabs = MENU_TABS.reduce((sum, t) => sum + TAB_WIDTH[t], 0) + BAR_GAP * (MENU_TABS.length - 1);
+    expect(tabs).toBeCloseTo(MENU_WIDTH, 9);
+    expect(MENU_EXTENT.halfWidth * 200).toBeCloseTo(MENU_WIDTH, 9);
+  });
+});
+
+describe('tabs (D37)', () => {
+  const none = { items: 0, mine: 0, fit: 0, measure: 0 };
+
+  it('shows only the tabs that have data, in the fixed order', () => {
+    expect(menuTabs({ ...none, items: 14 })).toEqual(['items']);
+    expect(menuTabs({ items: 14, mine: 3, fit: 2, measure: 1 })).toEqual(['items', 'mine', 'fit', 'measure']);
+    expect(menuTabs({ items: 14, mine: 0, fit: 2, measure: 0 })).toEqual(['items', 'fit']);
+    expect(menuTabs({ ...none, mine: 3, measure: 1 })).toEqual(['mine', 'measure']);
+    expect(menuTabs(none)).toEqual([]);
+  });
+
+  it('draws the tab row only when there is a choice (two tabs or more)', () => {
+    expect(tabRowVisible([])).toBe(false);
+    expect(tabRowVisible(['items'])).toBe(false);
+    expect(tabRowVisible(['items', 'mine'])).toBe(true);
+  });
+
+  it('falls back to the first tab that exists when the open one loses its data', () => {
+    expect(validTab('mine', ['items', 'fit'])).toBe('items');
+    expect(validTab('fit', ['items', 'fit'])).toBe('fit');
+    expect(validTab('items', [])).toBe('items');
+    expect(validTab('items', ['mine', 'fit'])).toBe('mine');
+  });
+
+  it('lists the pieces of each tab and none for the tape measure', () => {
+    const content = { items: ['a', 'b'], mine: ['x'], fit: ['w', 's'] };
+    expect(tabPieces(content, 'items')).toEqual(['a', 'b']);
+    expect(tabPieces(content, 'mine')).toEqual(['x']);
+    expect(tabPieces(content, 'fit')).toEqual(['w', 's']);
+    expect(tabPieces(content, 'measure')).toEqual([]);
+  });
+
+  it('pages each tab on its own: 14 pieces are 3 pages, 3 and 2 pieces are one page', () => {
+    const mine = ['my-sofa', 'my-desk', 'my-bed'];
+    const fit = ['wheelchair', 'stroller'];
+    expect(pageCount(catalog.length)).toBe(3);
+    expect(pageCount(mine.length)).toBe(1);
+    expect(pageCount(fit.length)).toBe(1);
+    expect(pageItems(mine, 0)).toEqual(mine);
+    expect(pageItems(mine, 5)).toEqual(mine);
+    expect(pageItems(fit, 0)).toEqual(fit);
+    expect(pageItems([] as string[], 0)).toEqual([]);
+  });
+
+  it('writes the log lines: the line of M2 for items, the tab named for the others', () => {
+    expect(formatPageLine(1, 14, ['coffee-table', 'desk'], 'items')).toBe('menu page 2/3 items=coffee-table,desk');
+    expect(formatPageLine(0, 3, ['my-sofa', 'my-desk', 'my-bed'], 'mine')).toBe('menu page 1/1 tab=mine items=my-sofa,my-desk,my-bed');
+    expect(formatPageLine(0, 2, ['wheelchair', 'stroller'], 'fit')).toBe('menu page 1/1 tab=fit items=wheelchair,stroller');
+    expect(formatTabLine('measure')).toBe('menu tab measure');
+    for (const tab of MENU_TABS) expect(formatTabLine(tab)).toBe(`menu tab ${tab}`);
+  });
+
+  it('places the four tabs side by side, centred, each as wide as its label needs', () => {
+    const slots = tabSlots(['items', 'mine', 'fit', 'measure']);
+    expect(slots.map((s) => s.tab)).toEqual(['items', 'mine', 'fit', 'measure']);
+    expect(slots[0].dx - slots[0].halfWidth).toBeCloseTo(-MENU_EXTENT.halfWidth, 9);
+    expect(slots[3].dx + slots[3].halfWidth).toBeCloseTo(MENU_EXTENT.halfWidth, 9);
+    for (let i = 0; i + 1 < slots.length; i += 1) {
+      expect(slots[i + 1].dx - slots[i + 1].halfWidth - (slots[i].dx + slots[i].halfWidth)).toBeCloseTo(BAR_GAP / 100, 9);
+    }
+    for (const slot of slots) {
+      expect(slot.halfWidth * 200).toBeCloseTo(TAB_WIDTH[slot.tab], 9);
+      expect(slot.dy).toBeCloseTo(TITLE_OFFSET.dy, 12);
+    }
+  });
+
+  it('centres two or three tabs on the menu', () => {
+    for (const visible of [['items', 'fit'], ['items', 'mine', 'measure'], ['mine', 'fit']] as MenuTabId[][]) {
+      const slots = tabSlots(visible);
+      const left = slots[0].dx - slots[0].halfWidth;
+      const right = slots[slots.length - 1].dx + slots[slots.length - 1].halfWidth;
+      expect(left + right).toBeCloseTo(0, 9);
+    }
+    expect(tabSlots([])).toEqual([]);
+  });
+
+  it('keeps every tab at least 6 cm wide to pinch and the centres of neighbours at least 6 cm apart', () => {
+    for (const tab of MENU_TABS) expect(TAB_WIDTH[tab]).toBeGreaterThanOrEqual(6);
+    const slots = tabSlots([...MENU_TABS]);
+    for (let i = 0; i + 1 < slots.length; i += 1) expect(slots[i + 1].dx - slots[i].dx).toBeGreaterThanOrEqual(0.06);
+  });
+
+  it('has the fourth button of the bar as Recenter on the tabletop model and Tabletop at real scale', () => {
+    expect(barButtons(false)).toEqual(['undo', 'prev', 'next', 'recenter']);
+    expect(barButtons(true)).toEqual(['undo', 'prev', 'next', 'tabletop']);
+    expect(BUTTON_HALVES.tabletop).toEqual(BUTTON_HALVES.recenter);
   });
 });
 
 describe('pickRect (a control is its real rectangle, not a circle)', () => {
   const IDENTITY = { x: 0, y: 0, z: 0, w: 1 };
   const item = (id: string, x: number, y: number, z = 0) => ({ id, x, y, z, ...ITEM_HALF });
-  const button = (id: string, x: number, y: number, z = 0) => ({ id, x, y, z, ...BUTTON_HALF });
   const eps = 1e-6;
 
   it('takes its half sizes from the layout', () => {
     expect(ITEM_HALF.halfWidth).toBeCloseTo(ITEM_PANEL.width / 200, 9);
     expect(ITEM_HALF.halfHeight).toBeCloseTo(ITEM_PANEL.height / 200, 9);
-    expect(BUTTON_HALF.halfWidth).toBeCloseTo(BUTTON_PANEL.width / 200, 9);
-    expect(BUTTON_HALF.halfHeight).toBeCloseTo(BUTTON_PANEL.height / 200, 9);
+    for (const b of BUTTONS) {
+      expect(BUTTON_HALVES[b].halfWidth).toBeCloseTo(BUTTON_WIDTH[b] / 200, 9);
+      expect(BUTTON_HALVES[b].halfHeight).toBeCloseTo(BAR_HEIGHT / 200, 9);
+    }
     expect(PICK_DEPTH).toBe(0.05);
   });
 
@@ -177,15 +304,16 @@ describe('pickRect (a control is its real rectangle, not a circle)', () => {
     expect(pickRect({ x: gapX - 0.002, y: ITEM_SLOTS[0].dy, z: 0 }, slots, IDENTITY)?.id).toBe('i0');
   });
 
-  it('uses the smaller button rectangle for buttons and never lets a button swallow the item above it', () => {
-    const buttons = BUTTON_SLOTS.map((slot, i) => button(`b${i}`, slot.dx, slot.dy));
+  it('uses the size of each button for the buttons and never lets a button swallow the item above it', () => {
+    const buttons = BUTTON_SLOTS.map((slot, i) => ({ id: `b${i}`, x: slot.dx, y: slot.dy, z: 0, ...BUTTON_HALVES[BUTTONS[i]] }));
     const items = ITEM_SLOTS.map((slot, i) => item(`i${i}`, slot.dx, slot.dy));
     const all = [...items, ...buttons];
     const b = buttons[0];
-    expect(pickRect({ x: b.x + BUTTON_HALF.halfWidth - eps, y: b.y + BUTTON_HALF.halfHeight - eps, z: 0 }, all, IDENTITY)?.id).toBe('b0');
-    expect(pickRect({ x: b.x + BUTTON_HALF.halfWidth + 0.004, y: b.y, z: 0 }, all, IDENTITY)?.id).not.toBe('b0');
+    const half = BUTTON_HALVES.undo;
+    expect(pickRect({ x: b.x + half.halfWidth - eps, y: b.y + half.halfHeight - eps, z: 0 }, all, IDENTITY)?.id).toBe('b0');
+    expect(pickRect({ x: b.x + half.halfWidth + 0.004, y: b.y, z: 0 }, all, IDENTITY)?.id).not.toBe('b0');
     // The top of the bar is lower than the bottom of the item row above.
-    expect(BUTTON_SLOTS[0].dy + BUTTON_HALF.halfHeight).toBeLessThan(ITEM_SLOTS[3].dy - ITEM_HALF.halfHeight);
+    expect(BUTTON_SLOTS[0].dy + half.halfHeight).toBeLessThan(ITEM_SLOTS[4].dy - ITEM_HALF.halfHeight);
   });
 
   it('takes the closest centre when rectangles overlap, and the first on an exact tie', () => {

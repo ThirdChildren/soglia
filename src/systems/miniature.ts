@@ -41,9 +41,44 @@ export type PlacedListener = (scale: number, yawDeg: number) => void;
 
 // Shared with the system, which has no constructor arguments: set by `createMiniature`.
 let placedListener: PlacedListener | null = null;
+const replacedListeners = new Set<() => void>();
+
+/**
+ * Calls `listener` after the model was placed again at the start of an XR session (after the store has the new yaw
+ * and offset). The Viewpoint system uses it to put the saved viewpoint back on top of the fresh placement (T3.12).
+ * Not called for the first placement, made with the preview camera before any session. Returns the unsubscribe function.
+ */
+export function onMiniatureReplaced(listener: () => void): () => void {
+  replacedListeners.add(listener);
+  return () => {
+    replacedListeners.delete(listener);
+  };
+}
 
 /** Where the model was placed (world metres): the anchor that `miniature.offset` is measured from. */
 const anchor = { x: 0, y: 0, z: 0 };
+
+/** Heading of the user when the model was placed (radians, 0 looks along -z): the side of the anchor that faces them. */
+let anchorYawRad = 0;
+
+/** The heading the model was placed with (the Menu buttons are placed around the anchor with it, T3.3b). */
+export function getMiniatureAnchorYaw(): number {
+  return anchorYawRad;
+}
+
+// The base node, set by `createMiniature`; `setPlinthVisible` acts on it.
+let plinthNode: Entity | null = null;
+
+/**
+ * Shows or hides the base `table:plinth` and nothing else (T3.11: real scale has no table base). The entity stays,
+ * so ids and queries keep working; only its visibility changes.
+ */
+export function setPlinthVisible(visible: boolean): void {
+  const object = plinthNode?.object3D;
+  if (!object || object.visible === visible) return;
+  object.visible = visible;
+  slog(`plinth visible=${visible}`);
+}
 
 /** Writes the anchor of the model into `out` and returns it. */
 export function getMiniatureAnchor(out: { x: number; y: number; z: number }): { x: number; y: number; z: number } {
@@ -83,6 +118,7 @@ function placeInFrontOf(source: Object3D, root: Entity): void {
   anchor.x = anchorPose.position[0];
   anchor.y = anchorPose.position[1];
   anchor.z = anchorPose.position[2];
+  anchorYawRad = yawRad;
   object.position.set(anchor.x, anchor.y, anchor.z);
   // rotation.y = yaw turns the plan's -z toward the head's forward, so the entrance side faces the user.
   object.rotation.set(0, yawRad, 0);
@@ -116,6 +152,7 @@ export class MiniaturePlacementSystem extends createSystem({
       if (entity.object3D?.name !== MINIATURE_ROOT_ID) continue;
       placeInFrontOf(head, entity);
       this.pending = false;
+      for (const listener of replacedListeners) listener();
       return;
     }
   }
@@ -144,6 +181,7 @@ export function createMiniature(world: World, onPlaced?: PlacedListener): Miniat
   mesh.position.y = PLINTH_TOP - PLINTH_THICKNESS / SCALE / 2;
   const plinth = world.createTransformEntity(mesh, root);
   tagEntity(plinth, TABLE_PLINTH_ID);
+  plinthNode = plinth;
 
   world.registerSystem(MiniaturePlacementSystem);
   return { root, plinth };

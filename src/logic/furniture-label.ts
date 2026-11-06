@@ -27,6 +27,14 @@ export function formatSize(width: number, depth: number, ascii = false): string 
   return `${formatMeters(width)} ${ascii ? 'x' : '×'} ${formatMeters(depth)} m`;
 }
 
+/**
+ * The short form of `formatSize` for a card that is too narrow for it: "0.35×0.35 m" (no spaces around the sign).
+ * The menu v2 cards use it only when the long form would come within `ITEM_SIZE_MARGIN` of the border (task T3.5, R25).
+ */
+export function formatSizeCompact(width: number, depth: number, ascii = false): string {
+  return `${formatMeters(width)}${ascii ? 'x' : '×'}${formatMeters(depth)} m`;
+}
+
 /** What a not valid piece is told, in priority order (D27): the first one that applies is shown. */
 export type ReasonKind = 'blocks-door' | 'overlaps-wall' | 'overlaps-furniture' | 'outside-house';
 
@@ -49,6 +57,15 @@ export function catalogIdOf(pieceId: string): string | null {
 /** A piece name as written in a sentence: "Wardrobe" -> "wardrobe", "Three-seat sofa" -> "three-seat sofa". */
 export function lowerName(name: string): string {
   return name.toLowerCase();
+}
+
+/**
+ * A piece name as the short noun of a sentence: lower case and without a leading "My " ("My sofa" -> "sofa",
+ * "Three-seat sofa" -> "three-seat sofa"). Falls back to "piece" when nothing is left.
+ */
+export function shortName(name: string): string {
+  const short = lowerName(String(name ?? '').trim().replace(/^my\s+/i, '').trim());
+  return short === '' ? 'piece' : short;
 }
 
 /** A not valid piece that may get a reason label. */

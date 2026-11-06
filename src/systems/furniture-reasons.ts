@@ -12,6 +12,7 @@ import { slog } from '../log';
 import type { CatalogItem } from '../logic/catalog';
 import { catalogIdOf, pickReasonLabels, REASON_LABEL_EXTENT } from '../logic/furniture-label';
 import { REASON_LABEL_MIN_DISTANCE, VIEW_CONE_HALF_ANGLE_DEG } from '../logic/menu-thresholds';
+import type { LabelRect } from '../logic/fit-label';
 import { anchorInCone, yawTowardHead, type ConeFit } from '../logic/view-fit';
 import { reasonLabelId, ReasonLabelPanel } from '../ui/reason-label-panel';
 import { strings } from '../ui/strings';
@@ -45,6 +46,34 @@ export function createFurnitureReasons(world: World, catalog: readonly CatalogIt
   world.registerSystem(FurnitureReasonsSystem);
 }
 
+/**
+ * Writes the centre and half size of every reason label that is on screen into `out` (reusing its entries, growing it
+ * when needed) and the matching objects into `objects`, and returns how many. The FitCheck label keeps off them (T3.9): it never hides a reason (D27).
+ */
+export function getReasonLabelRects(out: LabelRect[], objects: Object3D[]): number {
+  const labels = activeSystem?.labelList;
+  if (!labels) return 0;
+  let count = 0;
+  for (let i = 0; i < labels.length; i += 1) {
+    const object = labels[i].panel.object;
+    if (!object || !object.visible) continue;
+    if (count >= out.length) {
+      out.push({ x: 0, y: 0, z: 0, halfWidth: REASON_LABEL_EXTENT.halfWidth, halfHeight: 0 });
+    }
+    objects[count] = object;
+    const rect = out[count];
+    rect.x = object.position.x;
+    rect.y = object.position.y;
+    rect.z = object.position.z;
+    rect.halfWidth = REASON_LABEL_EXTENT.halfWidth;
+    rect.halfHeight = (REASON_LABEL_EXTENT.top - REASON_LABEL_EXTENT.bottom) / 2;
+    count += 1;
+  }
+  return count;
+}
+
+let activeSystem: FurnitureReasonsSystem | null = null;
+
 interface Label {
   /** Stable id of the piece the label belongs to. */
   id: string;
@@ -59,7 +88,7 @@ export class FurnitureReasonsSystem extends createSystem({
 }) {
   private readonly labels = new Map<string, Label>();
   /** The labels as an array in the same order as `labels`, rebuilt with it: the frame loop walks this one (no iterator). */
-  private labelList: Label[] = [];
+  labelList: Label[] = [];
   private readonly pieceObjects = new Map<string, Object3D>();
   private seenVersion = -1;
   private readonly target = new Vector3();
@@ -69,7 +98,11 @@ export class FurnitureReasonsSystem extends createSystem({
   private readonly pieceScale = new Vector3();
 
   init(): void {
+    activeSystem = this;
     this.cleanupFuncs.push(
+      () => {
+        if (activeSystem === this) activeSystem = null;
+      },
       this.queries.pieces.subscribe('qualify', (entity: Entity) => {
         const object = entity.object3D;
         if (object) this.pieceObjects.set(object.name, object);

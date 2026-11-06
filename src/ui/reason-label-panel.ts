@@ -8,6 +8,7 @@ import { PanelDocument, PanelUI, type Entity, type Object3D, type UIKit, type Wo
 import { tagEntity } from '../components/tag-entity';
 import { stableId } from '../logic/ids';
 import { applyPanelFont } from './fonts';
+import { disposePanelEntity } from './panel-lifecycle';
 
 const PANEL_ASSET = 'reason-label';
 const TEXT_ELEMENT = 'reason-label-text';
@@ -78,6 +79,7 @@ export class ReasonLabelPanel {
   }
 
   dispose(): void {
-    this.entity.dispose();
+    // The panel layout loads asynchronously: a panel closed before its document arrived is disposed later (M2 F1).
+    disposePanelEntity(this.entity);
   }
 }

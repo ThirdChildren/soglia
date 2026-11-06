@@ -31,6 +31,53 @@ export interface FurnitureSnapshot {
   readonly furniture: readonly PlacedPiece[];
 }
 
+/**
+ * What the user is looking at (D35): the tabletop model (the default), or the house at real scale from a
+ * viewpoint of the open house. It is applied only in a session; `miniature` stays in the store unchanged while
+ * a viewpoint is active, so going back to the tabletop puts the model back exactly as it was.
+ */
+export type ViewState =
+  | { readonly kind: 'tabletop' }
+  | { readonly kind: 'viewpoint'; readonly id: string };
+
+export const TABLETOP_VIEW: ViewState = { kind: 'tabletop' };
+
+const VIEWPOINT_ID_PATTERN = /^[A-Za-z0-9._-]+$/;
+
+/** A well-formed view: `tabletop`, or `viewpoint` with a non-empty id made of id characters (at most 64). */
+export function isViewState(v: unknown): v is ViewState {
+  if (!isRecord(v)) return false;
+  if (v.kind === 'tabletop') return true;
+  return (
+    v.kind === 'viewpoint' &&
+    typeof v.id === 'string' &&
+    v.id.length <= MAX_ROOM_ID_LENGTH &&
+    VIEWPOINT_ID_PATTERN.test(v.id)
+  );
+}
+
+/** True when both views are the tabletop, or the same viewpoint. */
+export function sameView(a: ViewState, b: ViewState): boolean {
+  return a.kind === 'tabletop' ? b.kind === 'tabletop' : b.kind === 'viewpoint' && a.id === b.id;
+}
+
+/** A view copy that keeps only the known keys (so an extra key in saved text never reaches the store). */
+function cleanView(v: ViewState): ViewState {
+  return v.kind === 'viewpoint' ? { kind: 'viewpoint', id: v.id } : TABLETOP_VIEW;
+}
+
+/**
+ * The tool in the hands (D36): the default `furnish` (grab and place pieces, select rooms) or the tape `measure`.
+ * It is NOT saved: `serialize` leaves it out, `deserialize` and a restore give `furnish`, and a new session starts with it.
+ */
+export type ToolId = 'furnish' | 'measure';
+export const TOOLS: readonly ToolId[] = ['furnish', 'measure'];
+export const DEFAULT_TOOL: ToolId = 'furnish';
+
+export function isToolId(v: unknown): v is ToolId {
+  return typeof v === 'string' && (TOOLS as readonly string[]).includes(v);
+}
+
 export interface AppState {
   readonly version: 1;
   readonly houseId: string;
@@ -55,6 +102,10 @@ export interface AppState {
   readonly nextInstance: Readonly<Record<string, number>>;
   /** Last HISTORY_LIMIT undoable furniture actions, oldest first. */
   readonly history: readonly FurnitureSnapshot[];
+  /** Tabletop model or a viewpoint at real scale (D35). Part of the saved state; restored only if the viewpoint exists. */
+  readonly view: ViewState;
+  /** The tool in the hands (D36). Never saved, never restored: every session starts with `furnish`. */
+  readonly tool: ToolId;
 }
 
 export type Action =
@@ -63,6 +114,8 @@ export type Action =
   | { readonly type: 'recenterMiniature' }
   | { readonly type: 'selectRoom'; readonly roomId: string }
   | { readonly type: 'setOnboardingStep'; readonly step: OnboardingStep }
+  | { readonly type: 'setView'; readonly view: ViewState }
+  | { readonly type: 'setTool'; readonly tool: ToolId }
   | { readonly type: 'markMenuOpened' }
   | {
       readonly type: 'placeFurniture';
@@ -82,7 +135,16 @@ export type Action =
     }
   | { readonly type: 'removeFurniture'; readonly id: string }
   | { readonly type: 'undo' }
-  | { readonly type: 'setFurniture'; readonly pieces: readonly PlacedPiece[] };
+  | { readonly type: 'setFurniture'; readonly pieces: readonly PlacedPiece[] }
+  | {
+      readonly type: 'restoreSaved';
+      readonly furniture: readonly PlacedPiece[];
+      readonly nextInstance: Readonly<Record<string, number>>;
+      readonly history: readonly FurnitureSnapshot[];
+      readonly prefs: AppState['prefs'];
+      /** Absent: the view stays as it is. */
+      readonly view?: ViewState;
+    };
 
 /** Action creators. */
 export function setMiniature(scale: number, yawDeg: number): Action {
@@ -94,6 +156,17 @@ export function selectRoom(roomId: string): Action {
 }
 export function setOnboardingStep(step: OnboardingStep): Action {
   return { type: 'setOnboardingStep', step };
+}
+/**
+ * Enters a viewpoint of the open house or goes back to the tabletop (D35). The caller checks that the viewpoint
+ * exists in the house; an invalid view is ignored. `miniature` is not touched. Not an undoable action.
+ */
+export function setView(view: ViewState): Action {
+  return { type: 'setView', view };
+}
+/** Chooses the tool in the hands (D36). An unknown tool is ignored; the same tool again changes nothing. Not undoable. */
+export function setTool(tool: ToolId): Action {
+  return { type: 'setTool', tool };
 }
 /** Shifts the miniature from its anchor. The limit (0.30 m) is applied by the caller (`clampOffset`). */
 export function setMiniatureOffset(dx: number, dz: number): Action {
@@ -124,6 +197,21 @@ export function undo(): Action {
 export function setFurniture(pieces: readonly PlacedPiece[]): Action {
   return { type: 'setFurniture', pieces };
 }
+/**
+ * Puts back the saved part of a state (D29): furniture, instance counters, undo history, the preferences and,
+ * when given, the view. Nothing else changes (the model position, the selected room and the role stay as the
+ * session set them).
+ * Pieces are re-checked; counters never go below what the pieces need. Not an undoable action.
+ */
+export function restoreSaved(saved: {
+  furniture: readonly PlacedPiece[];
+  nextInstance: Readonly<Record<string, number>>;
+  history: readonly FurnitureSnapshot[];
+  prefs: AppState['prefs'];
+  view?: ViewState;
+}): Action {
+  return { type: 'restoreSaved', ...saved };
+}
 
 /** Clamps a finite scale to [ZOOM_MIN, ZOOM_MAX]. */
 export function clampScale(scale: number): number {
@@ -141,6 +229,8 @@ export function createInitialState(params: Params): AppState {
     furniture: [],
     nextInstance: {},
     history: [],
+    view: TABLETOP_VIEW,
+    tool: DEFAULT_TOOL,
   };
 }
 
@@ -258,6 +348,16 @@ export function reduce(state: AppState, action: Action): AppState {
       if (action.step === state.prefs.onboardingStep) return state;
       return { ...state, prefs: { ...state.prefs, onboardingStep: action.step } };
     }
+    case 'setView': {
+      if (!isViewState(action.view)) return state;
+      const view = cleanView(action.view);
+      if (sameView(view, state.view)) return state;
+      return { ...state, view };
+    }
+    case 'setTool': {
+      if (!isToolId(action.tool) || action.tool === state.tool) return state;
+      return { ...state, tool: action.tool };
+    }
     case 'markMenuOpened': {
       if (state.prefs.menuOpened) return state;
       return { ...state, prefs: { ...state.prefs, menuOpened: true } };
@@ -317,6 +417,25 @@ export function reduce(state: AppState, action: Action): AppState {
       if (furniture.length === 0 && state.furniture.length === 0 && nextInstance === state.nextInstance) return state;
       return { ...state, furniture, nextInstance };
     }
+    case 'restoreSaved': {
+      const { prefs } = action;
+      if (!Array.isArray(action.furniture) || !Array.isArray(action.history)) return state;
+      if (!(ONBOARDING_STEPS as readonly string[]).includes(prefs?.onboardingStep) || typeof prefs.menuOpened !== 'boolean') {
+        return state;
+      }
+      const furniture = sanitizePieces(action.furniture);
+      const nextInstance = withInstancesOf({ ...action.nextInstance }, furniture);
+      const history = action.history.slice(-HISTORY_LIMIT);
+      const view = action.view !== undefined && isViewState(action.view) ? cleanView(action.view) : state.view;
+      return {
+        ...state,
+        furniture,
+        nextInstance,
+        history,
+        prefs: { onboardingStep: prefs.onboardingStep, menuOpened: prefs.menuOpened },
+        view,
+      };
+    }
     default:
       return state;
   }
@@ -355,8 +474,11 @@ export function createStore(initial: AppState): Store {
   };
 }
 
+/** The state as text. The tool in the hands is left out: it is never saved (D36). */
 export function serialize(state: AppState): string {
-  return JSON.stringify(state);
+  const saved: Record<string, unknown> = { ...state };
+  delete saved.tool;
+  return JSON.stringify(saved);
 }
 
 
@@ -459,6 +581,10 @@ export function deserialize(json: string): AppState | null {
     if (history.length > HISTORY_LIMIT) history = history.slice(history.length - HISTORY_LIMIT);
   }
 
+  // Added after the first saved states: absent means the tabletop. A broken value also means the tabletop
+  // (it is a convenience, not worth losing the furniture of the whole saved state).
+  const view: ViewState = 'view' in data && isViewState(data.view) ? cleanView(data.view) : TABLETOP_VIEW;
+
   return {
     version: 1,
     houseId,
@@ -469,5 +595,7 @@ export function deserialize(json: string): AppState | null {
     furniture,
     nextInstance,
     history,
+    view,
+    tool: DEFAULT_TOOL,
   };
 }

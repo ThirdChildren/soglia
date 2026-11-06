@@ -3,7 +3,9 @@
 //
 // A panel here is a rectangle that always faces the head (`Object3D.lookAt` with the world up axis): its
 // anchor is a point of the rectangle, `extent` says how far the rectangle reaches from the anchor to the
-// sides (`halfWidth`) and along its up axis (`bottom`, `top`). Nothing here allocates.
+// sides (`halfWidth`) and along its up axis (`bottom`, `top`). With `yawOnly` the panel only turns about the
+// vertical axis (`yawTowardHead`: its up axis is the world up axis, it never tilts), as the labels of the room do.
+// Nothing here allocates.
 
 import type { PanelExtent } from './menu';
 
@@ -23,13 +25,15 @@ const BISECTION_STEPS = 16;
 /**
  * Largest angle, in degrees, between the forward direction of the head and the direction of a corner of the
  * panel seen from the head. 180 when the inputs are not usable (a zero or non-finite forward direction, or the
- * panel exactly at the head).
+ * panel exactly at the head). With `yawOnly` the panel is vertical (it only turns about the vertical axis toward
+ * the head, as `yawTowardHead` does) instead of facing the head exactly.
  */
 export function panelConeAngleDeg(
   anchor: Readonly<Point3Like>,
   head: Readonly<Point3Like>,
   forward: Readonly<Point3Like>,
   extent: Readonly<PanelExtent>,
+  yawOnly = false,
 ): number {
   const fl = Math.hypot(forward.x, forward.y, forward.z);
   if (!(fl > EPS)) return 180;
@@ -56,9 +60,9 @@ export function panelConeAngleDeg(
     rx = 1; // the panel is straight above or below the head: any horizontal direction will do
     rz = 0;
   }
-  const ux = ny * rz;
-  const uy = nz * rx - nx * rz;
-  const uz = -ny * rx;
+  const ux = yawOnly ? 0 : ny * rz;
+  const uy = yawOnly ? 1 : nz * rx - nx * rz;
+  const uz = yawOnly ? 0 : -ny * rx;
 
   let worst = 0;
   for (let i = 0; i < 4; i += 1) {
@@ -224,6 +228,7 @@ export function fitPanelToCone(
  * makes the whole label fit: it ends on the edge of the cone, as near as possible to the line to the thing. When
  * even a label on the forward axis does not fit (the cone is narrower than the label), it is on the forward axis.
  * Writes into `out` (which may be `desired`). An unusable forward direction only clamps the distance. Allocates nothing.
+ * With `yawOnly` the cone is checked for a panel that only turns about the vertical axis (see `panelConeAngleDeg`).
  */
 export function anchorInCone(
   desired: Readonly<Point3Like>,
@@ -232,11 +237,12 @@ export function anchorInCone(
   extent: Readonly<PanelExtent>,
   fit: Readonly<ConeFit>,
   out: Point3Like,
+  yawOnly = false,
 ): Point3Like {
   clampDistanceFromHead(desired, head, fit.minDistance, fit.maxDistance, forward, out);
   const fl = Math.hypot(forward.x, forward.y, forward.z);
   if (!(fl > EPS) || !Number.isFinite(out.x + out.y + out.z)) return out;
-  if (panelConeAngleDeg(out, head, forward, extent) <= fit.halfAngleDeg) return out;
+  if (panelConeAngleDeg(out, head, forward, extent, yawOnly) <= fit.halfAngleDeg) return out;
 
   const dx = out.x - head.x;
   const dy = out.y - head.y;
@@ -271,7 +277,7 @@ export function anchorInCone(
   for (let i = 0; i < BISECTION_STEPS; i += 1) {
     const mid = (lo + hi) / 2;
     place(mid);
-    if (panelConeAngleDeg(out, head, forward, extent) <= fit.halfAngleDeg) hi = mid;
+    if (panelConeAngleDeg(out, head, forward, extent, yawOnly) <= fit.halfAngleDeg) hi = mid;
     else lo = mid;
   }
   place(hi);

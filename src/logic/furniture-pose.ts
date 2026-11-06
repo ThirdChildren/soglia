@@ -4,6 +4,7 @@
 
 import { normalizeRotation } from './catalog';
 import type { BBox } from './geometry';
+import { realScaleBlend } from './real-scale';
 
 const RAD_TO_DEG = 180 / Math.PI;
 
@@ -124,22 +125,39 @@ export function planToWorld(
 export const OVER_MODEL_BELOW = 0.05;
 export const OVER_MODEL_ABOVE = 0.25;
 
+/**
+ * Highest point over the model floor (world metres) where a hand still counts as "over the model", for a
+ * miniature `scale` and the ceiling height of the house (metres of the plan). Up to the tabletop zoom limit
+ * (0.12) it is `OVER_MODEL_ABOVE`; towards scale 1 (a viewpoint, D35) it grows linearly to
+ * `ceilingHeight * scale`, so the whole room is reachable. Without a valid `ceilingHeight` it stays at
+ * `OVER_MODEL_ABOVE`. It never goes below `OVER_MODEL_ABOVE`.
+ */
+export function overModelAbove(scale: number, ceilingHeight?: number): number {
+  if (ceilingHeight === undefined || !Number.isFinite(ceilingHeight) || ceilingHeight <= 0) return OVER_MODEL_ABOVE;
+  const t = realScaleBlend(scale);
+  if (t === 0) return OVER_MODEL_ABOVE; // the tabletop: exactly the old limit (and no NaN from a broken scale)
+  const real = Math.max(OVER_MODEL_ABOVE, ceilingHeight * scale);
+  return OVER_MODEL_ABOVE + t * (real - OVER_MODEL_ABOVE);
+}
+
 const scratch: Vec3Tuple = [0, 0, 0];
 const centerScratch: [number, number] = [0, 0];
 
 /**
  * True when the hand is over the model: inside `bbox` (the plan bounding box that `planCenter`
  * centres on the root, so its centre is the plan centre) grown by `margin` (plan metres), and
- * between 0.05 m below and 0.25 m above the model floor (world metres).
+ * between 0.05 m below and `overModelAbove(scale, ceilingHeight)` above the model floor (world metres):
+ * 0.25 m on the tabletop, up to the ceiling at real scale. `ceilingHeight` is optional (tabletop callers).
  */
 export function isOverModel(
   handWorld: Readonly<Vec3Tuple>,
   root: Readonly<MiniatureRoot>,
   bbox: Readonly<Pick<BBox, 'minX' | 'minZ' | 'maxX' | 'maxZ' | 'cx' | 'cz'>>,
   margin: number,
+  ceilingHeight?: number,
 ): boolean {
   const heightWorld = handWorld[1] - root.y;
-  if (heightWorld < -OVER_MODEL_BELOW || heightWorld > OVER_MODEL_ABOVE) return false;
+  if (heightWorld < -OVER_MODEL_BELOW || heightWorld > overModelAbove(root.scale, ceilingHeight)) return false;
   centerScratch[0] = bbox.cx;
   centerScratch[1] = bbox.cz;
   const [px, pz] = handToPlan(handWorld, root, centerScratch, scratch);

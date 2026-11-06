@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
-  BUTTON_PANEL,
+  BUTTON_HALVES,
   BUTTON_SLOTS,
+  BUTTONS,
   ITEM_PANEL,
   ITEM_SLOTS,
   MENU_EXTENT,
@@ -48,15 +49,16 @@ describe('MENU_EXTENT', () => {
       expect(MENU_EXTENT.top).toBeGreaterThanOrEqual(slot.dy + half(ITEM_PANEL.height) - 1e-9);
       expect(MENU_EXTENT.bottom).toBeLessThanOrEqual(slot.dy - half(ITEM_PANEL.height) + 1e-9);
     }
-    for (const slot of BUTTON_SLOTS) {
-      expect(MENU_EXTENT.halfWidth).toBeGreaterThanOrEqual(Math.abs(slot.dx) + half(BUTTON_PANEL.width) - 1e-9);
-      expect(MENU_EXTENT.bottom).toBeLessThanOrEqual(slot.dy - half(BUTTON_PANEL.height) + 1e-9);
-    }
+    BUTTON_SLOTS.forEach((slot, i) => {
+      const size = BUTTON_HALVES[BUTTONS[i]!];
+      expect(MENU_EXTENT.halfWidth).toBeGreaterThanOrEqual(Math.abs(slot.dx) + size.halfWidth - 1e-9);
+      expect(MENU_EXTENT.bottom).toBeLessThanOrEqual(slot.dy - size.halfHeight + 1e-9);
+    });
   });
 
-  it('is about 0.37 m wide and 0.35 m tall', () => {
-    expect(MENU_EXTENT.halfWidth * 2).toBeCloseTo(0.372, 2);
-    expect(MENU_EXTENT.top - MENU_EXTENT.bottom).toBeCloseTo(0.347, 2);
+  it('is 0.36 m wide and 0.376 m tall (menu v2, D37)', () => {
+    expect(MENU_EXTENT.halfWidth * 2).toBeCloseTo(0.36, 9);
+    expect(MENU_EXTENT.top - MENU_EXTENT.bottom).toBeCloseTo(0.376, 9);
   });
 });
 

@@ -77,6 +77,44 @@ interface GrabContext {
 
 // Shared with the system, which has no constructor arguments: set by `createFurnitureGrab`.
 let context: GrabContext | null = null;
+let cancelHeldNow: ((reason: string) => boolean) | null = null;
+let heldNow: (() => HeldPiece | null) | null = null;
+const releaseListeners = new Set<(id: string) => void>();
+
+/** The piece in the hand, read-only (the FitCheck follows it; T3.9). */
+export interface HeldPiece {
+  readonly id: string;
+  readonly catalogId: string;
+  readonly entity: Entity;
+  readonly object: Object3D;
+}
+
+/** The piece in a hand now, or null. The object is the system's own: do not keep it. */
+export function getHeldFurniture(): HeldPiece | null {
+  return heldNow?.() ?? null;
+}
+
+/**
+ * Calls `listener(id)` when a piece is PUT DOWN in the model (a new piece placed or a piece of the model moved), after
+ * the store has the new pose. Not called when the piece goes back, is removed or the grab is cancelled. Returns the
+ * function that removes the listener.
+ */
+export function onFurnitureReleased(listener: (id: string) => void): () => void {
+  releaseListeners.add(listener);
+  return () => {
+    releaseListeners.delete(listener);
+  };
+}
+
+/**
+ * Cancels the piece in the hand, if any, without a store change (task T3.1b, D30: the session is hidden, blurred or
+ * ended). A menu piece goes back to the catalog (`nextInstance` is not used up); a piece of the model goes back to the
+ * pose it had when it was grabbed; the preview frame and the hand claim are released. Returns true when a piece was held.
+ * Call it BEFORE the pinch flags are cleared: the pinch-end listener would otherwise place the piece.
+ */
+export function cancelHeldFurniture(reason: string): boolean {
+  return cancelHeldNow?.(reason) ?? false;
+}
 
 /** Registers the grab system. Register it after `createMenuItems` (its pick listener runs after the menu claims the hand). */
 export function createFurnitureGrab(
@@ -193,7 +231,13 @@ export class FurnitureGrabSystem extends createSystem({}) {
     this.evalInput.handPlan = this.handPlan;
     this.evalInput.catalog = ctx.catalog;
 
+    cancelHeldNow = (reason) => this.cancelHeld(reason);
+    heldNow = () => this.held;
     this.cleanupFuncs.push(
+      () => {
+        cancelHeldNow = null;
+        heldNow = null;
+      },
       onMenuItemPick((catalogId, hand) => this.startFromMenu(ctx, catalogId, hand)),
       onPinchStart((hand) => this.onPinch(ctx, hand)),
       onPinchEnd((hand) => {
@@ -241,7 +285,8 @@ export class FurnitureGrabSystem extends createSystem({}) {
       Math.abs(planX - this.lastPlanX) > MOVE_EPSILON ||
       Math.abs(planZ - this.lastPlanZ) > MOVE_EPSILON ||
       held.last === null;
-    const overModel = isOverModel(this.worldTuple, this.rootPose, this.box, 0);
+    // At real scale (D35) the hand counts as over the model up to the ceiling, not only 0.25 m over the floor.
+    const overModel = isOverModel(this.worldTuple, this.rootPose, this.box, 0, ctx.house.ceilingHeight);
     if (!moved && !this.dirty && held.rotationDeg === this.lastRotation && held.last?.overModel === overModel) return;
     this.lastPlanX = planX;
     this.lastPlanZ = planZ;
@@ -366,6 +411,7 @@ export class FurnitureGrabSystem extends createSystem({}) {
       return;
     }
     if (pinchClaims.ownerOf(hand) !== null) return; // the menu (or another owner) has this pinch
+    if (ctx.store.get().tool === 'measure') return; // the tape measure is on: pieces are not grabbed (T3.14, D36)
     if (isMiniatureGestureActive() || isPanActive()) return; // a drag of the model is running: no new grab
     this.readHand(ctx, hand);
     const id = pickPiece(this.planTuple, ctx.store.get().furniture, ctx.catalog, this.rootPose.scale);
@@ -482,6 +528,7 @@ export class FurnitureGrabSystem extends createSystem({}) {
         const placed = ctx.store.get().furniture.find((p) => p.id === held.id);
         if (placed) {
           slog(formatPlacedLine(placed.id, placed.roomId, action.pose, action.status));
+          for (const listener of releaseListeners) listener(placed.id);
         } else {
           forgetPieceStatus(held.id);
           slog(`furniture not placed ${held.id}`);
@@ -493,6 +540,7 @@ export class FurnitureGrabSystem extends createSystem({}) {
         ctx.store.dispatch(moveFurniture(held.id, action.pose.x, action.pose.z, action.pose.rotationDeg, action.roomId));
         publishReason(held.id, ev.result, false); // the piece is placed now, even if the store did not change
         slog(formatPlacedLine(held.id, action.roomId, action.pose, action.status));
+        for (const listener of releaseListeners) listener(held.id);
         break;
       }
       case 'return': {
@@ -527,6 +575,13 @@ export class FurnitureGrabSystem extends createSystem({}) {
     const stored = evaluatePiece(ctx.house, piece, ctx.store.get().furniture, ctx.catalog);
     const status = stored && stored.status === 'valid' ? 'valid' : 'invalid';
     this.writeFinalPose(ctx, held, piece.x, piece.z, piece.rotationDeg, status);
+    // The component still holds the pose and reasons of the last evaluation of the hand: put the stored ones back.
+    const entity = held.entity;
+    entity.setValue(Furniture, 'x', piece.x);
+    entity.setValue(Furniture, 'z', piece.z);
+    entity.setValue(Furniture, 'rotationDeg', piece.rotationDeg);
+    entity.setValue(Furniture, 'roomId', piece.roomId);
+    entity.setValue(Furniture, 'reasons', stored && stored.reasons.length > 0 ? stored.reasons.join(',') : '-');
     if (stored) {
       logPieceStatus(piece.id, stored);
       publishReason(piece.id, stored, false);
@@ -552,6 +607,14 @@ export class FurnitureGrabSystem extends createSystem({}) {
       held.entity.setValue(Furniture, 'outline', outline);
       ctx.visuals.setOutline(held.object, outline);
     }
+  }
+
+  /** Cancels the piece in the hand (see `cancelHeldFurniture`). Returns true when there was one. */
+  cancelHeld(reason: string): boolean {
+    const ctx = context;
+    if (!ctx || !this.held) return false;
+    this.cancel(ctx, reason);
+    return true;
   }
 
   /** The grab ends without a store change (the session ended or the piece was removed under it). */

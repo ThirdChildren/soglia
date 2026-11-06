@@ -3,6 +3,8 @@ import {
   createWristRotation,
   handToPlan,
   isOverModel,
+  overModelAbove,
+  OVER_MODEL_ABOVE,
   planToWorld,
   relativeTwist,
   rotateStep,
@@ -252,5 +254,63 @@ describe('isOverModel', () => {
     expect(isOverModel(inside, turned, box, 0)).toBe(true);
     const outside = planToWorld([14.0, 5.0, 0.5], turned, CENTER);
     expect(isOverModel(outside, turned, box, 0)).toBe(false);
+  });
+});
+
+describe('isOverModel at real scale (D35)', () => {
+  const box = bbox(houseA.rooms.flatMap((r) => r.polygon));
+  const CEILING = houseA.ceilingHeight; // 2.7
+  const real: MiniatureRoot = { x: 2.6, y: 0.4, z: 0.3, yawRad: 0, scale: 1 };
+  const tabletop: MiniatureRoot = { x: 0, y: 1.3, z: -0.44125, yawRad: 0, scale: 0.05 };
+  const over = (root: MiniatureRoot, px: number, pz: number, dy: number): Vec3Tuple => {
+    const w = planToWorld([px, pz, 0], root, CENTER);
+    return [w[0], root.y + dy, w[2]];
+  };
+
+  it('overModelAbove is 0.25 m for every tabletop scale, with or without a ceiling height', () => {
+    for (const s of [0.03, 0.05, 0.12]) {
+      expect(overModelAbove(s)).toBe(OVER_MODEL_ABOVE);
+      expect(overModelAbove(s, CEILING)).toBe(OVER_MODEL_ABOVE);
+    }
+  });
+
+  it('overModelAbove reaches the ceiling at scale 1 and is monotone in between', () => {
+    expect(overModelAbove(1, CEILING)).toBeCloseTo(CEILING, 12);
+    expect(overModelAbove(1)).toBe(OVER_MODEL_ABOVE);
+    let last = 0;
+    for (let s = 0.03; s <= 1.0001; s += 0.01) {
+      const v = overModelAbove(s, CEILING);
+      expect(Number.isNaN(v)).toBe(false);
+      expect(v).toBeGreaterThanOrEqual(last);
+      last = v;
+    }
+  });
+
+  it('overModelAbove ignores a broken ceiling height and a broken scale', () => {
+    for (const c of [0, -2, Number.NaN, Infinity]) expect(overModelAbove(1, c)).toBe(OVER_MODEL_ABOVE);
+    expect(overModelAbove(Number.NaN, CEILING)).toBe(OVER_MODEL_ABOVE);
+  });
+
+  it('is true for a hand at the height of a seated lap (0.45 m) and up to the ceiling at scale 1', () => {
+    expect(isOverModel(over(real, 3.2, 2.9, 0.45), real, box, 0, CEILING)).toBe(true);
+    expect(isOverModel(over(real, 3.2, 2.9, 2.6), real, box, 0, CEILING)).toBe(true);
+    expect(isOverModel(over(real, 3.2, 2.9, 2.8), real, box, 0, CEILING)).toBe(false);
+  });
+
+  it('without the ceiling height a real-scale hand above 0.25 m is not over the model (tabletop limit)', () => {
+    expect(isOverModel(over(real, 3.2, 2.9, 0.45), real, box, 0)).toBe(false);
+  });
+
+  it('keeps the tabletop limits when the ceiling height is passed', () => {
+    expect(isOverModel(over(tabletop, 5.5, 3.6, 0.24), tabletop, box, 0.5, CEILING)).toBe(true);
+    expect(isOverModel(over(tabletop, 5.5, 3.6, 0.26), tabletop, box, 0.5, CEILING)).toBe(false);
+    expect(isOverModel(over(tabletop, 5.5, 3.6, -0.06), tabletop, box, 0.5, CEILING)).toBe(false);
+    const zoomed: MiniatureRoot = { ...tabletop, scale: 0.12 };
+    expect(isOverModel(over(zoomed, 5.5, 3.6, 0.26), zoomed, box, 0, CEILING)).toBe(false);
+  });
+
+  it('the plan limits are the same at real scale: a hand outside the house is not over it', () => {
+    expect(isOverModel(over(real, 14, 3.6, 0.45), real, box, 0, CEILING)).toBe(false);
+    expect(isOverModel(over(real, 11.4, 3.0, 0.45), real, box, 0.5, CEILING)).toBe(true);
   });
 });

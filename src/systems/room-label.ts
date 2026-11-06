@@ -2,7 +2,10 @@
 // `RayInteractable`) dispatches `selectRoom` on the application store; a store listener then logs
 // and shows or hides the `ui:room-label` panel. The press is ignored while a two-hand gesture runs
 // or both hands pinch (a two-hand gesture must not select a room), and while a menu item, a piece or
-// a one-hand drag owns a pinch (see the arbitration in src/logic/pinch-claims.ts). The text is `strings.roomLabel`;
+// a one-hand drag owns a pinch (see the arbitration in src/logic/pinch-claims.ts). A pinch in the air of the hand that
+// holds the PALM menu open is never a room selection either (F-A, T3.3b): the guard only ignores the room, it does not
+// claim the hand, so that hand can still tap to rotate a held piece. With the pinned menu no hand is "the menu hand".
+// `roomSelectionAllowed` (src/logic/menu-button.ts) decides. The text is `strings.roomLabel`;
 // the area comes from the room polygon (`polygonArea`), because rooms have no area field in the data.
 
 import {
@@ -18,12 +21,15 @@ import { slog } from '../log';
 import { formatArea, polygonArea } from '../logic/geometry';
 import type { House } from '../logic/house';
 import { stableId } from '../logic/ids';
+import { menuHandPinching, roomSelectionAllowed } from '../logic/menu-button';
 import { selectRoom, type Store } from '../logic/state';
 import { panelFontSupports } from '../ui/fonts';
 import { RoomLabelPanel } from '../ui/room-label-panel';
 import { strings } from '../ui/strings';
 import { isMiniatureGestureActive } from './miniature-gesture';
-import { isFurnitureInteractionActive, isPanActive } from './pinch-input';
+import { getMenuMode, getPalmMenuHand } from './palm-menu';
+import { isFurnitureInteractionActive, isPanActive, isPinchStarted, pinchClaims } from './pinch-input';
+import { isTabletopLocked } from './view-mode';
 
 const ROOM_PREFIX = 'room:';
 
@@ -52,6 +58,7 @@ export class RoomLabelSystem extends createSystem({
   rooms: { required: [StableId, RayInteractable] },
 }) {
   private shownRoomId: string | null = null;
+  private readonly pinches = { left: false, right: false };
 
   init(): void {
     const ctx = context;
@@ -63,8 +70,20 @@ export class RoomLabelSystem extends createSystem({
       this.queries.pressed.subscribe('qualify', (entity) => {
         const name = entity.object3D?.name ?? '';
         if (!name.startsWith(ROOM_PREFIX)) return;
-        // The room has the lowest priority among the pinch owners (menu > furniture > two-hands > pan > room).
-        if (isMiniatureGestureActive() || isFurnitureInteractionActive() || isPanActive()) return;
+        // The room has the lowest priority among the pinch owners (menu > measure > furniture > viewpoint > two-hands > pan > room).
+        this.pinches.left = isPinchStarted('left');
+        this.pinches.right = isPinchStarted('right');
+        const allowed = roomSelectionAllowed({
+          gestureActive: isMiniatureGestureActive(),
+          furnitureInteraction: isFurnitureInteractionActive(),
+          panActive: isPanActive(),
+          menuHandPinching: menuHandPinching(getMenuMode(), getPalmMenuHand(), this.pinches),
+          // No room selection at real scale, while the view changes, or for the pinch that picked a viewpoint marker.
+          viewpointActive: isTabletopLocked() || pinchClaims.anyClaimed('viewpoint'),
+          // With the tape measure on, a pinch on the model is a point (T3.14).
+          measureActive: store.get().tool === 'measure',
+        });
+        if (!allowed) return;
         const roomId = name.slice(ROOM_PREFIX.length);
         if (!house.rooms.some((room) => room.id === roomId)) return;
         store.dispatch(selectRoom(roomId));

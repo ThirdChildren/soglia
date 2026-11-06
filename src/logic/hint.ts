@@ -6,6 +6,7 @@
 
 import { HINT_LABEL_GAP, HINT_LIFT, HINT_MIN_DISTANCE, MENU_MAX_DISTANCE, VIEW_CONE_HALF_ANGLE_DEG } from './menu-thresholds';
 import type { PanelExtent } from './menu';
+import { ROOM_LABEL_EXTENT } from './room-label';
 import type { OnboardingStep } from './state';
 import { clampDistanceFromHead, fitPanelToCone, panelConeAngleDeg, type ConeFit, type Point3Like } from './view-fit';
 
@@ -22,8 +23,7 @@ export function shouldShowMenuHint(
 
 /** The hint panel (38 x about 5.6 cm, `public/ui/menu-hint.uikitml`) around its centre, in metres. */
 export const HINT_EXTENT: PanelExtent = { halfWidth: 0.19, bottom: -0.03, top: 0.03 };
-/** The room label (46 cm wide, one or two lines, `public/ui/room-label.uikitml`) around its centre, in metres. */
-export const ROOM_LABEL_EXTENT: PanelExtent = { halfWidth: 0.23, bottom: -0.047, top: 0.047 };
+export { ROOM_LABEL_EXTENT };
 
 const HINT_FIT: ConeFit = {
   halfAngleDeg: VIEW_CONE_HALF_ANGLE_DEG,

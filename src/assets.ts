@@ -38,8 +38,28 @@ export default defineAssets({
     type: AssetType.UIKitML,
     priority: 'lazy',
   },
+  'fit-label': {
+    url: `${import.meta.env.BASE_URL}ui/fit-label.uikitml`,
+    type: AssetType.UIKitML,
+    priority: 'lazy',
+  },
   'glyph-test': {
     url: `${import.meta.env.BASE_URL}ui/glyph-test.uikitml`,
+    type: AssetType.UIKitML,
+    priority: 'lazy',
+  },
+  'measure-hint': {
+    url: `${import.meta.env.BASE_URL}ui/measure-hint.uikitml`,
+    type: AssetType.UIKitML,
+    priority: 'lazy',
+  },
+  'measure-label': {
+    url: `${import.meta.env.BASE_URL}ui/measure-label.uikitml`,
+    type: AssetType.UIKitML,
+    priority: 'lazy',
+  },
+  'menu-button': {
+    url: `${import.meta.env.BASE_URL}ui/menu-button.uikitml`,
     type: AssetType.UIKitML,
     priority: 'lazy',
   },

@@ -4,9 +4,11 @@ import {
   catalogIdOf,
   formatMeters,
   formatSize,
+  formatSizeCompact,
   lowerName,
   pickReasonLabels,
   reasonKind,
+  shortName,
 } from '../../src/logic/furniture-label';
 import { strings } from '../../src/ui/strings';
 import { loadJson } from '../helpers/load-json';
@@ -33,6 +35,14 @@ describe('formatMeters', () => {
     expect(formatMeters(NaN)).toBe('0.0');
     expect(formatMeters(Infinity)).toBe('0.0');
     expect(formatMeters(-1)).toBe('0.0');
+  });
+});
+
+describe('formatSizeCompact', () => {
+  it('is the same without the spaces around the sign', () => {
+    expect(formatSizeCompact(0.35, 0.35)).toBe('0.35\u00d70.35 m');
+    expect(formatSizeCompact(1.6, 2)).toBe('1.6\u00d72.0 m');
+    expect(formatSizeCompact(1.6, 2, true)).toBe('1.6x2.0 m');
   });
 });
 
@@ -149,5 +159,95 @@ describe('pickReasonLabels', () => {
   it('breaks a tie by the later position in the list, and never repeats an id', () => {
     expect(pickReasonLabels([p('a', 1), p('b', 1)], null)).toEqual(['b', 'a']);
     expect(pickReasonLabels([p('a', 1), p('a', 1)], null)).toEqual(['a']);
+  });
+});
+
+describe('formatSizeCompact in detail (the measure line of a narrow card)', () => {
+  const TIMES = '×';
+
+  it('writes the exact text for the real pieces, with no space around the sign', () => {
+    const expected: [string, number, number, string][] = [
+      ['bed-double', 1.6, 2.0, `1.6${TIMES}2.0 m`],
+      ['bed-single', 0.9, 2.0, `0.9${TIMES}2.0 m`],
+      ['sofa-3seat', 2.1, 0.9, `2.1${TIMES}0.9 m`],
+      ['chair', 0.45, 0.5, `0.45${TIMES}0.5 m`],
+      ['bookcase', 1.0, 0.35, `1.0${TIMES}0.35 m`],
+      ['rug', 2.0, 1.4, `2.0${TIMES}1.4 m`],
+      ['plant', 0.35, 0.35, `0.35${TIMES}0.35 m`],
+      ['wheelchair', 0.7, 1.1, `0.7${TIMES}1.1 m`],
+      ['stroller', 0.6, 0.95, `0.6${TIMES}0.95 m`],
+      ['my-sofa', 2.3, 0.95, `2.3${TIMES}0.95 m`],
+    ];
+    const items = [
+      ...loadJson<{ items: CatalogItem[] }>('public/catalog', 'catalog.json').items,
+      ...loadJson<{ items: CatalogItem[] }>('public/demo', 'my-furniture.json').items,
+    ];
+    for (const [id, width, depth, text] of expected) {
+      const item = items.find((entry) => entry.id === id);
+      expect(item, id).toBeDefined();
+      expect([item!.size[0], item!.size[1]], id).toEqual([width, depth]);
+      expect(formatSizeCompact(width, depth), id).toBe(text);
+    }
+  });
+
+  it('is the long form without the spaces around the sign, for every piece of the data, with and without the plain x', () => {
+    const items = [
+      ...loadJson<{ items: CatalogItem[] }>('public/catalog', 'catalog.json').items,
+      ...loadJson<{ items: CatalogItem[] }>('public/demo', 'my-furniture.json').items,
+    ];
+    for (const item of items) {
+      const [w, d] = item.size;
+      expect(formatSizeCompact(w, d), item.id).toBe(formatSize(w, d).replace(` ${TIMES} `, TIMES));
+      expect(formatSizeCompact(w, d, true), item.id).toBe(formatSize(w, d, true).replace(' x ', 'x'));
+      expect(formatSizeCompact(w, d), item.id).toMatch(/^\d+\.\d{1,2}×\d+\.\d{1,2} m$/);
+      expect(formatSizeCompact(w, d, true), item.id).toMatch(/^\d+\.\d{1,2}x\d+\.\d{1,2} m$/);
+    }
+  });
+
+  it('rounds each length to two decimals at most, and keeps one decimal when it is exact', () => {
+    expect(formatSizeCompact(0.346, 0.344)).toBe(`0.35${TIMES}0.34 m`);
+    expect(formatSizeCompact(1.2, 1.25)).toBe(`1.2${TIMES}1.25 m`);
+    expect(formatSizeCompact(0.1 + 0.2, 1.6)).toBe(`0.3${TIMES}1.6 m`);
+    expect(formatSizeCompact(3, 3)).toBe(`3.0${TIMES}3.0 m`);
+    expect(formatSizeCompact(10, 12.5)).toBe(`10.0${TIMES}12.5 m`);
+  });
+
+  it('writes a zero for a length that is not usable, never NaN, undefined or Infinity', () => {
+    expect(formatSizeCompact(NaN, 1)).toBe(`0.0${TIMES}1.0 m`);
+    expect(formatSizeCompact(1, Infinity)).toBe(`1.0${TIMES}0.0 m`);
+    expect(formatSizeCompact(-2, -Infinity)).toBe(`0.0${TIMES}0.0 m`);
+    expect(formatSizeCompact(0, 0)).toBe(`0.0${TIMES}0.0 m`);
+    expect(formatSizeCompact(NaN, NaN, true)).toBe('0.0x0.0 m');
+  });
+
+  it('is exactly the string of strings.menu.itemSizeCompact', () => {
+    expect(strings.menu.itemSizeCompact(0.35, 0.35)).toBe(formatSizeCompact(0.35, 0.35));
+    expect(strings.menu.itemSizeCompact(1.6, 2, true)).toBe('1.6x2.0 m');
+  });
+});
+
+describe('shortName', () => {
+  it('lower cases and drops a leading "My "', () => {
+    expect(shortName('My sofa')).toBe('sofa');
+    expect(shortName('My desk')).toBe('desk');
+    expect(shortName('my bed')).toBe('bed');
+    expect(shortName('MY  Bed')).toBe('bed');
+  });
+
+  it('only drops "My" as a whole first word', () => {
+    expect(shortName('Mystery box')).toBe('mystery box');
+    expect(shortName('Dummy sofa')).toBe('dummy sofa');
+  });
+
+  it('keeps other names as they are, in lower case', () => {
+    expect(shortName('Wheelchair')).toBe('wheelchair');
+    expect(shortName('Three-seat sofa')).toBe('three-seat sofa');
+    expect(shortName('  Double bed ')).toBe('double bed');
+  });
+
+  it('never returns an empty name', () => {
+    expect(shortName('')).toBe('piece');
+    expect(shortName('My ')).toBe('my');
+    expect(shortName(undefined as unknown as string)).toBe('piece');
   });
 });

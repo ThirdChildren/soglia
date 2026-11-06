@@ -36,6 +36,7 @@ import {
 } from '../logic/two-hand';
 import { getMiniatureAnchor } from './miniature';
 import { isPinching, onPinchEnd, onPinchStart, pinchClaims, pinchPoint } from './pinch-input';
+import { isTabletopLocked } from './view-mode';
 
 interface GestureContext {
   store: Store;
@@ -47,13 +48,19 @@ interface GestureContext {
 let context: GestureContext | null = null;
 
 const shared = { active: false, bothPinching: false };
+let endGestureNow: (() => void) | null = null;
+
+/** Ends a running two-hand gesture with the values it has now (the session was suspended, T3.1b). */
+export function endMiniatureGesture(): void {
+  endGestureNow?.();
+}
 
 /**
  * True while a two-hand gesture runs, or as soon as both hands pinch (even before the gesture
  * frame), so that the press of a pinch near the model never selects a room (scenario S1.2).
  */
 export function isMiniatureGestureActive(): boolean {
-  return shared.active || shared.bothPinching;
+  return shared.active || (shared.bothPinching && !isTabletopLocked());
 }
 
 const startListeners = new Set<() => void>();
@@ -106,7 +113,11 @@ export class MiniatureGestureSystem extends createSystem({
     const refresh = (): void => {
       shared.bothPinching = isPinching('left') && isPinching('right');
     };
+    endGestureNow = () => this.endNow();
     this.cleanupFuncs.push(
+      () => {
+        endGestureNow = null;
+      },
       onPinchStart(refresh),
       onPinchEnd(refresh),
       // A menu pick or a held piece taking a hand ends the gesture at once: whatever that owner does next
@@ -123,7 +134,8 @@ export class MiniatureGestureSystem extends createSystem({
     const object = root?.object3D;
     if (!object) return;
 
-    const bothPinching = shared.bothPinching;
+    // At real scale (and while the view is changing) two hands do not zoom or turn the model (T3.12, D35).
+    const bothPinching = shared.bothPinching && !isTabletopLocked();
 
     if (this.session) {
       // The gesture also ends when a higher priority owner (menu, a held piece) takes one of the hands.

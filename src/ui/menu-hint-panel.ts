@@ -10,6 +10,7 @@ import { stableId } from '../logic/ids';
 import { yawTowardHead } from '../logic/view-fit';
 import { applyPanelFont } from './fonts';
 import { HINT_ICON } from './menu-icons';
+import { disposePanelEntity } from './panel-lifecycle';
 
 const PANEL_ASSET = 'menu-hint';
 const ROOT_ELEMENT = 'menu-hint-root';
@@ -49,7 +50,8 @@ export class MenuHintPanel {
   }
 
   dispose(): void {
-    this.entity?.dispose();
+    // The panel layout loads asynchronously: a panel closed before its document arrived is disposed later (M2 F1).
+    if (this.entity) disposePanelEntity(this.entity);
     this.entity = null;
     this.applied = false;
   }
