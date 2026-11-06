@@ -26,3 +26,4 @@
 - [M5 agent (T5.8-T5.10)](m5-agent.md) — info points as read-only content, diamond pins, `info` screen, Furnish/Clear with undoable `stage` step, IWER `pinch=grip` calibration, measured 65 calls
 - [M5 accessibility, Rotate, coach (T5.11-T5.15)](m5-access.md) — `applyPanelLook` walk (originals WeakMap, modes none/font/layout), explicit URL vs saved, View large layout + rebuild, widened fixed buttons, Rotate must register first (+ menu claim guards), coach placement traps; second round: uniform `scale` mode for Issues/menu/labels, large pinned anchor, UIKit peek traps
 - [M5 gate A/B fixes](m5-gate-ab-fixes.md) — coach clock pause on panels, T5.RA merged walls/thresholds (K18 84 -> 68), sun marker visibility, A2 sliver is physical, K18 recipe
+- [M5 gate C2/D fixes](m5-gate-cd-fixes.md) — Rotate hidden while a menu/panel is open (F-D-2), UIKit font race + atlas preload (F-D-1), Vite deep-import trap and recovery

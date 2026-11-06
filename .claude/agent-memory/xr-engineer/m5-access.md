@@ -26,3 +26,5 @@ Built 2026-11-06 on branch `claude/charming-cori-mccw6h` (plan `docs/plans/M5.md
 - Labels: `src/logic/label-scale.ts` holds one number (`setLabelScale`, set by `installAccess`) and the cached normal/large extents (`roomLabelExtent()`, `fitLabelExtent()`, `reasonLabelExtent()`, `hintExtent()`) plus `labelFit`/`labelMinDistance` (0.58 m at large: the 1.25x FitCheck label at 0.52 m was 30.8-31.6 deg with the gaze down). The old `*_EXTENT` constants stay (normal values, tests). Label panels use `scale` mode.
 - Coach banner of step `grab` now sits at eyes + 0.31 m (the large menu top is at +0.235).
 - Measured (IWER, A, contrast + large, menu dimmed, sofa held over armchair, Fit and reason labels): 65 calls per view, as before. Issues panel verified in IWER on home, list, detail and the form (long pinch on the washer) at 45 x 47 cm; menu picks (chair) work through the scaled slots.
+
+- UPDATE 2026-11-06: Rotate is now HIDDEN while any menu or the Issues/View panel is open (see m5-gate-cd-fixes.md); the "drawn over the menu" behaviour above no longer exists.
