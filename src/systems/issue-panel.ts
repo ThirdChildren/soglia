@@ -757,7 +757,8 @@ export class IssuePanelSystem extends createSystem({}) {
       return;
     }
     // The menu has the highest priority: this only fails if the menu already owns the hand (checked above).
-    if (!pinchClaims.claim(hand, 'menu')) return;
+    // The Rotate button comes first (T5.14): a pinch that pressed it is not a second press on a control under it.
+    if (pinchClaims.ownerOf(hand) === 'menu' || !pinchClaims.claim(hand, 'menu')) return;
     slog(`issues control pressed id=${controlStableId(hit.id)} hand=${hand}`);
     if (ctx.navigator.screen === 'new' && ctx.form) {
       this.pressForm(ctx, ctx.form, hit.id);
@@ -857,7 +858,8 @@ export class IssuePanelSystem extends createSystem({}) {
     this.pinTuple[2] = this.point.z;
     const id = pickPinAt(this.pinTuple);
     if (id === null) return;
-    if (!pinchClaims.claim(hand, 'menu')) return;
+    // The Rotate button comes first (T5.14): a pinch that pressed it is not a second press on a control under it.
+    if (pinchClaims.ownerOf(hand) === 'menu' || !pinchClaims.claim(hand, 'menu')) return;
     slog(formatPinPressed(id, hand));
     if (!ctx.panel.isOpen) this.open(hand);
     if (!ctx.panel.isOpen) {

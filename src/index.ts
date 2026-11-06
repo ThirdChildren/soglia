@@ -65,6 +65,7 @@ import { FurnitureVisuals } from './ui/furniture-visuals';
 import { strings } from './ui/strings';
 import { startupAccessLines } from './logic/access';
 import { installAccess } from './systems/access';
+import { createRotateButton } from './systems/rotate-button';
 
 async function start(): Promise<void> {
   const devFileParams = await loadDevParams();
@@ -194,6 +195,9 @@ async function start(): Promise<void> {
     installHandJoints(world, params.pinch);
     installPinchInput(world);
     if (params.debug) attachHandsLog(world);
+    // The Rotate button (T5.14) hangs above a piece, over the menu if the menu is open: its pinch is a `menu` claim, and its listener
+    // must be the FIRST, so a control under it (the menu, the piece, a room) never gets the pinch that is meant for the button.
+    if (merged) createRotateButton(world, store, merged.items);
     createMiniatureGesture(world, store, planRadius(result.house));
     createRoomLabel(world, store, result.house);
     createOnboarding(world, store);

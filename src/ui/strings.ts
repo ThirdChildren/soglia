@@ -68,6 +68,10 @@ export const strings = {
   viewpoint: {
     tabletopButton: 'Tabletop',
   },
+  /** The button above a piece that was just put down: it turns the piece a quarter turn, with one hand (M5, D59). */
+  rotate: {
+    button: 'Rotate',
+  },
   /** The View panel and its buttons (M5, D56): sun, zoom and turn of the model. */
   view: {
     /** The third floor of fixed buttons beside the model, above "Issues": they open and close the View panel with one hand. */

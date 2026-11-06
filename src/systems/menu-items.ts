@@ -324,7 +324,8 @@ export class MenuItemsSystem extends createSystem({}) {
     const hit = pickRect(this.point, this.slots, menu.frameOrientation);
     if (!hit) return;
     // The menu has the highest priority: this only fails if the menu already owns the hand.
-    if (!pinchClaims.claim(hand, 'menu')) return;
+    // The Rotate button comes first (T5.14): a pinch that pressed it is not a second press on a control under it.
+    if (pinchClaims.ownerOf(hand) === 'menu' || !pinchClaims.claim(hand, 'menu')) return;
     const control = hit.control;
     if (control.tab !== undefined) {
       this.selectTab(ctx, menu, control.tab);
