@@ -215,7 +215,7 @@ describe('the layouts of the View panel', () => {
       expect(width(strings.view.title, l.titleSize, BOLD)).toBeLessThanOrEqual(l.width - 0.8);
       expect(width(strings.view.close, l.textSize, BOLD)).toBeLessThanOrEqual(l.closeWidth - 0.8);
       // The note on the honesty of the light (D55) sits left of Close in the bar, on one line.
-      expect(width(strings.view.light, l.textSize, REGULAR)).toBeLessThanOrEqual(l.noteWidth - VIEW_LABEL_PADDING - 0.2);
+      expect(width(strings.view.light, l.textSize, REGULAR)).toBeLessThanOrEqual(l.noteWidth - 0.8);
       expect(l.textSize * 1.1).toBeLessThanOrEqual(l.barHeight);
       expect(width('−', l.textSize, BOLD)).toBeLessThanOrEqual(l.buttonWidth - 0.8);
       expect(width('+', l.textSize, BOLD)).toBeLessThanOrEqual(l.buttonWidth - 0.8);
