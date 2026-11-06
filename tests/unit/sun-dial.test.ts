@@ -11,6 +11,7 @@ import {
   ringTriangles,
   sunDialHeight,
   sunDialPosition,
+  sunMarkerVisible,
 } from '../../src/logic/sun-dial';
 import type { Point2 } from '../../src/logic/geometry';
 
@@ -127,5 +128,21 @@ describe('patchTriangles', () => {
       area += Math.abs((v[t + 3] - v[t]) * (v[t + 8] - v[t + 2]) - (v[t + 5] - v[t + 2]) * (v[t + 6] - v[t])) / 2;
     }
     expect(area).toBeCloseTo(4, 5);
+  });
+});
+
+describe('sunMarkerVisible', () => {
+  it('is shown only with the sun up and the model on the table', () => {
+    expect(sunMarkerVisible(true, false)).toBe(true);
+    expect(sunMarkerVisible(false, false)).toBe(false);
+    expect(sunMarkerVisible(true, true)).toBe(false);
+    expect(sunMarkerVisible(false, true)).toBe(false);
+  });
+  it('agrees with the visibility of the disc that sunDialPosition reports', () => {
+    const centre: Point2 = [5, 3];
+    for (const altitudeDeg of [-20, -0.1, 0, 0.1, 25, 70]) {
+      const p = sunDialPosition({ azimuthDeg: 120, altitudeDeg }, 0, centre, 7);
+      expect(sunMarkerVisible(p.visible, false)).toBe(altitudeDeg > 0);
+    }
   });
 });

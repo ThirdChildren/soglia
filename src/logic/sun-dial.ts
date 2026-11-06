@@ -41,6 +41,14 @@ export interface DialSun {
   readonly planAngleDeg: number;
 }
 
+/**
+ * True when the `sun:marker` anchor (the centre of the disc) is shown: the disc is on screen only with the sun above the horizon and
+ * the dial is a table-top instrument, hidden at real scale. The anchor says the same as the disc, so the QA can read it.
+ */
+export function sunMarkerVisible(sunUp: boolean, realScale: boolean): boolean {
+  return sunUp && !realScale;
+}
+
 /** Where the disc of the sun sits: on the ring, in the direction of the sun, at `sunDialHeight`. */
 export function sunDialPosition(
   sun: SunPosition,

@@ -4,7 +4,7 @@
 //
 // Entities (StableId, no extra draw call except the two merged meshes):
 //   sun:dial      the dial mesh (ring + tick + disc, one mesh, +1 call); hidden at real scale
-//   sun:marker    a light anchor at the centre of the disc (QA reads its Transform; at the ring's foot when the sun is down)
+//   sun:marker    a light anchor at the centre of the disc (QA reads its Transform; at the ring's foot, and not visible, when the sun is down or at real scale)
 //   light:patches the merged mesh of all patches (+1 call, none when no patch)
 //   light:<win>   a light anchor at the centre of each lit window's patch
 // Rebuilt only when `sunTime` changes (never per frame); the only per-frame work is one flag read for the real scale.
@@ -16,7 +16,7 @@ import type { House } from '../logic/house';
 import { planCenter, planRadius } from '../logic/house-layout';
 import type { Store } from '../logic/state';
 import { localToUtcMs, sunPosition } from '../logic/sun';
-import { dialRingRadius, sunDialPosition } from '../logic/sun-dial';
+import { dialRingRadius, sunDialPosition, sunMarkerVisible } from '../logic/sun-dial';
 import { lightPatches, roomAreasText, windowIdsText } from '../logic/sun-light';
 import { sunLogLine } from '../logic/sun-time';
 import { createSunDial, createSunPatches, type SunDialMesh, type SunPatchesMesh } from '../ui/sun-visuals';
@@ -37,6 +37,8 @@ interface SunContext {
   lightEntities: Map<string, Entity>;
   sunTime: string;
   realScale: boolean;
+  /** The sun is above the horizon at `sunTime`. */
+  sunUp: boolean;
   /** Rooms already reported as skipped, so the warning is written once. */
   warnedRooms: Set<string>;
 }
@@ -72,6 +74,7 @@ export function createSun(world: World, store: Store, house: House, houseEntity:
     lightEntities: new Map(),
     sunTime: '',
     realScale: false,
+    sunUp: false,
     warnedRooms: new Set(),
   };
   apply(context, 'initial');
@@ -91,6 +94,9 @@ function apply(ctx: SunContext, reason: 'initial' | 'ui'): void {
   const placed = sunDialPosition(sun, ctx.house.northAngleDeg, ctx.centre, ctx.ringRadius);
   ctx.dial.setSun(placed);
   ctx.marker.object3D?.position.set(placed.x, placed.y, placed.z);
+  ctx.sunUp = placed.visible;
+  // The anchor of the disc is hidden with the disc (sun down) and with the dial (real scale), so its `Visibility` tells the truth.
+  if (ctx.marker.object3D) ctx.marker.object3D.visible = sunMarkerVisible(ctx.sunUp, ctx.realScale);
   slog(`sun dial ringRadius=${ctx.ringRadius.toFixed(2)} marker=${placed.x.toFixed(2)},${placed.y.toFixed(2)},${placed.z.toFixed(2)}`);
 
   const light = lightPatches(ctx.house, sun);
@@ -138,6 +144,7 @@ export class SunSystem extends createSystem({}) {
     );
     ctx.dial.mesh.visible = !isRealScale();
     ctx.realScale = isRealScale();
+    if (ctx.marker.object3D) ctx.marker.object3D.visible = sunMarkerVisible(ctx.sunUp, ctx.realScale);
   }
 
   update(): void {
@@ -148,6 +155,7 @@ export class SunSystem extends createSystem({}) {
       ctx.realScale = real;
       // The ring would surround the viewer at real scale: it is a table-top instrument.
       ctx.dial.mesh.visible = !real;
+      if (ctx.marker.object3D) ctx.marker.object3D.visible = sunMarkerVisible(ctx.sunUp, real);
     }
   }
 }
