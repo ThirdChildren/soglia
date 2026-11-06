@@ -2,6 +2,8 @@
 
 > **Changelog 2026-11-02**: scenario creato dal piano M4 (D33 aggiornata, D46, D47); estende `qa/scenarios/M3-budget.md` (K1–K8) con K9–K12. Il caso peggiore di M3 misurato è K4 = 71 per vista.
 
+> **Changelog 2026-11-06 (T5.RA, gate di M5)**: il gruppo `house` passa da **24 a 8** (A) e **7** (B) (mesh `merged:walls` e `merged:thresholds`; entità `wall:*` e `door:*` ancore senza mesh) e ogni conteggio sotto scende di **16** per vista; verifica 4 (`house` 24 ± 2) → **8 ± 1**. Le previsioni sono storiche (blocca solo > 100); i valori attuali sono in `qa/scenarios/M5-budget.md`.
+
 **Milestone**: M4 · **Tipo**: PC (emulatore IWER via MCP `iwsdk-runtime`); gli fps sono **solo informativi** · **Regola di `CLAUDE.md`**: 3 (prestazioni)
 Prerequisiti di implementazione: T4.4, T4.6a, T4.R1, T4.12 e tutti i task che aggiungono elementi permanenti. Stesse regole di lettura di `qa/scenarios/M3-budget.md` (`callsPerView = calls / views`, la fonte con un pannello aperto è la riga `[soglia:stats]`, mai `scene_get_render_stats`). Convenzioni: `qa/scenarios/M4-issue-create.md`.
 

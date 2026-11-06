@@ -1,5 +1,7 @@
 # S3.9 · Budget di M3: previsione contro misura
 
+> **Changelog 2026-11-06 (T5.RA, gate di M5)**: i 13 muri sono ora la mesh `merged:walls` e le 5 soglie la mesh `merged:thresholds` (le entità `wall:*` e `door:*` restano come ancore senza mesh): il gruppo `house` di `[soglia:stats:groups]` passa da **24 a 8** (A) e **7** (B), e ogni conteggio di questo scenario scende di **16** chiamate per vista. Le soglie e le previsioni qui sotto sono quelle storiche (blocca solo > 100); la tabella aggiornata è in `qa/scenarios/M5-budget.md`.
+
 **Milestone**: M3 · **Tipo**: PC (emulatore IWER via MCP `iwsdk-runtime`); gli fps sono **solo informativi** · **Regola di `CLAUDE.md`**: 3 (prestazioni)
 Prerequisiti di implementazione: T3.4 (riga `[soglia:stats:groups]`, R-C), T3.16 (misura finale) e tutti i task che aggiungono elementi permanenti (T3.3b, T3.9, T3.12, T3.14). Vedi `docs/plans/M3.md`, D33 e la sezione "Previsione dei draw call fino a M5"; estende `qa/scenarios/M2-budget.md` (stesse regole di lettura: `callsPerView = calls / views`, `triangles` = totale delle due viste, la fonte con il menu aperto è la riga `[soglia:stats]`, mai `scene_get_render_stats`). Convenzioni comuni: `qa/scenarios/M3-persistence.md`.
 
