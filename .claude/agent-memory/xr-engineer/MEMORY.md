@@ -23,3 +23,4 @@
 - [M4 issues UI](m4-issues-ui.md) — in-place UIKit screens, instanced pins, long pinch claims, role from store, parked pieces, Tabletop button, pitched pinned menu
 - [M5 Block R](m5-block-r.md) — T5.R1-R6: two-line list rows (why), agent chip constant, violet baseline, no-catalog persistence, debug-only params
 - [M5 sun + View panel](m5-sun-view.md) — T5.1-T5.7: sun algorithm and golden values, light patches, dial, View buttons/panel, IWER pinch calibration (set + 0,-0.0245,-0.012), measured draw calls
+- [M5 agent (T5.8-T5.10)](m5-agent.md) — info points as read-only content, diamond pins, `info` screen, Furnish/Clear with undoable `stage` step, IWER `pinch=grip` calibration, measured 65 calls
