@@ -8,8 +8,11 @@ export type AccessSource = 'url' | 'saved' | 'ui';
 /** Large text is 3.0 cm where the normal text is 2.4: the size of the text, and of the boxes that must hold it, grows by this (D58). */
 export const LARGE_TEXT_FACTOR = 1.25;
 
-/** Size of the text of the menu while the large text is on: the menu v2 keeps 2.4 cm (T5.16 is below the line, D58). */
-export const MENU_TEXT_WITH_LARGE = 'normal';
+/**
+ * Size of the text of the menu while the large text is on: 3.0 cm. The menu is made 1.25 times bigger as a whole (same cards, same
+ * pages, same bar), hung a little farther and centred on the eyes (T5.16, D58).
+ */
+export const MENU_TEXT_WITH_LARGE = 'large';
 /**
  * Size of the text of the Issues panel while the large text is on: 3.0 cm. The panel is made 1.25 times bigger as a whole (same six
  * screens, same layout), hung a little farther and centred on the eyes (T5.13, D58).
@@ -22,7 +25,7 @@ export function formatAccessContrast(on: boolean, source: AccessSource): string 
 }
 
 /**
- * `access text=large source=ui menu=normal issues=large` (`menu=` and `issues=` say whether those two panels follow). Large text with `menu=normal` is not a failure: it is what is declared.
+ * `access text=large source=ui menu=large issues=large` (`menu=` and `issues=` say whether those two panels follow).
  */
 export function formatAccessText(large: boolean, source: AccessSource): string {
   return `access text=${large ? 'large' : 'normal'} source=${source} menu=${MENU_TEXT_WITH_LARGE} issues=${ISSUES_TEXT_WITH_LARGE}`;

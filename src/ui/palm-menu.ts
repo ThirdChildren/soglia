@@ -32,15 +32,19 @@ import {
   MENU_EXTENT,
   MENU_TABS,
   PANEL_CENTER,
+  scaleExtent,
   tabRowVisible,
   type ButtonId,
   type MenuTabId,
+  type PanelExtent,
 } from '../logic/menu';
 import { pinnedAnchorPitchRad, pinnedConeAngleDeg, pinnedMenuAnchor, pitchOfForward, yawOfForward } from '../logic/menu-anchor';
 import {
   MENU_FRAME_MAX_DISTANCE,
+  MENU_FRAME_MAX_DISTANCE_LARGE,
   MENU_LIFT,
   MENU_MIN_DISTANCE,
+  MENU_MIN_DISTANCE_LARGE,
   VIEW_CONE_HALF_ANGLE_DEG,
 } from '../logic/menu-thresholds';
 import { menuAnchor, type Vec3Like } from '../logic/palm';
@@ -52,7 +56,7 @@ import { applyPanelLook } from './panel-theme';
 import { BUTTON_ICONS } from './menu-icons';
 import { disposePanelEntity } from './panel-lifecycle';
 import { strings } from './strings';
-import { chipLook, getUiColors } from './theme';
+import { chipLook, getUiColors, isLargeText, panelScale } from './theme';
 
 export type PalmMenuMode = 'palm' | 'pinned';
 
@@ -91,6 +95,12 @@ const CONE_FIT: ConeFit = {
   minDistance: MENU_MIN_DISTANCE,
   maxDistance: MENU_FRAME_MAX_DISTANCE,
 };
+/** The same for the menu at large text: bigger, so farther (see menu-thresholds.ts). */
+const CONE_FIT_LARGE: ConeFit = {
+  halfAngleDeg: VIEW_CONE_HALF_ANGLE_DEG,
+  minDistance: MENU_MIN_DISTANCE_LARGE,
+  maxDistance: MENU_FRAME_MAX_DISTANCE_LARGE,
+};
 
 interface UiDocument {
   getElementById: <T>(id: string) => T | null;
@@ -115,6 +125,9 @@ export class PalmMenuPanel {
   private readonly headForward = new Vector3();
   private readonly headQuaternion = new Quaternion();
   private readonly handAnchor: Vec3Like = { x: 0, y: 0, z: 0 };
+  /** The scale the open menu was made with: 1, or 1.25 for large text (fixed at opening). Its extent grows with it. */
+  private menuScale = 1;
+  private extentValue: PanelExtent = MENU_EXTENT;
   private fitLogged = false;
   private opacity = 1;
   private root: UIKit.Container | null = null;
@@ -179,13 +192,26 @@ export class PalmMenuPanel {
     this.headForward.set(0, 0, -1).applyQuaternion(this.headQuaternion);
     this.pinnedYaw = yawOfForward(this.headForward.x, this.headForward.z);
     const pitch = pitchOfForward(this.headForward.x, this.headForward.y, this.headForward.z);
-    pinnedMenuAnchor(this.headPosition, this.pinnedYaw, this.pinnedAnchor, pitch);
+    this.setScale(panelScale());
+    pinnedMenuAnchor(this.headPosition, this.pinnedYaw, this.pinnedAnchor, pitch, isLargeText());
     slog(`menu pinned pitchDeg=${degrees1(pitch)} anchorPitchDeg=${degrees1(pinnedAnchorPitchRad(pitch))}`);
     this.pinnedPlaced = false;
     this.create();
   }
 
+  /** The scale of the open menu: its controls, its centre and its extent grow with it. */
+  get scale(): number {
+    return this.menuScale;
+  }
+
+  private setScale(scale: number): void {
+    this.menuScale = scale;
+    this.extentValue = scaleExtent(MENU_EXTENT, scale);
+  }
+
   private create(): void {
+    // The scale is fixed while the menu is open (a palm menu takes it here, a pinned one just before).
+    if (this.modeValue === 'palm') this.setScale(panelScale());
     const entity = this.world.createTransformEntity();
     tagEntity(entity, stableId.ui('palm-menu'));
     entity.addComponent(PanelUI, { config: PANEL_ASSET });
@@ -263,7 +289,7 @@ export class PalmMenuPanel {
       const doc = entity.getValue(PanelDocument, 'document') as UiDocument | undefined;
       const title = doc?.getElementById<UIKit.Text>(TITLE_ELEMENT);
       if (title) {
-        applyPanelLook(doc, ROOT_ELEMENT);
+        applyPanelLook(doc, ROOT_ELEMENT, 'scale');
         // The hand menu is never hidden by the model or the table that happen to be in front of it.
         this.root = doc?.getElementById<UIKit.Container>(ROOT_ELEMENT) ?? null;
         this.root?.setProperties({ depthTest: false, renderOrder: MENU_RENDER_ORDER, opacity: this.opacity });
@@ -303,8 +329,8 @@ export class PalmMenuPanel {
       this.fitLogged = true;
       const angle =
         this.modeValue === 'pinned'
-          ? pinnedConeAngleDeg(this.pinnedAnchor, this.pinnedYaw, this.headPosition, this.headForward, MENU_EXTENT)
-          : panelConeAngleDeg(this.anchor, this.headPosition, this.headForward, MENU_EXTENT);
+          ? pinnedConeAngleDeg(this.pinnedAnchor, this.pinnedYaw, this.headPosition, this.headForward, this.extentValue)
+          : panelConeAngleDeg(this.anchor, this.headPosition, this.headForward, this.extentValue);
       slog(
         `menu view maxAngleDeg=${angle.toFixed(1)} distance=${this.headPosition.distanceTo(this.framePosition).toFixed(2)}`,
       );
@@ -315,8 +341,9 @@ export class PalmMenuPanel {
   private followHand(object: Object3D, handPosition: Vector3): void {
     // Above the hand, then pulled toward the middle of the view only as far as needed so that the WHOLE menu
     // (title, items and bar) stays inside the central cone of the head (rule 8, M2 gate W3).
-    menuAnchor(handPosition, this.headPosition, this.handAnchor, MENU_LIFT, MENU_FRAME_MAX_DISTANCE);
-    fitPanelToCone(this.handAnchor, this.headPosition, this.headForward, MENU_EXTENT, CONE_FIT, this.anchor);
+    const large = this.menuScale > 1;
+    menuAnchor(handPosition, this.headPosition, this.handAnchor, MENU_LIFT, large ? MENU_FRAME_MAX_DISTANCE_LARGE : MENU_FRAME_MAX_DISTANCE);
+    fitPanelToCone(this.handAnchor, this.headPosition, this.headForward, this.extentValue, large ? CONE_FIT_LARGE : CONE_FIT, this.anchor);
     object.position.set(this.anchor.x, this.anchor.y, this.anchor.z);
     object.updateMatrixWorld(true);
     // Panels face +Z, which is what Object3D.lookAt aims at the point for non-cameras.
@@ -324,7 +351,7 @@ export class PalmMenuPanel {
     // The frame is the bottom centre of the menu with this orientation; the panel is centred above it.
     this.framePosition.copy(object.position);
     this.frameOrientation.copy(object.quaternion);
-    this.centerOffset.set(PANEL_CENTER.dx, PANEL_CENTER.dy, 0).applyQuaternion(this.frameOrientation);
+    this.centerOffset.set(PANEL_CENTER.dx * this.menuScale, PANEL_CENTER.dy * this.menuScale, 0).applyQuaternion(this.frameOrientation);
     object.position.add(this.centerOffset);
     object.visible = true;
     this.frameReady = true;
@@ -339,7 +366,7 @@ export class PalmMenuPanel {
     object.position.set(this.pinnedAnchor.x, this.pinnedAnchor.y, this.pinnedAnchor.z);
     this.framePosition.copy(object.position);
     this.frameOrientation.copy(object.quaternion);
-    this.centerOffset.set(PANEL_CENTER.dx, PANEL_CENTER.dy, 0).applyQuaternion(this.frameOrientation);
+    this.centerOffset.set(PANEL_CENTER.dx * this.menuScale, PANEL_CENTER.dy * this.menuScale, 0).applyQuaternion(this.frameOrientation);
     object.position.add(this.centerOffset);
     object.updateMatrixWorld(true);
     object.visible = true;
@@ -364,8 +391,8 @@ export class PalmMenuPanel {
         const Icon = BUTTON_ICONS[button];
         slot.add(
           new Icon({
-            width: ICON_SIZE[button],
-            height: ICON_SIZE[button],
+            width: ICON_SIZE[button] * this.menuScale,
+            height: ICON_SIZE[button] * this.menuScale,
             color: getUiColors().ink,
             depthTest: false,
             renderOrder: ICON_RENDER_ORDER,
@@ -399,7 +426,7 @@ export class PalmMenuPanel {
       slot.card?.setProperties({ opacity: item ? undefined : 0 });
       // A long name breaks after its hyphen or gets a smaller font so it never touches the border of the card.
       const name = item ? fitName(item.name, ITEM_NAME_MAX_WIDTH, ITEM_NAME_SIZE, ITEM_NAME_MIN_SIZE) : null;
-      slot.name?.setProperties({ text: name ? name.text : '', fontSize: name ? name.fontSize : ITEM_NAME_SIZE });
+      slot.name?.setProperties({ text: name ? name.text : '', fontSize: (name ? name.fontSize : ITEM_NAME_SIZE) * this.menuScale });
       slot.size?.setProperties({ text: item ? item.size : '' });
     }
   }

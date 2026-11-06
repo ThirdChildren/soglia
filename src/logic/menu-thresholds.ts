@@ -51,6 +51,13 @@ export const MENU_MAX_WIDTH = 0.38;
  * 0.5-0.8 m). A hand held close to the face pushes the menu away along the line from the head.
  */
 export const MENU_MIN_DISTANCE = 0.5;
+
+/**
+ * The palm menu at large text (1.25 times bigger) is kept farther from the head so that the whole panel fits the 30 degree cone:
+ * the frame is never farther than `MENU_FRAME_MAX_DISTANCE_LARGE` and the panel never nearer than `MENU_MIN_DISTANCE_LARGE`.
+ */
+export const MENU_FRAME_MAX_DISTANCE_LARGE = 0.68;
+export const MENU_MIN_DISTANCE_LARGE = 0.58;
 /**
  * Margin over the 0.50 m of rule 8 for the labels and the hint, in metres: the clamp used to put them at exactly
  * 0.5000 m, so a rounding of a pose could read 0.4999 m. They sit at 0.52 m or more (never beyond their maximum).

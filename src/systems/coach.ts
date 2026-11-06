@@ -44,7 +44,7 @@ import { isViewPanelOpen } from './view-panel';
 const TEXT_BELOW = 0.07;
 /** The text of the grab step hangs this high above the middle of the model, and at least this high above the eyes (over the pinned menu), metres. */
 const TEXT_ABOVE_MODEL = 0.13;
-const TEXT_ABOVE_EYES = 0.26;
+const TEXT_ABOVE_EYES = 0.31;
 /** The hand is a little larger than a real hand, so it reads at 0.5 m (the same as the first onboarding). */
 const HAND_SIZE = 1.25;
 /** From the origin of the ghost hand to the point where its thumb and index meet, along its fingers, at the hand size, metres. */
