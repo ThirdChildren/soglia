@@ -71,7 +71,7 @@ interface PinsContext {
   /** Scale of the root the instances were last written for. */
   scale: number;
   lastLayerLog: string;
-  /** The move-in layer (the blue pins) was last announced as shown (`movein shown` / `movein hidden`, T4.10). */
+  /** The move-in layer (the violet pins) was last announced as shown (`movein shown` / `movein hidden`, T4.10). */
   moveInAnnounced: boolean;
   dirty: boolean;
 }
@@ -194,7 +194,7 @@ function rebuild(ctx: PinsContext): void {
     ctx.lastLayerLog = layer;
     slog(`pins layer ${layer}`);
   }
-  // The blue layer, once per change of the switch (or of the role / entries): the real scale only hides it for a while.
+  // The violet layer, once per change of the switch (or of the role / entries): the real scale only hides it for a while.
   const moveInState = moveInLayer(state.issues, state.role, state.prefs.moveInVisible);
   if (moveInState.shown !== ctx.moveInAnnounced) {
     ctx.moveInAnnounced = moveInState.shown;

@@ -124,7 +124,7 @@ interface DetailElements {
   actions: ChipElements[];
 }
 
-/** The parts of one row of the list: its wrapper (with the heading above the row), the heading, the row, the dot, the text, the urgency. */
+/** The parts of one row of the list: its wrapper (with the heading above the row), the heading, the row, the dot, the text, the status word, the urgency. */
 interface ListRowElements {
   wrapper: UIKit.Container | null;
   heading: UIKit.Container | null;
@@ -132,6 +132,8 @@ interface ListRowElements {
   row: UIKit.Container | null;
   dot: UIKit.Container | null;
   text: UIKit.Text | null;
+  /** The status word next to the dot (the list only; null in the move-in report). */
+  status: UIKit.Text | null;
   urgency: UIKit.Text | null;
 }
 
@@ -418,6 +420,7 @@ export class IssuePanel {
         row: doc.getElementById<UIKit.Container>(`issue-panel-lr-${i}`),
         dot: doc.getElementById<UIKit.Container>(`issue-panel-ld-${i}`),
         text: doc.getElementById<UIKit.Text>(`issue-panel-lt-${i}`),
+        status: doc.getElementById<UIKit.Text>(`issue-panel-ls-${i}`),
         urgency: doc.getElementById<UIKit.Text>(`issue-panel-lu-${i}`),
       });
     }
@@ -438,6 +441,7 @@ export class IssuePanel {
         row: doc.getElementById<UIKit.Container>(`issue-panel-mvr-${i}`),
         dot: doc.getElementById<UIKit.Container>(`issue-panel-mvd-${i}`),
         text: doc.getElementById<UIKit.Text>(`issue-panel-mvx-${i}`),
+        status: null,
         urgency: doc.getElementById<UIKit.Text>(`issue-panel-mvu-${i}`),
       });
     }
@@ -633,7 +637,7 @@ export class IssuePanel {
   }
 
   /**
-   * The move-in report: the switch (its label and the word for its state, dark when on like a chosen chip), the entries (a blue dot,
+   * The move-in report: the switch (its label and the word for its state, dark when on like a chosen chip), the entries (a violet dot,
    * the text, the date) and "+n more" when some did not fit.
    */
   private writeMoveIn(page: MoveInPage): void {
@@ -660,7 +664,7 @@ export class IssuePanel {
     }
   }
 
-  /** The list: up to five rows (a dot in the colour of the status, the text, the urgency), the heading "History" above the first archived one. */
+  /** The list: up to four rows of two lines (a dot in the colour of the status, the status word and the urgency; the text), the heading "History" above the first archived one. */
   private writeList(list: ListPage): void {
     this.listEmptyBox?.setProperties({ display: list.empty ? 'flex' : 'none' });
     this.listEmpty?.setProperties({ text: list.emptyText });
@@ -676,6 +680,7 @@ export class IssuePanel {
       elements.row?.setProperties({ backgroundColor: look.backgroundColor });
       elements.dot?.setProperties({ backgroundColor: hexColor(row.color) });
       elements.text?.setProperties({ text: row.text, color: look.color });
+      elements.status?.setProperties({ text: row.statusText, color: look.color });
       elements.urgency?.setProperties({ text: row.urgencyLabel, color: look.color });
     }
   }

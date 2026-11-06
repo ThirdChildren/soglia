@@ -204,22 +204,23 @@ export const STATUS_COLORS: Readonly<Record<IssueStatus, number>> = {
   resolved: 0x2ea44f,
   archived: 0x8a8f98,
 };
-export const BASELINE_COLOR = 0x2f7bf5;
+/** The move-in entries are violet, not blue: the blue of the viewpoint pillars (`palette.viewpoint`) is another thing (T5.R4, D63). */
+export const BASELINE_COLOR = 0x9b59d0;
 /** `question` and `info` entries (M5): the archived grey until they get their own colour. */
 export const NEUTRAL_COLOR = 0x8a8f98;
 
-/** Pin colour (D43): the status colour of an `issue`, blue for a `baseline`, grey for anything else. */
+/** Pin colour (D43): the status colour of an `issue`, violet for a `baseline`, grey for anything else. */
 export function statusColor(issue: Pick<Issue, 'kind' | 'status'>): number {
   if (issue.kind === 'baseline') return BASELINE_COLOR;
   if (issue.kind === 'issue' && issue.status !== undefined) return STATUS_COLORS[issue.status] ?? NEUTRAL_COLOR;
   return NEUTRAL_COLOR;
 }
 
-export type StatusColorName = 'red' | 'orange' | 'green' | 'grey' | 'blue';
+export type StatusColorName = 'red' | 'orange' | 'green' | 'grey' | 'violet';
 
 /** The colour as a word, for the `pin color id=... color=...` log line. */
 export function statusColorName(issue: Pick<Issue, 'kind' | 'status'>): StatusColorName {
-  if (issue.kind === 'baseline') return 'blue';
+  if (issue.kind === 'baseline') return 'violet';
   if (issue.kind !== 'issue') return 'grey';
   switch (issue.status) {
     case 'open':

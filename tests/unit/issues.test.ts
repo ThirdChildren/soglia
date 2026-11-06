@@ -268,10 +268,10 @@ describe('statusColor', () => {
     expect(statusColorName(i)).toBe(name);
   });
 
-  it('is blue for a baseline, grey for question and info', () => {
-    expect(statusColor({ kind: 'baseline' })).toBe(0x2f7bf5);
-    expect(BASELINE_COLOR).toBe(0x2f7bf5);
-    expect(statusColorName({ kind: 'baseline' })).toBe('blue');
+  it('is violet for a baseline, grey for question and info', () => {
+    expect(statusColor({ kind: 'baseline' })).toBe(0x9b59d0);
+    expect(BASELINE_COLOR).toBe(0x9b59d0);
+    expect(statusColorName({ kind: 'baseline' })).toBe('violet');
     expect(statusColor({ kind: 'info' })).toBe(0x8a8f98);
     expect(statusColorName({ kind: 'question' })).toBe('grey');
   });
@@ -284,6 +284,6 @@ describe('statusColor', () => {
     expect(statusColorName(byId('issue-012'))).toBe('red');
     expect(statusColorName(byId('issue-013'))).toBe('orange');
     expect(statusColorName(byId('issue-010'))).toBe('green');
-    expect(statusColorName(byId('baseline-001'))).toBe('blue');
+    expect(statusColorName(byId('baseline-001'))).toBe('violet');
   });
 });

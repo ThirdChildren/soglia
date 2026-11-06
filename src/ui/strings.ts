@@ -113,6 +113,8 @@ export const strings = {
       empty: 'No issues yet',
       history: 'History',
       sampleData: 'Sample data',
+      /** The status next to the dot of a row: a word, so the colour is never the only sign. */
+      status: { open: 'Open', in_progress: 'Progress', resolved: 'Resolved', archived: 'Archived' },
       urgency: { low: 'Low', medium: 'Medium', urgent: 'Urgent' },
       prev: 'Prev',
       next: 'Next',

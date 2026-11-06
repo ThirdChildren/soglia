@@ -74,6 +74,12 @@ export const DETAIL_INFO_ROOM = DETAIL_AREA_HEIGHT;
 export const DETAIL_ELLIPSIS = '...';
 /** Width of the text boxes. */
 export const DETAIL_LINE_WIDTH = DETAIL_WIDTH;
+/**
+ * Space between the status word / the urgency of the first line of the detail and the border of the body, on each side
+ * (T5.R4: `Medium` touched the border). The head is `DETAIL_HEAD_WIDTH` wide, centred in the content.
+ */
+export const DETAIL_HEAD_MARGIN = 0.5;
+export const DETAIL_HEAD_WIDTH = DETAIL_WIDTH - 2 * DETAIL_HEAD_MARGIN;
 
 /** The width a text needs: the table is of the regular font, the factor keeps the margin of the list (bold included). */
 function need(text: string, factor: number = LIST_BOLD_FACTOR): number {
@@ -118,7 +124,7 @@ export interface DetailAction {
 
 export interface DetailModel {
   readonly id: string;
-  /** `issue`, or `baseline` for an entry of the move-in report (T4.10: read-only, blue, no urgency and no buttons). */
+  /** `issue`, or `baseline` for an entry of the move-in report (T4.10: read-only, violet, no urgency and no buttons). */
   readonly kind: IssueKind;
   /** The issue is not in the store (or the role cannot see it): only `missingText` is shown. */
   readonly missing: boolean;
@@ -292,7 +298,7 @@ export function buildDetail(
   if (issue === undefined || !can(role, 'view-pins') || (!baseline && (issue.kind !== 'issue' || issue.status === undefined))) {
     return missingDetail(id, texts, backText, closeText);
   }
-  // A move-in entry is read-only: no status of an issue, no urgency, no buttons (D48). Its colour is the blue of its pin.
+  // A move-in entry is read-only: no status of an issue, no urgency, no buttons (D48). Its colour is the violet of its pin.
   const status = baseline ? null : (issue.status as IssueStatus);
   const actionIds = baseline ? [] : availableActions(role, issue);
   const { entries, older } = lastHistory(issue.history);

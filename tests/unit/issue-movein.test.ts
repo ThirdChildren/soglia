@@ -97,14 +97,14 @@ describe('who has the report', () => {
 });
 
 describe('the rows', () => {
-  it('has only the baseline entries of the real seed: baseline-001, in blue, with its date', () => {
+  it('has only the baseline entries of the real seed: baseline-001, in violet, with its date', () => {
     const p = page(seed());
     expect(p.rows.map((row) => row.id)).toEqual(['baseline-001']);
     expect(p.total).toBe(1);
     expect(p.hidden).toBe(0);
     const [row] = p.rows;
-    expect(row.colorName).toBe('blue');
-    expect(row.color).toBe(0x2f7bf5);
+    expect(row.colorName).toBe('violet');
+    expect(row.color).toBe(0x9b59d0);
     expect(row.date).toBe('1 Oct');
     expect(row.sample).toBe(true);
     expect(row.fullText).toBe('Scratch on the parquet, present at move-in.');
@@ -266,7 +266,7 @@ describe('the blue layer of the model', () => {
     const blue = pins.find((pin) => pin.id === 'baseline-001');
     expect(blue).toBeDefined();
     expect([blue?.x, blue?.y, blue?.z]).toEqual([3.8, 0, 1]);
-    expect(blue?.colorName).toBe('blue');
+    expect(blue?.colorName).toBe('violet');
   });
 });
 
@@ -305,8 +305,8 @@ describe('the layout file says what the model says', () => {
     }
   });
 
-  it('draws the dots in the blue of the pin, and all the text at 2.4 cm or more', () => {
-    for (let i = 0; i < MOVEIN_MAX_ROWS; i += 1) expect(styleOf(`issue-panel-mvd-${i}`)['background-color']).toBe('#2f7bf5');
+  it('draws the dots in the violet of the pin, and all the text at 2.4 cm or more', () => {
+    for (let i = 0; i < MOVEIN_MAX_ROWS; i += 1) expect(styleOf(`issue-panel-mvd-${i}`)['background-color']).toBe('#9b59d0');
     for (const id of ['issue-panel-mvt-label', 'issue-panel-mvt-state', 'issue-panel-mvx-0', 'issue-panel-mvu-3', 'issue-panel-mve', 'issue-panel-mvm']) {
       expect(num(id, 'font-size')).toBeGreaterThanOrEqual(MOVEIN_TEXT_SIZE);
     }

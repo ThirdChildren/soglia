@@ -7,10 +7,15 @@ import {
   LIST_DOT_SIZE,
   LIST_HEADING_GAP,
   LIST_HEADING_HEIGHT,
+  LIST_ISSUE_BORDER,
+  LIST_ISSUE_ROW_HEIGHT,
+  LIST_FIRST_LINE_WORDS_ROOM,
+  LIST_LINE_WIDTH,
   LIST_PAGE_SIZE,
   LIST_ROW_GAP,
   LIST_ROW_HEIGHT,
   LIST_ROW_WIDTH,
+  LIST_TEXT_MAX_CHARS,
   LIST_TEXT_SIZE,
   LIST_TITLE_SIZE,
   LIST_TITLE_WIDTH,
@@ -82,21 +87,23 @@ const page = (issues: readonly StoredIssue[], role: (typeof ROLES)[number] = 'la
   buildListPage(issues, role, n, selected, TEXTS);
 
 describe('the order and the pages', () => {
-  it('has five rows per page', () => {
-    expect(LIST_PAGE_SIZE).toBe(5);
-    const issues = Array.from({ length: 6 }, (_, i) => mine(20 + i, 'medium', `Issue ${i}`, `2026-11-04T10:0${i}:00.000Z`));
-    expect(page(issues).rows).toHaveLength(5);
+  it('has four rows per page (two lines each, T5.R4)', () => {
+    expect(LIST_PAGE_SIZE).toBe(4);
+    const issues = Array.from({ length: 5 }, (_, i) => mine(20 + i, 'medium', `Issue ${i}`, `2026-11-04T10:0${i}:00.000Z`));
+    expect(page(issues).rows).toHaveLength(4);
     expect(page(issues).pageCount).toBe(2);
     expect(page(issues, 'landlord', 1).rows).toHaveLength(1);
+    // the four issues of the demo (the seed and one of the tenant) still make one page
+    expect(page([...seed(), mine(14, 'medium')]).pageCount).toBe(1);
   });
 
-  it('11 issues make three pages of 5, 5 and 1, and no row is repeated or lost', () => {
+  it('11 issues make three pages of 4, 4 and 3, and no row is repeated or lost', () => {
     const issues = Array.from({ length: 11 }, (_, i) => mine(20 + i, 'low', `Issue ${i}`, `2026-11-04T10:${String(i).padStart(2, '0')}:00.000Z`));
     expect(pageCountFor(11)).toBe(3);
     const all = [0, 1, 2].flatMap((n) => ids(page(issues, 'tenant', n)));
     expect(all).toHaveLength(11);
     expect(new Set(all).size).toBe(11);
-    expect([0, 1, 2].map((n) => page(issues, 'tenant', n).rows.length)).toEqual([5, 5, 1]);
+    expect([0, 1, 2].map((n) => page(issues, 'tenant', n).rows.length)).toEqual([4, 4, 3]);
     // The most recent first inside a group of the same urgency and status.
     expect(all[0]).toBe('issue-030');
   });
@@ -130,9 +137,9 @@ describe('the order and the pages', () => {
   it('puts the heading above the FIRST archived row only, and again on a page that starts with archived ones', () => {
     const archived = Array.from({ length: 7 }, (_, i) => withStatus(mine(20 + i, 'low', `Old ${i}`, `2026-11-04T10:0${i}:00.000Z`), 'archived'));
     const first = page([mine(14, 'low'), ...archived]);
-    expect(first.rows.map((row) => row.heading)).toEqual([false, true, false, false, false]);
+    expect(first.rows.map((row) => row.heading)).toEqual([false, true, false, false]);
     const second = page([mine(14, 'low'), ...archived], 'landlord', 1);
-    expect(second.rows.map((row) => row.heading)).toEqual([true, false, false]);
+    expect(second.rows.map((row) => row.heading)).toEqual([true, false, false, false]);
     expect(page([mine(14, 'low')]).hasHistory).toBe(false);
   });
 
@@ -146,16 +153,17 @@ describe('the order and the pages', () => {
     expect(ids(page(issues))).toEqual(['issue-004', 'issue-003', 'issue-002', 'issue-001']);
   });
 
-  it('numbers the rows 0..4 and finds the issue of a row', () => {
+  it('numbers the rows 0..3 and finds the issue of a row', () => {
     const listed = page([...seed(), mine(14, 'medium')]);
     expect(listed.rows.map((row) => row.index)).toEqual([0, 1, 2, 3]);
     expect(rowIssueId(listed, 0)).toBe('issue-014');
     expect(rowIssueId(listed, 3)).toBe('issue-010');
     expect(rowIssueId(listed, 4)).toBeNull();
+    expect(rowIssueId(page([...seed()]), 3)).toBeNull();
     expect(rowControlId(2)).toBe('row-2');
     expect(controlStableId(rowControlId(2))).toBe('ui:issue-row-2');
-    expect(rowOfControl('row-4')).toBe(4);
-    expect(rowOfControl('row-5')).toBeNull();
+    expect(rowOfControl('row-3')).toBe(3);
+    expect(rowOfControl('row-4')).toBeNull();
     expect(rowOfControl('back')).toBeNull();
     expect(rowOfControl('row-x')).toBeNull();
   });
@@ -163,6 +171,7 @@ describe('the order and the pages', () => {
   it('keeps the page inside the pages that exist', () => {
     const issues = Array.from({ length: 6 }, (_, i) => mine(20 + i, 'low', `Issue ${i}`));
     expect(page(issues, 'tenant', 9).page).toBe(1);
+    expect(page(issues, 'tenant', 9).rows).toHaveLength(2);
     expect(page(issues, 'tenant', -3).page).toBe(0);
     expect(page(issues, 'tenant', Number.NaN).page).toBe(0);
     expect(clampPage(5, 2)).toBe(1);
@@ -206,7 +215,7 @@ describe('the row: the dot, the urgency and the sample marker', () => {
     expect(own.title).toBe('Issues');
     expect(own.rows[0].sample).toBe(false);
     // The second page has no sample entry: no marker there.
-    const many = [...Array.from({ length: 5 }, (_, i) => mine(20 + i, 'urgent', `Issue ${i}`)), ...seed()];
+    const many = [...Array.from({ length: 4 }, (_, i) => mine(20 + i, 'urgent', `Issue ${i}`)), ...seed()];
     expect(page(many, 'landlord', 0).hasSample).toBe(false);
     expect(page(many, 'landlord', 1).hasSample).toBe(true);
     expect(page(many, 'landlord', 1).title).toContain('Sample data');
@@ -274,9 +283,40 @@ describe('the text of a row is cut the same way every time', () => {
   it('every row of the seed and of a new issue fits its room in the real bold font', () => {
     const listed = page([...seed(), mine(14, 'medium'), mine(15, 'urgent', 'The washing machine does not start.'), mine(16, 'low', 'A very long description of a problem that goes on and on')]);
     for (const row of listed.rows) {
-      expect(row.text.length).toBeLessThanOrEqual(24);
-      expect(boldWidth(row.text)).toBeLessThanOrEqual(rowTextBudget(row.urgencyLabel));
+      expect(row.text.length).toBeLessThanOrEqual(LIST_TEXT_MAX_CHARS);
+      expect(boldWidth(row.text)).toBeLessThanOrEqual(LIST_LINE_WIDTH);
     }
+  });
+
+  it('gives the text of a row of the list up to 22 characters, the dots included (T5.R4: it was about 16)', () => {
+    expect(LIST_TEXT_MAX_CHARS).toBe(22);
+    const listed = page([mine(1, 'urgent', 'The washing machine does not start at all.'), mine(2, 'low', 'Pipe leaks')]);
+    const long = listed.rows.find((row) => row.id === 'issue-001');
+    expect(long?.text.endsWith('...')).toBe(true);
+    // a text that is cut still shows at least 20 characters (with the three dots), whatever the urgency word
+    expect(long?.text.length).toBeGreaterThanOrEqual(20);
+    expect(long?.text.length).toBeLessThanOrEqual(22);
+    expect(listed.rows.find((row) => row.id === 'issue-002')?.text).toBe('Pipe leaks');
+    expect(truncateRowText('a'.repeat(22), 1000, LIST_TEXT_MAX_CHARS)).toBe('a'.repeat(22));
+    expect(truncateRowText('a'.repeat(23), 1000, LIST_TEXT_MAX_CHARS)).toBe(`${'a'.repeat(19)}...`);
+  });
+
+  it('the move-in report keeps its own limit of 24 characters and its own room', () => {
+    expect(rowTextBudget('Medium')).toBeLessThan(LIST_LINE_WIDTH);
+    expect(ROW_TEXT_MAX_CHARS).toBe(24);
+  });
+
+  it('shows the status in a word, next to the dot: the colour is never the only sign (T5.R4)', () => {
+    const listed = page([
+      mine(1, 'urgent'),
+      withStatus(mine(2, 'medium'), 'in_progress'),
+      withStatus(mine(3, 'low'), 'resolved'),
+      withStatus(mine(4, 'low', 'Old', '2026-11-04T10:09:00.000Z'), 'archived'),
+    ]);
+    expect(listed.rows.map((row) => row.statusText)).toEqual(['Open', 'Progress', 'Resolved', 'Archived']);
+    expect(Object.values(TEXTS.status)).toEqual(['Open', 'Progress', 'Resolved', 'Archived']);
+    // four different words for four different colours
+    expect(new Set(listed.rows.map((row) => row.statusText)).size).toBe(new Set(listed.rows.map((row) => row.color)).size);
   });
 });
 
@@ -307,8 +347,8 @@ describe('the log lines', () => {
     expect(formatListLine(page([...seed(), mine(14, 'medium')]))).toBe('issues screen=list page=1/1 items=issue-014,issue-013,issue-012,issue-010');
     expect(formatListLine(page([]))).toBe('issues screen=list page=1/1 items=-');
     const many = Array.from({ length: 6 }, (_, i) => mine(20 + i, 'low', `Issue ${i}`));
-    expect(formatListLine(page(many, 'tenant', 1))).toBe('issues screen=list page=2/2 items=issue-020');
-    expect(listItems(page(many, 'tenant', 0)).split(',')).toHaveLength(5);
+    expect(formatListLine(page(many, 'tenant', 1))).toBe('issues screen=list page=2/2 items=issue-021,issue-020');
+    expect(listItems(page(many, 'tenant', 0)).split(',')).toHaveLength(4);
     expect(formatRowSelected('issue-014')).toBe('issues row selected id=issue-014');
     expect(formatListDenied('visitor')).toBe('issues list denied role=visitor');
   });
@@ -359,35 +399,49 @@ describe('the list fits the panel: text of 2.4 cm, rows of 4 cm, nothing outside
     for (const row of page(crowded()).rows) expect(() => atlasWidth(row.text, 2.4, REGULAR)).not.toThrow();
   });
 
-  it('the row text, measured in the REAL regular and bold atlases, fits next to the dot and the urgency', () => {
+  it('the row text, measured in the REAL regular and bold atlases, fits its own line, inside the borders and the padding', () => {
+    expect(LIST_LINE_WIDTH).toBeCloseTo(LIST_ROW_WIDTH - 2 * LIST_ISSUE_BORDER - 2 * 0.4, 9);
     for (const pageNumber of [0, 1]) {
       for (const row of page(crowded(), 'landlord', pageNumber).rows) {
-        const room = LIST_ROW_WIDTH - 0.8 - 0.8 - LIST_DOT_SIZE - LIST_DOT_GAP - 0.4 - boldWidth(row.urgencyLabel);
-        expect(atlasWidth(row.text, LIST_TEXT_SIZE, REGULAR)).toBeLessThanOrEqual(room);
-        expect(boldWidth(row.text)).toBeLessThanOrEqual(room + 1e-9);
+        expect(atlasWidth(row.text, LIST_TEXT_SIZE, REGULAR)).toBeLessThanOrEqual(LIST_LINE_WIDTH);
+        expect(boldWidth(row.text)).toBeLessThanOrEqual(LIST_LINE_WIDTH + 1e-9);
       }
     }
   });
 
-  it('the cut keeps the text readable: at least 12 characters of a long text, with the widest urgency word', () => {
-    for (const row of page(crowded()).rows) {
-      if (row.fullText.length > 24) expect(row.text.length).toBeGreaterThanOrEqual(12);
+  it('the first line (dot, status word, urgency) fits for every status and every urgency, in the real bold font, with a gap', () => {
+    for (const status of Object.values(TEXTS.status)) {
+      for (const urgency of Object.values(TEXTS.urgency)) {
+        const used = boldWidth(status) + boldWidth(urgency);
+        expect(used, `${status} / ${urgency}`).toBeLessThanOrEqual(LIST_FIRST_LINE_WORDS_ROOM - 1);
+      }
     }
   });
 
-  it('a page with five rows and the heading ends above the bottom of the body', () => {
+  it('the cut keeps the text readable: at least 19 characters of a long text', () => {
+    for (const row of page(crowded()).rows) {
+      if (row.fullText.length > LIST_TEXT_MAX_CHARS) expect(row.text.length).toBeGreaterThanOrEqual(19);
+    }
+  });
+
+  it('a page with four rows and the heading ends above the bottom of the body', () => {
     const issues = [
-      ...Array.from({ length: 4 }, (_, i) => mine(40 + i, 'low', `Issue ${i}`)),
+      ...Array.from({ length: 3 }, (_, i) => mine(40 + i, 'low', `Issue ${i}`)),
       withStatus(mine(50, 'low', 'Old', '2026-11-04T10:09:00.000Z'), 'archived'),
     ];
     const listed = page(issues);
-    expect(listed.rows).toHaveLength(5);
-    expect(headingRow(listed)).toBe(4);
-    expect(listContentBottom(listed)).toBeCloseTo(32.4 - 5 * LIST_ROW_HEIGHT - 4 * LIST_ROW_GAP - LIST_HEADING_HEIGHT - LIST_HEADING_GAP, 9);
+    expect(listed.rows).toHaveLength(4);
+    expect(headingRow(listed)).toBe(3);
+    expect(listContentBottom(listed)).toBeCloseTo(32.4 - 4 * LIST_ISSUE_ROW_HEIGHT - 3 * LIST_ROW_GAP - LIST_HEADING_HEIGHT - LIST_HEADING_GAP, 9);
     expect(listContentBottom(listed)).toBeGreaterThanOrEqual(LIST_BOTTOM_Y);
-    // The worst case: the heading at the top of a page of five archived rows.
-    const archived = Array.from({ length: 5 }, (_, i) => withStatus(mine(60 + i, 'low', `Old ${i}`, `2026-11-04T10:0${i}:00.000Z`), 'archived'));
+    // The worst case: the heading at the top of a page of four archived rows.
+    const archived = Array.from({ length: 4 }, (_, i) => withStatus(mine(60 + i, 'low', `Old ${i}`, `2026-11-04T10:0${i}:00.000Z`), 'archived'));
     expect(listContentBottom(page(archived))).toBeGreaterThanOrEqual(LIST_BOTTOM_Y);
+  });
+
+  it('a row is two lines of 2.4 cm and its border, and a 5.4 cm target', () => {
+    expect(LIST_ISSUE_ROW_HEIGHT).toBeCloseTo(2 * LIST_TEXT_SIZE + 2 * LIST_ISSUE_BORDER, 9);
+    expect(LIST_ISSUE_ROW_HEIGHT).toBeGreaterThanOrEqual(4);
   });
 
   it('every row and every button is a 4 cm target, inside the body, with no overlap', () => {
@@ -435,7 +489,7 @@ describe('the list fits the panel: text of 2.4 cm, rows of 4 cm, nothing outside
 
   it('the heading shifts the rows under it, and only those', () => {
     expect(rowTop(0, null)).toBeCloseTo(32.4, 9);
-    expect(rowTop(2, null)).toBeCloseTo(32.4 - 2 * (LIST_ROW_HEIGHT + LIST_ROW_GAP), 9);
+    expect(rowTop(2, null)).toBeCloseTo(32.4 - 2 * (LIST_ISSUE_ROW_HEIGHT + LIST_ROW_GAP), 9);
     expect(rowTop(1, 1)).toBeCloseTo(rowTop(1, null) - LIST_HEADING_HEIGHT - LIST_HEADING_GAP, 9);
     expect(rowTop(0, 1)).toBeCloseTo(rowTop(0, null), 9);
   });
@@ -455,22 +509,25 @@ describe('the layout file says what the model says', () => {
   }
   const num = (id: string, key: string): number => Number.parseFloat(styleOf(id)[key]);
 
-  it('has five rows of the height, width and gap of the model', () => {
+  it('has four rows of the height, width and gap of the model', () => {
     expect(num('issue-panel-list', 'width')).toBeCloseTo(LIST_ROW_WIDTH, 9);
+    expect(source).not.toContain('id="issue-panel-lrow-4"');
     for (let i = 0; i < LIST_PAGE_SIZE; i += 1) {
-      expect(num(`issue-panel-lr-${i}`, 'height')).toBeCloseTo(LIST_ROW_HEIGHT, 9);
+      expect(num(`issue-panel-lr-${i}`, 'height')).toBeCloseTo(LIST_ISSUE_ROW_HEIGHT, 9);
+      expect(num(`issue-panel-lr-${i}`, 'border-width')).toBeCloseTo(LIST_ISSUE_BORDER, 9);
+      expect(num(`issue-panel-lg-${i}`, 'width')).toBeCloseTo(LIST_LINE_WIDTH, 9);
       expect(num(`issue-panel-lr-${i}`, 'width')).toBeCloseTo(LIST_ROW_WIDTH, 9);
       expect(num(`issue-panel-lh-${i}`, 'height')).toBeCloseTo(LIST_HEADING_HEIGHT, 9);
       expect(num(`issue-panel-lh-${i}`, 'margin-bottom')).toBeCloseTo(LIST_HEADING_GAP, 9);
       expect(num(`issue-panel-ld-${i}`, 'width')).toBeCloseTo(LIST_DOT_SIZE, 9);
       expect(num(`issue-panel-ld-${i}`, 'height')).toBeCloseTo(LIST_DOT_SIZE, 9);
-      expect(num(`issue-panel-lt-${i}`, 'margin-left')).toBeCloseTo(LIST_DOT_GAP, 9);
+      expect(num(`issue-panel-ls-${i}`, 'margin-left')).toBeCloseTo(LIST_DOT_GAP, 9);
       if (i > 0) expect(num(`issue-panel-lrow-${i}`, 'margin-top')).toBeCloseTo(LIST_ROW_GAP, 9);
     }
   });
 
   it('all the text of the list is at least 2.4 cm, and the bar boxes are as high as the bar', () => {
-    for (const id of ['issue-panel-lh-0-label', 'issue-panel-lt-0', 'issue-panel-lu-0', 'issue-panel-lt-4', 'issue-panel-list-empty', 'issue-panel-mid2-label']) {
+    for (const id of ['issue-panel-lh-0-label', 'issue-panel-lt-0', 'issue-panel-ls-0', 'issue-panel-lu-0', 'issue-panel-lt-3', 'issue-panel-ls-3', 'issue-panel-list-empty', 'issue-panel-mid2-label']) {
       expect(num(id, 'font-size')).toBeGreaterThanOrEqual(LIST_TEXT_SIZE);
     }
     expect(num('issue-panel-mid2', 'height')).toBeCloseTo(ISSUE_BAR_HEIGHT, 9);

@@ -9,6 +9,8 @@ import {
   DETAIL_HISTORY_LINE_HEIGHT,
   DETAIL_INFO_ROOM,
   DETAIL_INFO_ROOM_WITH_ACTIONS,
+  DETAIL_HEAD_MARGIN,
+  DETAIL_HEAD_WIDTH,
   DETAIL_LINE_WIDTH,
   DETAIL_META_HEIGHT,
   DETAIL_TEXT_LINE_HEIGHT,
@@ -208,7 +210,7 @@ describe('what the detail says', () => {
     expect(missingDetail('x', TEXTS, 'Back', 'Close').historyLines).toEqual([]);
   });
 
-  it('shows a move-in entry read-only (T4.10, D48): blue, "Move-in", no urgency, no status of an issue, no buttons', () => {
+  it('shows a move-in entry read-only (T4.10, D48): violet, "Move-in", no urgency, no status of an issue, no buttons', () => {
     const baseline = seed().find((i) => i.kind === 'baseline');
     for (const role of ['tenant', 'landlord'] as const) {
       const model = detail(baseline, role, 'Living room');
@@ -216,8 +218,8 @@ describe('what the detail says', () => {
       expect(model.kind).toBe('baseline');
       expect(model.status).toBeNull();
       expect(model.statusText).toBe('Move-in');
-      expect(model.colorName).toBe('blue');
-      expect(model.color).toBe(0x2f7bf5);
+      expect(model.colorName).toBe('violet');
+      expect(model.color).toBe(0x9b59d0);
       expect(model.urgencyText).toBe('');
       expect(model.title).toBe('Move-in - Sample data');
       expect(model.textLines.join(' ')).toBe('Scratch on the parquet, present at move-in.');
@@ -407,6 +409,15 @@ describe('the detail fits the panel: text of 2.4 cm, buttons of 4 cm, nothing ou
     expect(widest).toBeLessThanOrEqual(DETAIL_LINE_WIDTH);
   });
 
+  it('the head (status word at the left, urgency at the right) fits its width with a gap, for every status and urgency (T5.R4)', () => {
+    for (const status of Object.values(TEXTS.status)) {
+      for (const urgency of Object.values(TEXTS.urgency)) {
+        const used = atlasWidth(status, BOLD) + 1.8 + 0.4 + atlasWidth(urgency, BOLD);
+        expect(used, `${status} / ${urgency}`).toBeLessThanOrEqual(DETAIL_HEAD_WIDTH - 0.4);
+      }
+    }
+  });
+
   it('the status words, the urgency and the buttons fit their boxes', () => {
     for (const word of Object.values(TEXTS.status)) expect(atlasWidth(word, BOLD) + 1.8 + 0.4).toBeLessThanOrEqual(DETAIL_LINE_WIDTH / 2);
     for (const word of Object.values(TEXTS.urgency)) expect(atlasWidth(word, BOLD)).toBeLessThanOrEqual(DETAIL_LINE_WIDTH / 2);
@@ -481,6 +492,12 @@ describe('the layout file says what the model says', () => {
     expect(num('issue-panel-detail', 'height')).toBeCloseTo(DETAIL_AREA_HEIGHT, 9);
     expect(num('issue-panel-detail', 'width')).toBeCloseTo(DETAIL_LINE_WIDTH, 9);
     expect(num('issue-panel-dhead', 'height')).toBeCloseTo(2.6, 9);
+    // T5.R4: the urgency (`Medium`) and the status are 0.5 cm inside the border of the body
+    expect(num('issue-panel-dhead', 'width')).toBeCloseTo(DETAIL_HEAD_WIDTH, 9);
+    expect(num('issue-panel-dhead', 'margin-left')).toBeCloseTo(DETAIL_HEAD_MARGIN, 9);
+    expect(num('issue-panel-dhead', 'margin-right')).toBeCloseTo(DETAIL_HEAD_MARGIN, 9);
+    expect(DETAIL_HEAD_MARGIN).toBeGreaterThanOrEqual(0.5);
+    expect(DETAIL_HEAD_WIDTH + 2 * DETAIL_HEAD_MARGIN).toBeCloseTo(DETAIL_LINE_WIDTH, 9);
     expect(num('issue-panel-dmeta-box', 'height')).toBeCloseTo(DETAIL_META_HEIGHT, 9);
     expect(num('issue-panel-dmeta2-box', 'height')).toBeCloseTo(DETAIL_META_HEIGHT, 9);
     for (let i = 0; i < DETAIL_TEXT_LINES; i += 1) expect(num(`issue-panel-dtl-${i}`, 'height')).toBeCloseTo(DETAIL_TEXT_LINE_HEIGHT, 9);

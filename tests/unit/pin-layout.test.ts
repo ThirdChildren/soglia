@@ -109,7 +109,7 @@ describe('layoutPins with the demo seed', () => {
     const pins = layoutPins(seed, vis('tenant', { moveInVisible: true }));
     expect(pins.map((p) => p.id)).toEqual(['issue-012', 'issue-013', 'issue-010', 'baseline-001']);
     const baseline = pins[3];
-    expect(baseline.colorName).toBe('blue');
+    expect(baseline.colorName).toBe('violet');
     expect(baseline.color).toBe(BASELINE_COLOR);
   });
 

@@ -353,9 +353,9 @@ describe('statusColor and statusColorName: only an issue has a status colour', (
     expect(statusColorName({ kind, status: 'in_progress' })).toBe('grey');
   });
 
-  it('a baseline with a stray status stays blue', () => {
-    expect(statusColor({ kind: 'baseline', status: 'open' })).toBe(0x2f7bf5);
-    expect(statusColorName({ kind: 'baseline', status: 'open' })).toBe('blue');
+  it('a baseline with a stray status stays violet', () => {
+    expect(statusColor({ kind: 'baseline', status: 'open' })).toBe(0x9b59d0);
+    expect(statusColorName({ kind: 'baseline', status: 'open' })).toBe('violet');
   });
 
   it('an issue without a status is grey', () => {

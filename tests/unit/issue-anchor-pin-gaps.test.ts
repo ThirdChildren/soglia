@@ -383,7 +383,7 @@ describe('property: layoutPins against a hand-written visibility table', () => {
       { id: 'c', kind: 'issue', status: 'resolved', position: [1, 1, 1] },
       { id: 'd', kind: 'baseline', status: undefined, position: [1, 1, 1] },
     ];
-    expect(layoutPins(entries, v).map((p) => p.colorName)).toEqual(['red', 'orange', 'green', 'blue']);
+    expect(layoutPins(entries, v).map((p) => p.colorName)).toEqual(['red', 'orange', 'green', 'violet']);
     expect(new Set(layoutPins(entries, v).map((p) => p.color)).size).toBe(4);
   });
 });

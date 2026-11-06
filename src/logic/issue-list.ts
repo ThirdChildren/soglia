@@ -2,17 +2,17 @@
 // three.
 //
 // WHAT IT SHOWS. Only the entries of kind `issue` (the `baseline` entries belong to the move-in report), in the order of D48
-// (`sortIssues`: active by urgency, then resolved, then archived), five rows per page. A row is a dot in the colour of the status
-// (the colour of the pin on the model), the text of the issue cut to 24 characters and the urgency. The first archived row of a
-// page has the heading "History" above it. The title carries "Sample data" when the page has entries that came from the demo
-// file (rule 7 of CLAUDE.md) and the page number when there is more than one page. Only the roles that see the pins have the
-// list (D43: tenant and landlord).
+// (`sortIssues`: active by urgency, then resolved, then archived), four rows per page. A row has two lines (T5.R4, D63): the first
+// has the dot in the colour of the status (the colour of the pin on the model), the status in a word (the colour is never the
+// only sign, rule 9) and the urgency at the right end; the second has the text of the issue, cut to 22 characters. The first
+// archived row of a page has the heading "History" above it. The title carries "Sample data" when the page has entries that
+// came from the demo file (rule 7 of CLAUDE.md) and the page number when there is more than one page. Only the roles that see
+// the pins have the list (D43: tenant and landlord).
 //
-// SPACE. The panel is 36.0 x 37.6 cm, the text is never smaller than 2.4 cm and a row is 4 cm high (rule 8). A row is 35.2 cm
-// wide, so 24 characters of text do NOT fit next to the dot and the urgency at 2.4 cm: 24 is the upper bound, and the text is cut
-// further, to the width left in ITS row (`rowTextBudget`), measured with the font table (`textWidth`). The cut is deterministic:
-// the longest prefix that fits, without the space at its end, plus `...` (ASCII: the panel font may not have the ellipsis).
-// Body of the list: up to five rows and one heading (2.7 cm + 0.3 gap) = 21.2 + 3.0 cm, in the 25.4 cm the body has.
+// SPACE. The panel is 36.0 x 37.6 cm, the text is never smaller than 2.4 cm and a row is 5.4 cm high (two lines, rule 8). The text
+// has the whole line (33.8 cm) and is cut to the longest prefix that fits in 22 characters, without the space at its end, plus `...`
+// (ASCII: the panel font has no ellipsis glyph). The cut is deterministic. Body of the list: up to four rows and one heading
+// (2.4 cm + 0.2 gap) = 21.6 + 0.9 + 2.6 = 25.1 cm, in the 25.4 cm the body has (`LIST_BOTTOM_Y` is the limit).
 // The bar at the bottom has `Back` and `Close`, and `Prev` and `Next` between them when there is more than one page (four
 // buttons of 8.4 cm instead of two of 9.0).
 
@@ -31,9 +31,11 @@ import { can } from './permissions';
 import { textWidth } from './text-fit';
 
 /** Rows of a page (`ui:issue-row-0` .. `ui:issue-row-4`). */
-export const LIST_PAGE_SIZE = 5;
-/** The text of a row is never longer than this (the three dots of a cut text included). */
+export const LIST_PAGE_SIZE = 4;
+/** The text of a row of the move-in report is never longer than this (the three dots of a cut text included). */
 export const ROW_TEXT_MAX_CHARS = 24;
+/** The text of a row of the list is never longer than this (the three dots of a cut text included), T5.R4. */
+export const LIST_TEXT_MAX_CHARS = 22;
 /** The ASCII end mark of a cut text. */
 export const ROW_TEXT_ELLIPSIS = '...';
 
@@ -45,13 +47,17 @@ export const LIST_TEXT_SIZE = 2.4;
 export const LIST_BOLD_FACTOR = 1.05;
 /** Width of a row: the inside of the body. */
 export const LIST_ROW_WIDTH = ISSUE_PANEL.width - 2 * ISSUE_BODY_BORDER;
-/** Height of a row (a 4 cm target, rule 8). */
+/** Height of a row of the move-in report (a 4 cm target, rule 8). */
 export const LIST_ROW_HEIGHT = 4;
+/** Height of a row of the list: two lines of 2.4 cm (the status and the urgency, then the text) and the border (T5.R4). */
+export const LIST_ISSUE_ROW_HEIGHT = 5.4;
+/** Border of a row of the list. */
+export const LIST_ISSUE_BORDER = 0.3;
 /** Space between two rows. */
 export const LIST_ROW_GAP = 0.3;
 /** Height of the heading "History" and the space under it. */
-export const LIST_HEADING_HEIGHT = 2.7;
-export const LIST_HEADING_GAP = 0.3;
+export const LIST_HEADING_HEIGHT = 2.4;
+export const LIST_HEADING_GAP = 0.2;
 /** Border of a row and the space between the border and the dot (and between the urgency and the border). */
 export const LIST_ROW_BORDER = 0.4;
 export const LIST_ROW_PADDING = 0.4;
@@ -72,7 +78,21 @@ function need(text: string): number {
   return textWidth(text, LIST_TEXT_SIZE) * LIST_BOLD_FACTOR;
 }
 
-/** The room the text of a row has: the inside of the row less the dot, the urgency and the gaps. */
+/** The width of a line inside a row of the list: the row less its borders and its padding. */
+export const LIST_LINE_WIDTH = LIST_ROW_WIDTH - 2 * LIST_ISSUE_BORDER - 2 * LIST_ROW_PADDING;
+
+/** The width a bold word of the first line of a row needs (the status word, the urgency). */
+export function lineNeed(text: string): number {
+  return need(text);
+}
+
+/**
+ * The room the status word and the urgency have together on the first line of a row of the list: the line less the dot and its gap
+ * and a gap between the two words. A test keeps every pair of words inside it.
+ */
+export const LIST_FIRST_LINE_WORDS_ROOM = LIST_LINE_WIDTH - LIST_DOT_SIZE - LIST_DOT_GAP - LIST_TEXT_GAP;
+
+/** The room the text of a row of the move-in report has: the inside of the row less the dot, the urgency and the gaps. */
 export function rowTextBudget(urgencyLabel: string): number {
   return LIST_ROW_WIDTH - 2 * LIST_ROW_BORDER - 2 * LIST_ROW_PADDING - LIST_DOT_SIZE - LIST_DOT_GAP - LIST_TEXT_GAP - need(urgencyLabel);
 }
@@ -100,6 +120,8 @@ export interface ListTexts {
   readonly empty: string;
   readonly history: string;
   readonly sampleData: string;
+  /** The status in a word (the colour of the dot is never the only sign): `Open`, `Progress`, `Resolved`, `Archived`. */
+  readonly status: Readonly<Record<IssueStatus, string>>;
   readonly urgency: Readonly<Record<IssueUrgency, string>>;
   readonly prev: string;
   readonly next: string;
@@ -118,6 +140,8 @@ export interface ListRow {
   /** The text of the issue, whole. */
   readonly fullText: string;
   readonly status: IssueStatus;
+  /** The status in a word, next to the dot. */
+  readonly statusText: string;
   /** Colour of the dot: the colour of the pin (0xRRGGBB) and its name. */
   readonly color: number;
   readonly colorName: StatusColorName;
@@ -219,9 +243,10 @@ export function buildListPage(
     return {
       index,
       id: issue.id,
-      text: truncateRowText(issue.text, rowTextBudget(urgencyLabel)),
+      text: truncateRowText(issue.text, LIST_LINE_WIDTH, LIST_TEXT_MAX_CHARS),
       fullText: issue.text,
       status,
+      statusText: texts.status[status],
       color: statusColor(issue),
       colorName: statusColorName(issue),
       urgency: issue.urgency,
@@ -282,7 +307,7 @@ export function rowOfControl(id: string): number | null {
 /** Top of row `index` from the bottom of the panel, with the heading above row `headingAt` (null: none) taken into account. */
 export function rowTop(index: number, headingAt: number | null): number {
   const heading = headingAt !== null && index >= headingAt ? LIST_HEADING_HEIGHT + LIST_HEADING_GAP : 0;
-  return LIST_TOP_Y - index * (LIST_ROW_HEIGHT + LIST_ROW_GAP) - heading;
+  return LIST_TOP_Y - index * (LIST_ISSUE_ROW_HEIGHT + LIST_ROW_GAP) - heading;
 }
 
 /** Index of the row that has the heading above it, or null. */
@@ -294,7 +319,7 @@ export function headingRow(page: Pick<ListPage, 'rows'>): number | null {
 export function listContentBottom(page: Pick<ListPage, 'rows'>): number {
   const last = page.rows.length - 1;
   if (last < 0) return LIST_TOP_Y;
-  return rowTop(last, headingRow(page)) - LIST_ROW_HEIGHT;
+  return rowTop(last, headingRow(page)) - LIST_ISSUE_ROW_HEIGHT;
 }
 
 /** The width of the buttons of the bar: four of 8.4 cm with `Prev` and `Next`, two of 9.0 cm without. */
@@ -317,7 +342,7 @@ export function listSlots(page: Pick<ListPage, 'rows' | 'paged'>): ControlSlot[]
   const heading = headingRow(page);
   for (const row of page.rows) {
     const top = rowTop(row.index, heading);
-    slots.push(slot(rowControlId(row.index), 0, top - LIST_ROW_HEIGHT / 2, LIST_ROW_WIDTH, LIST_ROW_HEIGHT));
+    slots.push(slot(rowControlId(row.index), 0, top - LIST_ISSUE_ROW_HEIGHT / 2, LIST_ROW_WIDTH, LIST_ISSUE_ROW_HEIGHT));
   }
   const width = listBarWidth(page.paged);
   const side = ISSUE_PANEL.width / 2 - width / 2;
