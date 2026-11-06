@@ -43,6 +43,8 @@
 
 import { createSystem, Vector3, type World } from '@iwsdk/core';
 import { slog, swarn } from '../log';
+import { buildInfoModel, type InfoModel, type InfoTexts } from '../logic/info-panel';
+import { findInfoPoint, formatInfoOpened, type InfoPoint } from '../logic/info-points';
 import type { House } from '../logic/house';
 import type { Vec3Tuple } from '../logic/furniture-pose';
 import {
@@ -144,6 +146,11 @@ function detailTexts(): DetailTexts {
   return { ...strings.issues.detail, categories: strings.issues.categories, separator: panelFontSupports('\u00b7') ? ' \u00b7 ' : ' - ' };
 }
 
+/** The texts of the info screen: the separator is the middle dot when the panel font has it, else a dash (read when the model is built). */
+function infoTexts(): InfoTexts {
+  return { ...strings.issues.info, categories: strings.issues.categories, separator: panelFontSupports('\u00b7') ? ' \u00b7 ' : ' - ' };
+}
+
 interface IssuePanelContext {
   panel: IssuePanel;
   navigator: ScreenNavigator;
@@ -169,6 +176,10 @@ interface IssuePanelContext {
   moveInModel: MoveInPage | null;
   moveInIssues: unknown;
   moveInVisible: boolean;
+  /** The info points of the house (T5.9, read-only content) and the one the `info` screen shows (null: none). */
+  info: readonly InfoPoint[];
+  infoId: string | null;
+  infoModel: InfoModel | null;
   /** The house (for the room of an issue) and the clock of the history. */
   house: House;
   clock: IssueClock;
@@ -192,7 +203,13 @@ let context: IssuePanelContext | null = null;
 let active: IssuePanelSystem | null = null;
 
 /** Creates the panel (closed) and registers the system. Register it after the menu items and the buttons, before the grab. */
-export function createIssuePanel(world: World, store: Store, house: House, clock: IssueClock): void {
+export function createIssuePanel(
+  world: World,
+  store: Store,
+  house: House,
+  clock: IssueClock,
+  info: readonly InfoPoint[] = [],
+): void {
   context = {
     panel: new IssuePanel(world),
     navigator: createScreenNavigator(),
@@ -212,6 +229,9 @@ export function createIssuePanel(world: World, store: Store, house: House, clock
     moveInModel: null,
     moveInIssues: null,
     moveInVisible: false,
+    info,
+    infoId: null,
+    infoModel: null,
     house,
     clock,
   };
@@ -427,10 +447,30 @@ export class IssuePanelSystem extends createSystem({}) {
    */
   private syncList(ctx: IssuePanelContext): void {
     const screen = ctx.panel.isOpen ? ctx.navigator.screen : null;
+    if (screen !== 'info' && (ctx.infoModel !== null || ctx.infoId !== null)) {
+      ctx.infoId = null;
+      ctx.infoModel = null;
+      ctx.panel.setInfo(null);
+    }
     if (screen !== 'movein' && ctx.moveInModel !== null) {
       ctx.moveInModel = null;
       ctx.moveInIssues = null;
       ctx.panel.setMoveIn(null);
+    }
+    if (screen === 'info') {
+      // The note of an info point: no list, no detail, no selected pin (the diamonds have no ring).
+      if (ctx.selectedId !== null) {
+        ctx.selectedId = null;
+        setPinRing(null);
+      }
+      ctx.listPage = 0;
+      ctx.listModel = null;
+      ctx.listIssues = null;
+      ctx.lastListLine = '';
+      ctx.panel.setList(null);
+      this.clearDetail(ctx);
+      this.syncInfo(ctx);
+      return;
     }
     if (screen === 'movein') {
       // Back from the detail of a move-in entry: its row stays selected (the ring stays on its pin).
@@ -534,6 +574,35 @@ export class IssuePanelSystem extends createSystem({}) {
     ctx.panel.setScreen('detail');
     this.syncList(ctx);
     slog(formatDetailLine(id));
+  }
+
+  /** Builds the note of the info point of the `info` screen from the read-only list and gives it to the panel; the buttons are placed again. */
+  private syncInfo(ctx: IssuePanelContext): void {
+    const id = ctx.infoId;
+    if (id === null) return;
+    const state = ctx.store.get();
+    const point = findInfoPoint(ctx.info, id);
+    const room = point === undefined ? null : ctx.house.rooms.find((r) => r.id === roomAt(ctx.house, point.position[0], point.position[2]))?.name ?? null;
+    const model = buildInfoModel(point, id, state.role, room, infoTexts());
+    ctx.infoModel = model;
+    ctx.panel.setInfo(model);
+    ctx.formRev += 1;
+  }
+
+  /**
+   * Opens the note of info point `id` (a pinch on its diamond): the panel shows `info` and the log says `info opened id=…` and
+   * `issues screen=info`. Not while the form is open; a role that may not `view-info` gets the missing note.
+   */
+  private openInfo(ctx: IssuePanelContext, id: string): void {
+    if (!ctx.panel.isOpen) return;
+    if (ctx.navigator.screen === 'new') return;
+    this.dropForm(ctx);
+    ctx.infoId = id;
+    ctx.navigator.go('info');
+    ctx.panel.setScreen('info');
+    this.syncList(ctx);
+    slog(formatInfoOpened(id));
+    slog(formatScreenLine('info'));
   }
 
   /** A button of the detail was pinched: ask the state machine, dispatch it, log it. `Confirm` goes back to the list. */
@@ -781,7 +850,9 @@ export class IssuePanelSystem extends createSystem({}) {
       pinchClaims.release(hand, 'menu');
       return;
     }
-    this.openDetail(ctx, id);
+    // A cyan diamond opens the note of an info point, any other pin the detail of its issue.
+    if (findInfoPoint(ctx.info, id) !== undefined) this.openInfo(ctx, id);
+    else this.openDetail(ctx, id);
   }
 
   /** A press on a button of the form: choose (category, phrase, urgency), step back, cancel or report. */

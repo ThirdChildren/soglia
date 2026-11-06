@@ -9,12 +9,15 @@
 // Who sees what (D46, D43): only the roles that may `view-pins` (tenant, landlord) see pins, and none at real scale (the
 // pins belong to the table-top model). `open`, `in_progress` and `resolved` issues are shown; `archived` ones are not (they
 // stay in the list "History"); `baseline` entries (the move-in report) only with the preference `moveInVisible` and a role
-// that may `view-move-in`; `question` and `info` entries do not exist on the model in M4.
+// that may `view-move-in`; `question` entries do not exist on the model. The info points (T5.9, D57) are another layer: the
+// cyan diamonds of the roles that may `view-info` (visitor, agent), a second instanced mesh, from the read-only list of the
+// house and not from the store (`layoutInfoPins`); a role never sees both layers.
 //
 // Coordinates: house coordinates are metres of the plan (x, z) and of the height above the floor (y), the frame the pin
 // entities and the instanced mesh live in. The pick works in WORLD metres: the head of a pin in the world is computed from the
 // placement of `miniature:root` with `planToWorld`.
 
+import { INFO_COLOR, MAX_INFO_POINTS } from './info-points';
 import { planToWorld, type MiniatureRoot, type Vec3Tuple } from './furniture-pose';
 import { pinDisplayY } from './issue-anchor';
 import {
@@ -67,6 +70,9 @@ export const PIN_RING_FLATTEN = 0.12;
 /** Colour of the draft ghost: the colour the new issue will have (open). */
 export const PIN_DRAFT_COLOR = STATUS_COLORS.open;
 
+/** Instances of the mesh of the info points: one per point. */
+export const INFO_INSTANCE_CAPACITY = MAX_INFO_POINTS;
+
 /** What decides whether a pin is shown. */
 export interface PinVisibility {
   readonly role: Role;
@@ -86,6 +92,40 @@ export function isPinVisible(issue: Pick<Issue, 'kind' | 'status'>, visibility: 
   if (issue.kind === 'baseline') return visibility.moveInVisible && can(visibility.role, 'view-move-in');
   if (issue.kind !== 'issue') return false;
   return issue.status !== undefined && PIN_STATUSES.has(issue.status);
+}
+
+/** True when the info points are on the model for this viewer: a role that may `view-info`, and not at real scale. */
+export function isInfoLayerVisible(visibility: Pick<PinVisibility, 'role' | 'realScale'>): boolean {
+  return !visibility.realScale && can(visibility.role, 'view-info');
+}
+
+/** One info point to draw: a cyan diamond at the place of the point (house coordinates, the height kept within `PIN_MAX_Y`). */
+export interface InfoPinView {
+  readonly id: string;
+  readonly color: number;
+  /** Tip of the pin, house coordinates (metres). */
+  readonly x: number;
+  readonly y: number;
+  readonly z: number;
+}
+
+/**
+ * The diamonds to show, in the order of the points (so an instance does not change when the viewer does). Nothing for a role that
+ * may not `view-info` and nothing at real scale. Points with a position that is not finite are left out. At most `MAX_INFO_POINTS`.
+ */
+export function layoutInfoPins(
+  points: readonly Pick<Issue, 'id' | 'position'>[],
+  visibility: Pick<PinVisibility, 'role' | 'realScale'>,
+): InfoPinView[] {
+  const pins: InfoPinView[] = [];
+  if (!isInfoLayerVisible(visibility)) return pins;
+  for (const point of points) {
+    if (pins.length >= MAX_INFO_POINTS) break;
+    const [x, y, z] = point.position;
+    if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) continue;
+    pins.push({ id: point.id, color: INFO_COLOR, x, y: pinDisplayY(y), z });
+  }
+  return pins;
 }
 
 /** One pin to draw: its colour and its place in house coordinates (the height already kept within `PIN_MAX_Y`). */

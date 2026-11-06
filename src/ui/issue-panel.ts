@@ -35,6 +35,7 @@ import {
 } from '../logic/issue-detail';
 import { LIST_BAR_BUTTON_WIDTH, LIST_PAGE_SIZE, listBarWidth, type ListPage, type ListRow } from '../logic/issue-list';
 import { MOVEIN_MAX_ROWS, type MoveInPage } from '../logic/issue-movein';
+import { INFO_TEXT_LINES, type InfoModel } from '../logic/info-panel';
 import { ISSUE_URGENCIES } from '../logic/issues';
 import { ROLES, type Role } from '../logic/params';
 import { PANEL_CENTER } from '../logic/menu';
@@ -75,6 +76,7 @@ const LIST_EMPTY_ELEMENT = 'issue-panel-list-empty';
 const DETAIL_ELEMENT = 'issue-panel-detail';
 const DETAIL_ACTIONS_ELEMENT = 'issue-panel-dactions';
 const MOVEIN_ELEMENT = 'issue-panel-movein';
+const INFO_ELEMENT = 'issue-panel-info';
 /** Most action buttons of the detail (a resolved issue has two for the tenant: Confirm and Reopen). */
 const DETAIL_ACTION_SLOTS = 2;
 /** The colour of a row's status dot as the style string UIKit takes (`#e5322d`). */
@@ -150,6 +152,14 @@ interface MoveInElements {
   more: UIKit.Text | null;
 }
 
+/** The parts of the info screen (T5.9): the container, the category and room line, the lines of the note and the words `Sample data`. */
+interface InfoElements {
+  box: UIKit.Container | null;
+  meta: UIKit.Text | null;
+  textLines: ChipElements[];
+  sample: UIKit.Text | null;
+}
+
 export class IssuePanel {
   private entity: Entity | null = null;
   private applied = false;
@@ -180,6 +190,8 @@ export class IssuePanel {
   private listModel: ListPage | null = null;
   private detailModel: DetailModel | null = null;
   private moveInModel: MoveInPage | null = null;
+  private infoModel: InfoModel | null = null;
+  private readonly info: InfoElements = { box: null, meta: null, textLines: [], sample: null };
   private moveInMore = '';
   private readonly movein: MoveInElements = {
     box: null,
@@ -300,6 +312,9 @@ export class IssuePanel {
     this.listModel = null;
     this.detailModel = null;
     this.moveInModel = null;
+    this.infoModel = null;
+    this.info.box = this.info.meta = this.info.sample = null;
+    this.info.textLines.length = 0;
     this.clearMoveIn();
     this.clearDetail();
     this.gridRows.length = 0;
@@ -335,6 +350,12 @@ export class IssuePanel {
   setMoveIn(page: MoveInPage | null, more: string = ''): void {
     this.moveInModel = page;
     this.moveInMore = more;
+    if (this.applied) this.writeScreen();
+  }
+
+  /** The note of an info point that the `info` screen shows (null: none). Written in place; kept until the layout is loaded (T5.9). */
+  setInfo(info: InfoModel | null): void {
+    this.infoModel = info;
     if (this.applied) this.writeScreen();
   }
 
@@ -445,6 +466,13 @@ export class IssuePanel {
         urgency: doc.getElementById<UIKit.Text>(`issue-panel-mvu-${i}`),
       });
     }
+    const info = this.info;
+    info.box = doc.getElementById<UIKit.Container>(INFO_ELEMENT);
+    info.meta = doc.getElementById<UIKit.Text>('issue-panel-imeta');
+    info.sample = doc.getElementById<UIKit.Text>('issue-panel-isample');
+    for (let i = 0; i < INFO_TEXT_LINES; i += 1) {
+      info.textLines.push({ box: doc.getElementById<UIKit.Container>(`issue-panel-itl-${i}`), label: doc.getElementById<UIKit.Text>(`issue-panel-itl-${i}-text`) });
+    }
     const d = this.detail;
     d.box = doc.getElementById<UIKit.Container>(DETAIL_ELEMENT);
     d.dot = doc.getElementById<UIKit.Container>('issue-panel-ddot');
@@ -517,13 +545,16 @@ export class IssuePanel {
     const detail = screen === 'detail' ? this.detailModel : null;
     const detailShown = detail !== null && !detail.missing;
     const movein = screen === 'movein' ? this.moveInModel : null;
+    const infoModel = screen === 'info' ? this.infoModel : null;
+    const infoShown = infoModel !== null && !infoModel.missing;
     // The title of the form is the name of the fixture (a free spot keeps "New issue"); the list says "Sample data" and its page,
     // the detail says "Issue" or "Issue - Sample data".
-    const title = form?.fixtureName ? clipName(form.fixtureName, TITLE_MAX_LENGTH) : (list?.title ?? detail?.title ?? movein?.title ?? strings.issues.screens[screen]);
+    const title = form?.fixtureName ? clipName(form.fixtureName, TITLE_MAX_LENGTH) : (list?.title ?? detail?.title ?? movein?.title ?? infoModel?.title ?? strings.issues.screens[screen]);
     this.title?.setProperties({ text: title });
     this.footer?.setProperties({ text: isHome ? strings.issues.footer : '', display: isHome ? 'flex' : 'none' });
     this.home?.setProperties({ display: isHome ? 'flex' : 'none' });
-    this.noteBox?.setProperties({ display: isHome || form || list || detailShown || movein ? 'none' : 'flex' });
+    this.noteBox?.setProperties({ display: isHome || form || list || detailShown || movein || infoShown ? 'none' : 'flex' });
+    this.info.box?.setProperties({ display: infoShown ? 'flex' : 'none' });
     this.movein.box?.setProperties({ display: movein ? 'flex' : 'none' });
     this.detail.box?.setProperties({ display: detailShown ? 'flex' : 'none' });
     this.newBox?.setProperties({ display: form ? 'flex' : 'none' });
@@ -539,6 +570,11 @@ export class IssuePanel {
     }
     if (form) {
       this.writeForm(form);
+      return;
+    }
+    if (infoModel) {
+      if (infoShown) this.writeInfo(infoModel);
+      else this.note?.setProperties({ text: infoModel.missingText });
       return;
     }
     if (detail) {
@@ -634,6 +670,17 @@ export class IssuePanel {
       d.actions[i]?.box?.setProperties({ display: action === undefined ? 'none' : 'flex', width: action?.width });
       if (action !== undefined) d.actions[i]?.label?.setProperties({ text: action.label });
     }
+  }
+
+  /** The info screen: the category and room, the lines of the note, and `Sample data` under them. */
+  private writeInfo(info: InfoModel): void {
+    this.info.meta?.setProperties({ text: info.meta });
+    for (let i = 0; i < INFO_TEXT_LINES; i += 1) {
+      const line = info.textLines[i];
+      this.info.textLines[i]?.box?.setProperties({ display: line === undefined ? 'none' : 'flex' });
+      if (line !== undefined) this.info.textLines[i]?.label?.setProperties({ text: line });
+    }
+    this.info.sample?.setProperties({ text: info.sampleText });
   }
 
   /**

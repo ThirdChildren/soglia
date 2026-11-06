@@ -10,7 +10,9 @@ import { LatheGeometry, Vector2 } from '@iwsdk/core';
 import {
   PIN_HEAD_CENTER_WORLD,
   PIN_HEAD_DIAMETER_WORLD,
+  PIN_HEIGHT_WORLD,
   PIN_INSTANCE_CAPACITY,
+  INFO_INSTANCE_CAPACITY,
 } from '../logic/pin-layout';
 import { createInstancedMarkers, type InstancedMarkers } from './instanced-markers';
 
@@ -41,5 +43,40 @@ export function createPinMarkers(): InstancedMarkers {
     name: PIN_MESH_NAME,
     renderOrder: 2,
     geometry: new LatheGeometry(needleProfile(), SEGMENTS),
+  });
+}
+
+/** Name of the mesh of the info points (T5.9); it is a `pin:*` too, so the draw-call groups count it with the markers. */
+export const INFO_PIN_MESH_NAME = 'pin:info-instances';
+
+/** Widest radius of the diamond: a little more than the ball of a pin, so the shape reads at 1:20. */
+const DIAMOND_RADIUS = PIN_HEAD_DIAMETER_WORLD * 0.62;
+
+/** Profile of the info needle: the same thin stem as a pin, ending in a diamond (an octahedron once turned in four steps). */
+function diamondProfile(): Vector2[] {
+  // The top of the diamond is at the height of a pin (3.5 cm); its centre a little lower than the centre of a ball.
+  const centre = PIN_HEIGHT_WORLD - DIAMOND_RADIUS;
+  const stemTop = centre - DIAMOND_RADIUS;
+  return [
+    new Vector2(0, 0),
+    new Vector2(STEM_RADIUS, 0.002),
+    new Vector2(STEM_RADIUS, stemTop),
+    new Vector2(0, stemTop),
+    new Vector2(DIAMOND_RADIUS, centre),
+    new Vector2(0, PIN_HEIGHT_WORLD),
+  ];
+}
+
+/**
+ * Creates the mesh of the info points (not yet in the scene): a needle with a DIAMOND head, a shape a pin does not have, so the
+ * two layers never depend on colour alone (D46). The same height as a pin (3.5 cm in the world) and the same rules for the
+ * instances (`pinInstancePose`). One more draw call while any point is shown.
+ */
+export function createInfoPinMarkers(): InstancedMarkers {
+  return createInstancedMarkers({
+    capacity: INFO_INSTANCE_CAPACITY,
+    name: INFO_PIN_MESH_NAME,
+    renderOrder: 2,
+    geometry: new LatheGeometry(diamondProfile(), 4),
   });
 }

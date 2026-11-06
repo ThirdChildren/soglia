@@ -240,6 +240,26 @@
         <span id="issue-panel-mvm" style="font-size: 2.4; font-weight: bold; color: #3a3f47; line-height: 1.1; text-align: center;">-</span>
       </div>
     </div>
+    <div id="issue-panel-info" style="display: none; flex-direction: column; align-items: flex-start; width: 35.2;">
+      <div id="issue-panel-imeta-box" style="display: flex; flex-direction: column; justify-content: center; width: 35.2; height: 2.4;">
+        <span id="issue-panel-imeta" style="font-size: 2.4; font-weight: bold; color: #1a1a1a; line-height: 1;">-</span>
+      </div>
+      <div id="issue-panel-itl-0" style="display: none; flex-direction: column; justify-content: center; width: 35.2; height: 2.5;">
+        <span id="issue-panel-itl-0-text" style="font-size: 2.4; font-weight: normal; color: #1a1a1a; line-height: 1;">-</span>
+      </div>
+      <div id="issue-panel-itl-1" style="display: none; flex-direction: column; justify-content: center; width: 35.2; height: 2.5;">
+        <span id="issue-panel-itl-1-text" style="font-size: 2.4; font-weight: normal; color: #1a1a1a; line-height: 1;">-</span>
+      </div>
+      <div id="issue-panel-itl-2" style="display: none; flex-direction: column; justify-content: center; width: 35.2; height: 2.5;">
+        <span id="issue-panel-itl-2-text" style="font-size: 2.4; font-weight: normal; color: #1a1a1a; line-height: 1;">-</span>
+      </div>
+      <div id="issue-panel-itl-3" style="display: none; flex-direction: column; justify-content: center; width: 35.2; height: 2.5;">
+        <span id="issue-panel-itl-3-text" style="font-size: 2.4; font-weight: normal; color: #1a1a1a; line-height: 1;">-</span>
+      </div>
+      <div id="issue-panel-isample-box" style="display: flex; flex-direction: column; justify-content: center; width: 35.2; height: 2.4; margin-top: 0.8;">
+        <span id="issue-panel-isample" style="font-size: 2.4; font-weight: bold; color: #3a3f47; line-height: 1;">-</span>
+      </div>
+    </div>
     <div id="issue-panel-note-box" style="display: none; flex-direction: column; align-items: center; width: 34.4; margin-top: 1;">
       <span id="issue-panel-note" style="font-size: 2.4; font-weight: normal; color: #1a1a1a; line-height: 1.1; text-align: center; width: 34.4;">-</span>
     </div>

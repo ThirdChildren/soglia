@@ -152,7 +152,8 @@ describe('the text is at least 2.4 cm and fits where it is drawn', () => {
     // the list (T4.8, T5.R4): four headings, four texts, four status words and four urgencies, the empty text and the middle Next (18)
     // the detail (T4.9): the status, the urgency, the category and room, a second line for the room, three lines of text, three history lines, "more" and two buttons (13)
     // the move-in report (T4.10): the switch (label and state), four rows of a text and a date, the empty text and "+n more" (12)
-    expect(all.length).toBe(70);
+    // the info screen (T5.9): the category and room, four lines of the note and the words "Sample data" (6)
+    expect(all.length).toBe(76);
     for (const size of all) expect(size).toBeGreaterThanOrEqual(ISSUE_MIN_TEXT_SIZE);
   });
 
@@ -243,8 +244,8 @@ describe('the panel is in the cone of 30 degrees at 0.5-0.65 m for the whole win
 });
 
 describe('the model of the screens', () => {
-  it('has the five screens and starts at home', () => {
-    expect([...ISSUE_SCREENS]).toEqual(['home', 'new', 'list', 'detail', 'movein']);
+  it('has the six screens and starts at home', () => {
+    expect([...ISSUE_SCREENS]).toEqual(['home', 'new', 'list', 'detail', 'movein', 'info']);
     expect(HOME_SCREEN).toBe('home');
     for (const screen of ISSUE_SCREENS) expect(isIssueScreen(screen)).toBe(true);
     for (const bad of ['', 'form', 'HOME', null, undefined, 3]) expect(isIssueScreen(bad)).toBe(false);

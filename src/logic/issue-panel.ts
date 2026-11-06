@@ -16,8 +16,8 @@ import type { Issue } from './issues';
 import { ROLES, type Role } from './params';
 import { can } from './permissions';
 
-/** The screens of the panel (the log line says `issues screen=new` for the form to report an issue). */
-export const ISSUE_SCREENS = ['home', 'new', 'list', 'detail', 'movein'] as const;
+/** The screens of the panel (the log line says `issues screen=new` for the form to report an issue; `info` is the note of an info point, T5.9). */
+export const ISSUE_SCREENS = ['home', 'new', 'list', 'detail', 'movein', 'info'] as const;
 export type IssueScreen = (typeof ISSUE_SCREENS)[number];
 
 /** The screen the panel opens at. */

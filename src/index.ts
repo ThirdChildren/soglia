@@ -11,6 +11,7 @@ import { attachStats } from './debug/stats';
 import { loadCatalog } from './data/load-catalog';
 import { loadMyFurniture, type LoadMyFurnitureResult } from './data/load-my-furniture';
 import { loadHouse } from './data/load-house';
+import { loadInfoPoints } from './data/load-issues';
 import { createSafeStorage } from './data/storage';
 import { describeError, slog, swarn } from './log';
 import { formatParamsLine, hasInvalidHouse, mergeParams, parseParams } from './logic/params';
@@ -149,6 +150,8 @@ async function start(): Promise<void> {
     slog(sunLogLine(store.get().sunTime, sunSource, lat, lon));
     // The demo issues come once, after the restore and after the saving started, so the seed is saved too (D42).
     await seedDemoIssues(store);
+    // The info points of the agent (T5.9): read-only content of the same file, never in the store.
+    const infoPoints = await loadInfoPoints(result.house.id);
     // The clock for the history of the issues (D42): fixed by `time=`, else the real time. The systems that write
     // history take it from here; it first learns the dates that already exist, so it never goes back before them.
     const issueClock = createIssueClock(params.time, Date.now);
@@ -194,7 +197,7 @@ async function start(): Promise<void> {
     // The way back from real scale with one hand (T4.R1): same place in the order, since a pinch on it is a `menu` claim.
     createTabletopButton(world);
     // The Issues panel (T4.6a): its Close/Back controls are a `menu` claim too, so it goes after the menu and the buttons.
-    createIssuePanel(world, store, result.house, issueClock);
+    createIssuePanel(world, store, result.house, issueClock, infoPoints);
     // The View panel (T5.5): its controls are a `menu` claim too, so it goes right after the Issues panel.
     createViewPanel(world, store, result.house);
     // The tape measure claims the pinch above the grab (and below the menu): register it after the menu, before the grab (T3.14).
@@ -218,7 +221,7 @@ async function start(): Promise<void> {
     const fadeOverlay = createFadeOverlay(world);
     createViewpoint(world, store, result.house, miniature.root, built.entity, fadeOverlay);
     // The pins of the issues (T4.4): one instanced mesh and a light entity per visible issue, after the viewpoint markers.
-    createPins(world, store, result.house, built.entity, miniature.root);
+    createPins(world, store, result.house, built.entity, miniature.root, infoPoints);
     if (params.debug) attachPinDraftKey(result.house);
     // After the menu, the grab and the markers: their pinch listeners run first, so a pinch on a menu item, a piece or a marker is never a pan.
     createMiniaturePan(world, store, result.house);

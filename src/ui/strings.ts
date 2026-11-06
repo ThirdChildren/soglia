@@ -172,7 +172,12 @@ export const strings = {
       back: 'Back',
       close: 'Close',
     },
-    /** Body of a screen that has no content yet (shown only for the instant before its model is written). */
+    /** An info point of the agent (T5.9, D57): the screen a pinch on a cyan diamond opens. Every note is made up, so it says so. */
+    info: {
+      title: 'Info',
+      sampleData: 'Sample data',
+      missing: 'Info not found',
+    },
     /** Title of each screen. */
     screens: {
       home: 'Issues',
@@ -180,6 +185,7 @@ export const strings = {
       list: 'Issues',
       detail: 'Issue',
       movein: 'Move-in report',
+      info: 'Info',
     },
   },
   reason,

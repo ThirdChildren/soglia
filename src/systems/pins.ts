@@ -11,12 +11,18 @@
 // WORLD): that is rewritten, without any allocation, only when the scale of `miniature:root` changed. Nothing is done per frame
 // otherwise.
 //
+// THE INFO POINTS (T5.9, D57). The visitor and the agent see a second layer: the cyan diamonds of the info points of the house,
+// ONE more instanced mesh (`pin:info-instances`, +1 draw call, only while any is shown) and a light entity `pin:info-NNN` for each.
+// They come from the read-only list given to `createPins` (not from the store), follow the role and the real scale like the pins,
+// and a pinch within 2 cm of a diamond picks it (`pickPinAt` answers for both layers; the Issues panel tells them apart).
+//
 // THE DRAFT. `setPinDraft` shows the ghost `pin:draft` (T4.5 grows it from 0 to 1 while a pinch is held): one more instance of
 // the same mesh and a light entity, no extra draw call.
 
 import { createSystem, Object3D, type Entity, type World } from '@iwsdk/core';
 import { tagEntity } from '../components/tag-entity';
 import { slog } from '../log';
+import type { InfoPoint } from '../logic/info-points';
 import type { House } from '../logic/house';
 import { planCenter } from '../logic/house-layout';
 import { formatMoveInHidden, formatMoveInShown, moveInLayer } from '../logic/issue-movein';
@@ -26,6 +32,7 @@ import {
   PIN_DRAFT_COLOR,
   PIN_RING_COLOR,
   draftInstanceIndex,
+  layoutInfoPins,
   layoutPins,
   pickPin,
   pinDisplayPosition,
@@ -33,13 +40,14 @@ import {
   pinInstancePose,
   pinRingPose,
   ringInstanceIndex,
+  type InfoPinView,
   type PinInstancePose,
   type PinView,
 } from '../logic/pin-layout';
 import type { Role } from '../logic/params';
 import type { Store } from '../logic/state';
 import type { InstancedMarkers } from '../ui/instanced-markers';
-import { createPinMarkers } from '../ui/pin-markers';
+import { createInfoPinMarkers, createPinMarkers } from '../ui/pin-markers';
 import { isRealScale } from './view-mode';
 
 interface PinsContext {
@@ -49,6 +57,13 @@ interface PinsContext {
   root: Entity;
   center: [number, number];
   markers: InstancedMarkers;
+  /** The diamonds of the info points (a second mesh) and the read-only list they come from. */
+  infoMarkers: InstancedMarkers;
+  info: readonly InfoPoint[];
+  /** The diamonds shown now, in the order of their instances. */
+  infoPins: InfoPinView[];
+  /** How many info instances were written last time, so the ones that are no longer needed can be taken out. */
+  infoWritten: number;
   /** The pins shown now, in the order of the instances. */
   pins: PinView[];
   /** `pin:<issueId>` entities of the pins shown now. */
@@ -79,10 +94,22 @@ interface PinsContext {
 // Shared with the system, which has no constructor arguments: set by `createPins`.
 let context: PinsContext | null = null;
 
-/** Creates the mesh and the first layer, and registers the system. Register it after the viewpoint markers. */
-export function createPins(world: World, store: Store, house: House, houseEntity: Entity, root: Entity): void {
+/**
+ * Creates the meshes and the first layer, and registers the system. Register it after the viewpoint markers. `info` is the
+ * read-only list of the info points of the house (T5.9); an empty list means no second mesh in use.
+ */
+export function createPins(
+  world: World,
+  store: Store,
+  house: House,
+  houseEntity: Entity,
+  root: Entity,
+  info: readonly InfoPoint[] = [],
+): void {
   const markers = createPinMarkers();
   houseEntity.object3D?.add(markers.mesh);
+  const infoMarkers = createInfoPinMarkers();
+  houseEntity.object3D?.add(infoMarkers.mesh);
   const state = store.get();
   const center = planCenter(house);
   context = {
@@ -92,6 +119,10 @@ export function createPins(world: World, store: Store, house: House, houseEntity
     root,
     center: [center[0], center[1]],
     markers,
+    infoMarkers,
+    info,
+    infoPins: [],
+    infoWritten: 0,
     pins: [],
     entities: new Map(),
     loggedColors: new Map(),
@@ -158,6 +189,14 @@ function writeInstances(ctx: PinsContext): void {
   }
   for (let i = end; i < ctx.written; i += 1) ctx.markers.hide(i);
   ctx.written = end;
+  // The diamonds of the info points: their own mesh, nothing but the instances.
+  const infoCount = ctx.infoPins.length;
+  for (let i = 0; i < infoCount; i += 1) {
+    if (pinInstancePose(ctx.infoPins[i], scale, 1, ctx.pose)) ctx.infoMarkers.set(i, ctx.pose, ctx.infoPins[i].color);
+    else ctx.infoMarkers.hide(i);
+  }
+  for (let i = infoCount; i < ctx.infoWritten; i += 1) ctx.infoMarkers.hide(i);
+  ctx.infoWritten = infoCount;
 }
 
 /** Rebuilds the layer from the store: the pins to show, their entities, the instances and the log lines. */
@@ -167,10 +206,12 @@ function rebuild(ctx: PinsContext): void {
   const realScale = isRealScale();
   ctx.seen = { issues: state.issues, role: state.role, moveIn: state.prefs.moveInVisible, realScale };
   ctx.pins = layoutPins(state.issues, { role: state.role, moveInVisible: state.prefs.moveInVisible, realScale });
+  ctx.infoPins = layoutInfoPins(ctx.info, { role: state.role, realScale });
 
   // Entities: drop those that are gone, create those that are new, keep the others.
   const wanted = new Set<string>();
   for (const pin of ctx.pins) wanted.add(pin.id);
+  for (const pin of ctx.infoPins) wanted.add(pin.id);
   for (const [id, entity] of ctx.entities) {
     if (wanted.has(id)) continue;
     entity.dispose({ disposeResources: false });
@@ -180,16 +221,21 @@ function rebuild(ctx: PinsContext): void {
     if (ctx.entities.has(pin.id)) continue;
     ctx.entities.set(pin.id, makeAnchor(ctx, stableId.pin(pin.id), [pin.x, pin.y, pin.z]));
   }
-  // The heads for the pick (one per pin).
-  while (ctx.heads.length < ctx.pins.length) ctx.heads.push({ id: '', x: 0, y: 0, z: 0 });
-  ctx.heads.length = ctx.pins.length;
+  for (const pin of ctx.infoPins) {
+    if (ctx.entities.has(pin.id)) continue;
+    ctx.entities.set(pin.id, makeAnchor(ctx, stableId.pin(pin.id), [pin.x, pin.y, pin.z]));
+  }
+  // The heads for the pick (one per pin, then one per info point).
+  const headCount = ctx.pins.length + ctx.infoPins.length;
+  while (ctx.heads.length < headCount) ctx.heads.push({ id: '', x: 0, y: 0, z: 0 });
+  ctx.heads.length = headCount;
 
   // Instances: write the used ones, take the rest out.
   writeInstances(ctx);
 
   // Log lines, once per change.
   const baseline = ctx.pins.reduce((n, pin) => n + (pin.kind === 'baseline' ? 1 : 0), 0);
-  const layer = `count=${ctx.pins.length} baseline=${baseline} role=${state.role}${realScale ? ' hidden=real-scale' : ''}`;
+  const layer = `count=${ctx.pins.length} baseline=${baseline} info=${ctx.infoPins.length} role=${state.role}${realScale ? ' hidden=real-scale' : ''}`;
   if (layer !== ctx.lastLayerLog) {
     ctx.lastLayerLog = layer;
     slog(`pins layer ${layer}`);
@@ -256,13 +302,13 @@ export function setPinRing(id: string | null): void {
 }
 
 /**
- * Id of the issue whose pin a pinch at `point` (world metres) picks, or null: the nearest head within
+ * Id of the issue (or of the info point) whose pin a pinch at `point` (world metres) picks, or null: the nearest head within
  * `PIN_PICK_WORLD_RADIUS`. No pins at real scale or for a role that does not see them, so then null.
  */
 export function pickPinAt(point: Readonly<Vec3Tuple>): string | null {
   const ctx = context;
   const object = ctx?.root.object3D;
-  if (!ctx || !object || ctx.pins.length === 0) return null;
+  if (!ctx || !object || ctx.pins.length + ctx.infoPins.length === 0) return null;
   const r = ctx.rootScratch;
   r.x = object.position.x;
   r.y = object.position.y;
@@ -273,6 +319,15 @@ export function pickPinAt(point: Readonly<Vec3Tuple>): string | null {
     pinHeadWorld(ctx.pins[i], r, ctx.center, ctx.headScratch);
     const head = ctx.heads[i];
     head.id = ctx.pins[i].id;
+    head.x = ctx.headScratch[0];
+    head.y = ctx.headScratch[1];
+    head.z = ctx.headScratch[2];
+  }
+  const offset = ctx.pins.length;
+  for (let i = 0; i < ctx.infoPins.length; i += 1) {
+    pinHeadWorld(ctx.infoPins[i], r, ctx.center, ctx.headScratch);
+    const head = ctx.heads[offset + i];
+    head.id = ctx.infoPins[i].id;
     head.x = ctx.headScratch[0];
     head.y = ctx.headScratch[1];
     head.z = ctx.headScratch[2];
@@ -296,6 +351,7 @@ export class PinsSystem extends createSystem({}) {
         ctx.entities.clear();
         ctx.draft?.entity?.dispose({ disposeResources: false });
         ctx.markers.dispose();
+        ctx.infoMarkers.dispose();
       },
     );
   }
