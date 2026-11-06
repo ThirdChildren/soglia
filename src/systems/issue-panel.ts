@@ -558,12 +558,12 @@ export class IssuePanelSystem extends createSystem({}) {
     const state = ctx.store.get();
     // One instant for the check and for the change: a fixed clock moves on at every call, and one event is one step.
     const nowIso = ctx.clock.now();
-    const plan = planTransition(state, id, action, state.role, nowIso);
+    const plan = planTransition(state, id, action, nowIso);
     if (!plan.ok) {
       swarn(formatTransitionDenied(id, action, state.role, plan.reason));
       return;
     }
-    ctx.store.dispatch(transitionIssue(id, action, state.role, nowIso));
+    ctx.store.dispatch(transitionIssue(id, action, nowIso));
     slog(formatTransitionLine(id, plan.from, plan.to, state.role, plan.entry.event));
     // An archived issue has no pin and nothing more to do: the panel goes back to the list, where it is now under `History`.
     if (plan.to === 'archived') {

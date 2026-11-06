@@ -143,7 +143,6 @@ export type Action =
       readonly type: 'transitionIssue';
       readonly id: string;
       readonly action: IssueAction;
-      readonly role: Role;
       readonly nowIso: string;
       readonly note?: string;
     }
@@ -234,14 +233,15 @@ export function addIssue(issue: Issue): Action {
   return { type: 'addIssue', issue };
 }
 /**
- * Applies a status action to the issue `id` as `role` at `nowIso` (`applyTransition`): on success the status and
- * the history of that issue change, on any denial nothing changes. The reason is not visible through `dispatch`:
- * a caller that needs it asks `planTransition` first.
+ * Applies a status action to the issue `id` as the role of the store (`state.role`) at `nowIso` (`applyTransition`):
+ * on success the status and the history of that issue change, on any denial nothing changes. The role is NOT an
+ * argument (T5.R1): an action for a role other than the current one cannot be expressed. The reason is not visible
+ * through `dispatch`: a caller that needs it asks `planTransition` first.
  */
-export function transitionIssue(id: string, action: IssueAction, role: Role, nowIso: string, note?: string): Action {
+export function transitionIssue(id: string, action: IssueAction, nowIso: string, note?: string): Action {
   return note === undefined
-    ? { type: 'transitionIssue', id, action, role, nowIso }
-    : { type: 'transitionIssue', id, action, role, nowIso, note };
+    ? { type: 'transitionIssue', id, action, nowIso }
+    : { type: 'transitionIssue', id, action, nowIso, note };
 }
 /** Show or hide the move-in pins on the model (D48). Not a boolean: ignored. */
 export function setMoveIn(visible: boolean): Action {
@@ -399,19 +399,19 @@ export type IssueTransitionOutcome =
 
 /**
  * Asks, without changing anything, what `transitionIssue` with these arguments would do: the new issue and the
- * history entry on success, the reason on a denial. The reducer uses the same function, so the answer is the effect.
+ * history entry on success, the reason on a denial. The acting role is `state.role`. The reducer uses the same
+ * function, so the answer is the effect.
  */
 export function planTransition(
   state: AppState,
   id: string,
   action: IssueAction,
-  role: Role,
   nowIso: string,
   note?: string,
 ): IssueTransitionOutcome {
   const issue = state.issues.find((i) => i.id === id);
   if (issue === undefined) return { ok: false, reason: 'not-found' };
-  return applyTransition<StoredIssue>(issue, action, role, nowIso, note);
+  return applyTransition<StoredIssue>(issue, action, state.role, nowIso, note);
 }
 
 const CATALOG_ID_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
@@ -567,7 +567,7 @@ export function reduce(state: AppState, action: Action): AppState {
       return { ...state, issues, nextIssue: nextIssueFor(state.nextIssue, issues) };
     }
     case 'transitionIssue': {
-      const result = planTransition(state, action.id, action.action, action.role, action.nowIso, action.note);
+      const result = planTransition(state, action.id, action.action, action.nowIso, action.note);
       if (!result.ok) return state;
       return { ...state, issues: state.issues.map((i) => (i.id === action.id ? result.issue : i)) };
     }

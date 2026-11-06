@@ -51,7 +51,9 @@ const busy = (): AppState =>
     initial('tenant'),
     seedIssues(demo()),
     addIssue(mine()),
-    transitionIssue('issue-014', 'take-on', 'landlord', '2026-11-04T10:01:00.000Z', 'Tomorrow.'),
+    setRole('landlord'),
+    transitionIssue('issue-014', 'take-on', '2026-11-04T10:01:00.000Z', 'Tomorrow.'),
+    setRole('tenant'),
     setMoveIn(true),
   );
 const asJson = (s: AppState): Record<string, unknown> => JSON.parse(serialize(s));

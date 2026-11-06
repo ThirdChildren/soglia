@@ -86,7 +86,7 @@ function randomAction(r: Rng, state: AppState, issueBias = 0): Action {
     case 2:
     case 3: {
       const id = state.issues.length > 0 && r() < 0.9 ? pickOf(r, state.issues).id : formatIssueId(900);
-      return transitionIssue(id, pickOf(r, TRANSITIONS), pickOf(r, ROLES), stamp(int(r, 60)));
+      return transitionIssue(id, pickOf(r, TRANSITIONS), stamp(int(r, 60)));
     }
     case 4:
       return setRole(pickOf(r, ROLES));

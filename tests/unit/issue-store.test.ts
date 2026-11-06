@@ -2,10 +2,10 @@
 // the cap and the "once" rule of the seed.
 import { describe, expect, it } from 'vitest';
 import { createIssueClock, observeIssues } from '../../src/logic/issue-clock';
-import { createIssue } from '../../src/logic/issue-state';
+import { ISSUE_ACTIONS, TRANSITIONS, applyTransition, createIssue } from '../../src/logic/issue-state';
 import { MAX_ISSUES, formatIssueId, isIssue } from '../../src/logic/issues';
 import type { Issue } from '../../src/logic/issues';
-import { DEFAULT_PARAMS } from '../../src/logic/params';
+import { DEFAULT_PARAMS, ROLES } from '../../src/logic/params';
 import type { Role } from '../../src/logic/params';
 import {
   FIRST_NEW_ISSUE,
@@ -158,7 +158,7 @@ describe('transitionIssue and planTransition', () => {
 
   it('applies a valid transition: new status, one more history entry, the other issues untouched', () => {
     const s = seeded('landlord');
-    const next = reduce(s, transitionIssue('issue-012', 'take-on', 'landlord', NOW, 'On it.'));
+    const next = reduce(s, transitionIssue('issue-012', 'take-on', NOW, 'On it.'));
     const issue = next.issues.find((i) => i.id === 'issue-012');
     expect(issue?.status).toBe('in_progress');
     expect(issue?.sample).toBe(true);
@@ -182,24 +182,61 @@ describe('transitionIssue and planTransition', () => {
       ['issue-999', 'take-on', 'landlord', NOW, 'not-found'],
     ];
     for (const [id, action, role, now, reason] of cases) {
-      expect(reduce(s, transitionIssue(id, action, role, now)), `${id} ${action} ${role}`).toBe(s);
-      expect(planTransition(s, id, action, role, now), `${id} ${action}`).toEqual({ ok: false, reason });
+      const state = seeded(role);
+      expect(reduce(state, transitionIssue(id, action, now)), `${id} ${action} ${role}`).toBe(state);
+      expect(planTransition(state, id, action, now), `${id} ${action}`).toEqual({ ok: false, reason });
     }
   });
 
   it('planTransition on success gives the same issue the reducer stores', () => {
     const s = seeded('tenant');
-    const plan = planTransition(s, 'issue-010', 'confirm', 'tenant', NOW);
+    const plan = planTransition(s, 'issue-010', 'confirm', NOW);
     expect(plan.ok).toBe(true);
-    const next = reduce(s, transitionIssue('issue-010', 'confirm', 'tenant', NOW));
+    const next = reduce(s, transitionIssue('issue-010', 'confirm', NOW));
     if (plan.ok) expect(next.issues.find((i) => i.id === 'issue-010')).toEqual(plan.issue);
     expect(next.issues.find((i) => i.id === 'issue-010')?.status).toBe('archived');
+  });
+
+  it('uses the role of the store: for every role x action the outcome is the one of applyTransition and `by` is state.role (T5.R1)', () => {
+    for (const role of ROLES) {
+      for (const action of ISSUE_ACTIONS) {
+        // an issue in the status the action starts from, so that only the role decides
+        const base = seeded(role);
+        const from = TRANSITIONS[action].from;
+        const prepared: AppState = {
+          ...base,
+          issues: base.issues.map((i) => (i.id === 'issue-012' ? { ...i, status: from } : i)),
+        };
+        const before = prepared.issues.find((i) => i.id === 'issue-012');
+        if (before === undefined) throw new Error('expected issue-012');
+        const expected = applyTransition(before, action, role, NOW);
+        const next = reduce(prepared, transitionIssue('issue-012', action, NOW));
+        const plan = planTransition(prepared, 'issue-012', action, NOW);
+        expect(plan.ok, `${role} ${action}`).toBe(expected.ok);
+        if (expected.ok) {
+          const after = next.issues.find((i) => i.id === 'issue-012');
+          expect(after, `${role} ${action}`).toEqual(expected.issue);
+          expect(after?.history.at(-1)?.by).toBe(role);
+        } else {
+          expect(next, `${role} ${action}`).toBe(prepared);
+        }
+      }
+    }
+  });
+
+  it('an action for another role cannot be expressed: switching the store role changes the actor', () => {
+    const s = seeded('tenant');
+    expect(reduce(s, transitionIssue('issue-012', 'take-on', NOW))).toBe(s); // tenant may not take on
+    const asLandlord = run(s, setRole('landlord'), transitionIssue('issue-012', 'take-on', NOW));
+    expect(asLandlord.issues.find((i) => i.id === 'issue-012')?.history.at(-1)?.by).toBe('landlord');
+    expect(transitionIssue('issue-012', 'take-on', NOW)).not.toHaveProperty('role');
   });
 
   it('walks a whole life: create, take on, resolve, reopen, resolve, confirm', () => {
     let s = run(initial('tenant'), addIssue(newIssue(14)));
     const step = (action: Parameters<typeof transitionIssue>[1], role: Role, minute: number): void => {
-      s = reduce(s, transitionIssue('issue-014', action, role, `2026-11-04T10:0${minute}:00.000Z`));
+      s = reduce(s, setRole(role));
+      s = reduce(s, transitionIssue('issue-014', action, `2026-11-04T10:0${minute}:00.000Z`));
     };
     step('take-on', 'landlord', 1);
     step('resolve', 'landlord', 2);
@@ -222,9 +259,9 @@ describe('transitionIssue and planTransition', () => {
     const store = createStore(seeded('landlord'));
     let calls = 0;
     store.subscribe(() => (calls += 1));
-    store.dispatch(transitionIssue('issue-012', 'resolve', 'landlord', NOW)); // invalid from open
+    store.dispatch(transitionIssue('issue-012', 'resolve', NOW)); // invalid from open
     expect(calls).toBe(0);
-    store.dispatch(transitionIssue('issue-012', 'take-on', 'landlord', NOW));
+    store.dispatch(transitionIssue('issue-012', 'take-on', NOW));
     expect(calls).toBe(1);
   });
 });
