@@ -3,6 +3,8 @@ import {
   COACH_ANIMATION_SECONDS,
   COACH_PERIOD_SECONDS,
   COACH_TIMEOUT_SECONDS,
+  COACH_TEXT_BELOW,
+  coachButtonTextAnchor,
   coachNext,
   coachPanelId,
   coachProgress,
@@ -15,6 +17,9 @@ import {
   type CoachHandPose,
   type CoachInputs,
 } from '../../src/logic/coach';
+import { BUTTON_HALF_WIDTH } from '../../src/logic/menu-button';
+import { ROOM_LABEL_MIN_DISTANCE, VIEW_CONE_HALF_ANGLE_DEG } from '../../src/logic/menu-thresholds';
+import { panelConeAngleDeg } from '../../src/logic/view-fit';
 import { DEFAULT_PARAMS } from '../../src/logic/params';
 import { serializeForSave } from '../../src/logic/persistence';
 import {
@@ -208,5 +213,58 @@ describe('prefs.coach in the store', () => {
     );
     expect(kept.prefs.coach).toBe('grab');
     expect(serializeForSave(saved, [])).toContain('"coach":"done"');
+  });
+});
+
+describe('the words of the Menu step (rule 8: labels stay in the 30 degree cone)', () => {
+  // The right "Menu" button of the ring, seen from a seated head at 1.6 m looking straight ahead (the numbers of the M5 gate).
+  const head = { x: 0, y: 1.6, z: 0 };
+  const forward = { x: 0, y: 0, z: -1 };
+  const button = { x: 0.4347, y: 1.495, z: -0.5665 };
+  const model = { x: 0, y: 1.0, z: -0.55 };
+  const fit = { halfAngleDeg: VIEW_CONE_HALF_ANGLE_DEG, minDistance: ROOM_LABEL_MIN_DISTANCE, maxDistance: 0.8 };
+  // "Pinch Menu" at 2.4 cm bold is about 14 cm wide with its paddings; the sweep covers large text too (x1.25).
+  const place = (halfWidth: number, headPos = head, fwd = forward) => {
+    const extent = { halfWidth, bottom: -0.03, top: 0.03 };
+    const out = { x: 0, y: 0, z: 0 };
+    coachButtonTextAnchor({ button, model, head: headPos, forward: fwd, textHalfWidth: halfWidth, buttonHalfWidth: BUTTON_HALF_WIDTH, extent, fit }, out);
+    return { out, extent, angle: panelConeAngleDeg(out, headPos, fwd, extent, true) };
+  };
+
+  it('the button itself is outside the cone, so the words had to move', () => {
+    const extent = { halfWidth: 0.04, bottom: -0.03, top: 0.03 };
+    expect(panelConeAngleDeg(button, head, forward, extent, true)).toBeGreaterThan(36);
+  });
+
+  it('keeps the whole text inside the cone, for normal and large text', () => {
+    for (const halfWidth of [0.06, 0.07, 0.08, 0.0875, 0.1, 0.11]) {
+      const { angle } = place(halfWidth);
+      expect(angle, `halfWidth ${halfWidth}`).toBeLessThanOrEqual(VIEW_CONE_HALF_ANGLE_DEG + 1e-6);
+    }
+  });
+
+  it('stays near the button and under its height, and never nearer the head than a label', () => {
+    for (const halfWidth of [0.06, 0.08, 0.1]) {
+      const { out } = place(halfWidth);
+      const toButton = Math.hypot(out.x - button.x, out.y - button.y, out.z - button.z);
+      expect(toButton, `halfWidth ${halfWidth}`).toBeLessThan(0.3);
+      expect(Math.hypot(out.x - head.x, out.y - head.y, out.z - head.z)).toBeGreaterThanOrEqual(ROOM_LABEL_MIN_DISTANCE - 1e-9);
+      // Never above the button: the words belong to it, not to the menu panels that open above.
+      expect(out.y).toBeLessThanOrEqual(button.y + 1e-9);
+    }
+  });
+
+  it('is the plain "hang under the button, pulled in" spot when that is already inside the cone', () => {
+    // A head turned toward the button: nothing to fix, so only the hanging and the pull apply.
+    const toward = { x: 0.6, y: 0, z: -0.8 };
+    const { out } = place(0.07, head, toward);
+    expect(out.y).toBeCloseTo(button.y - COACH_TEXT_BELOW, 9);
+    expect(out.x).toBeLessThan(button.x);
+  });
+
+  it('allocates nothing and writes only into `out`', () => {
+    const before = JSON.stringify([button, model, head, forward]);
+    place(0.07);
+    expect(JSON.stringify([button, model, head, forward])).toBe(before);
   });
 });

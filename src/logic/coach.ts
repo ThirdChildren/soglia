@@ -11,6 +11,8 @@
 // It is not interactive: it never takes a pinch.
 
 import type { CoachStep, OnboardingStep } from './state';
+import { anchorInCone, type ConeFit, type Point3Like } from './view-fit';
+import type { PanelExtent } from './menu';
 
 /** The coach stops by itself this long after the step that is on began (D60). */
 export const COACH_TIMEOUT_SECONDS = 20;
@@ -123,4 +125,44 @@ export function grabPose(progress: number, out: CoachHandPose): CoachHandPose {
 /** `coach step=grab reason=menu-opened`. */
 export function formatCoachStep(step: CoachStep, reason: CoachReason): string {
   return `coach step=${step} reason=${reason}`;
+}
+
+// --- Where the words of the first step hang ---------------------------------------------------------------------------------
+
+/** The words of the `menu-button` step hang this far under the button, metres: close enough to read as its label. */
+export const COACH_TEXT_BELOW = 0.07;
+
+/** The geometry of the Menu button's words: the button, the model it is pulled toward, and the head. All in world metres. */
+export interface CoachButtonTextInputs {
+  readonly button: Readonly<Point3Like>;
+  /** The middle of the model: the words are pulled toward it, away from the edge of the view. */
+  readonly model: Readonly<Point3Like>;
+  readonly head: Readonly<Point3Like>;
+  readonly forward: Readonly<Point3Like>;
+  /** Half width of the text panel, and of the button, metres. */
+  readonly textHalfWidth: number;
+  readonly buttonHalfWidth: number;
+  /** The text panel around its centre (its half width is `textHalfWidth`). */
+  readonly extent: Readonly<PanelExtent>;
+  /** The cone and the distances the words keep (rule 8: labels stay in the 30 degree cone). */
+  readonly fit: Readonly<ConeFit>;
+}
+
+/**
+ * Where the words of the `menu-button` step go, written into `out` (which may not be an input). They start `COACH_TEXT_BELOW` under
+ * the button, are pulled toward the model until their outer edge is level with the button's, and then the whole text is kept inside
+ * the cone of the view (`anchorInCone`): the buttons stand at about 37 degrees, outside the cone on purpose, so the words may come
+ * a little further from the button than the pull alone. The cone has priority over the closeness to the button. Allocates nothing.
+ */
+export function coachButtonTextAnchor(i: Readonly<CoachButtonTextInputs>, out: Point3Like): Point3Like {
+  out.x = i.button.x;
+  out.y = i.button.y - COACH_TEXT_BELOW;
+  out.z = i.button.z;
+  const inwardX = i.model.x - i.button.x;
+  const inwardZ = i.model.z - i.button.z;
+  const inward = Math.hypot(inwardX, inwardZ) || 1;
+  const pull = Math.max(0, i.textHalfWidth - i.buttonHalfWidth);
+  out.x += (inwardX / inward) * pull;
+  out.z += (inwardZ / inward) * pull;
+  return anchorInCone(out, i.head, i.forward, i.extent, i.fit, out, true);
 }

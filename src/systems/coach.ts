@@ -13,6 +13,7 @@ import { createSystem, Quaternion, Vector3, type Object3D, type World } from '@i
 import { StableId } from '../components/stable-id';
 import { slog } from '../log';
 import {
+  coachButtonTextAnchor,
   coachNext,
   coachPanelId,
   coachProgress,
@@ -41,8 +42,6 @@ import { pinchClaims } from './pinch-input';
 import { isRealScale, isViewTransitioning } from './view-mode';
 import { isViewPanelOpen } from './view-panel';
 
-/** The text of the Menu step hangs this far under the button, metres (the QA wants it within 0.15 m of the button). */
-const TEXT_BELOW = 0.07;
 /** The text of the grab step hangs this high above the middle of the model, and at least this high above the eyes (over the pinned menu), metres. */
 const TEXT_ABOVE_MODEL = 0.13;
 const TEXT_ABOVE_EYES = 0.31;
@@ -60,8 +59,6 @@ const DROP_HEIGHT = 0.06;
 const FALLBACK_SIDE = 0.2;
 /** The text keeps inside the cone of the view and never nearer to the head than a label. */
 const TEXT_FIT: ConeFit = { halfAngleDeg: VIEW_CONE_HALF_ANGLE_DEG, minDistance: ROOM_LABEL_MIN_DISTANCE, maxDistance: 0.8 };
-/** The text of the Menu step hangs by the button, which is outside the cone on purpose (37.6 degrees): only the distances are kept. */
-const TEXT_FIT_BY_BUTTON: ConeFit = { halfAngleDeg: 90, minDistance: ROOM_LABEL_MIN_DISTANCE, maxDistance: 0.8 };
 
 interface CoachContext {
   store: Store;
@@ -217,17 +214,23 @@ export class CoachSystem extends createSystem({ named: { required: [StableId] } 
       this.aim(this.target);
       // The text hangs right under the button (the buttons are a column, and the words are wider than a button: beside it they would
       // cover it), where the air beside the table is free.
-      this.text.x = this.target.x;
-      this.text.y = this.target.y - TEXT_BELOW;
-      this.text.z = this.target.z;
-      // ... and pulled toward the model until its outer edge is level with the outer edge of the button, so it is not cut by the
-      // edge of the view (the buttons are at 38 degrees).
-      const inwardX = this.spot.x - this.target.x;
-      const inwardZ = this.spot.z - this.target.z;
-      const inward = Math.hypot(inwardX, inwardZ) || 1;
-      const pull = Math.max(0, this.textHalfWidth(strings.coach.menuButton) - BUTTON_HALF_WIDTH);
-      this.text.x += (inwardX / inward) * pull;
-      this.text.z += (inwardZ / inward) * pull;
+      // ... pulled toward the model, and kept inside the cone of the view whatever that costs in closeness to the button (the
+      // buttons are at 38 degrees, outside it): see `coachButtonTextAnchor`.
+      const half = this.textHalfWidth(strings.coach.menuButton);
+      this.extent.halfWidth = half;
+      coachButtonTextAnchor(
+        {
+          button: this.target,
+          model: this.spot,
+          head: this.headPosition,
+          forward: this.headForward,
+          textHalfWidth: half,
+          buttonHalfWidth: BUTTON_HALF_WIDTH,
+          extent: this.extent,
+          fit: TEXT_FIT,
+        },
+        this.text,
+      );
       menuButtonPose(coachProgress(this.startedAt ?? this.now, this.now), this.pose);
       this.to.copy(this.target);
       this.from.copy(this.target);
@@ -264,7 +267,8 @@ export class CoachSystem extends createSystem({ named: { required: [StableId] } 
     const label = step === 'menu-button' ? strings.coach.menuButton : strings.coach.grab;
     if (!ctx.panel.exists) ctx.panel.create(id, label);
     this.extent.halfWidth = this.textHalfWidth(label);
-    anchorInCone(this.text, this.headPosition, this.headForward, this.extent, step === 'menu-button' ? TEXT_FIT_BY_BUTTON : TEXT_FIT, this.text, true);
+    // The first step's words are already placed inside the cone (and `anchorInCone` leaves them where they are).
+    anchorInCone(this.text, this.headPosition, this.headForward, this.extent, TEXT_FIT, this.text, true);
     ctx.panel.update(this.text.x, this.text.y, this.text.z, head, true);
   }
 
