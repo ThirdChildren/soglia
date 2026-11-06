@@ -1,0 +1,15 @@
+---
+name: m5-review-warnings
+description: M5 contest-reviewer warnings 3,4,6,7,8 fixed (2026-11-06) - View note "Simplified light", coach text in the cone, Rotate window restart, parallel font preload, DEBT rows; measured numbers and traps
+metadata:
+  type: project
+---
+
+Fixes after the contest-reviewer verdict "APPROVATO CON AVVISI" (branch `claude/charming-cori-mccw6h`). One commit per point, no attribution lines (the user's instruction beat the reminder).
+
+- Warning 3 (honesty of the light): `strings.view.light = 'Simplified light'` in a white bordered box LEFT of Close in the bar of both layouts (`view-panel-note-box` 26.6 x 6.2 normal, 29.6 x 5.8 large; `ViewLayout.noteWidth`). Bar heights are unchanged, so the cone numbers did not move (26.1 / 27.8 deg). The plan's longer sentence ("floor patches through windows only") does NOT fit one line (28.8 cm at 2.4 vs 26.6 box; large has no height for two lines): keep it short. A first version without a box left the text drawn straight on the model (unreadable on the blue): panels need a background. IWER check: normal, large and contrast (yellow border, black box) all fine, 0 warn.
+- Warning 4 (coach in the cone): `coachButtonTextAnchor` in `src/logic/coach.ts` (7 cm under the button, pulled inward, then `anchorInCone` with the 30 deg cone, yawOnly). The button is at 37.6 deg, so 0.15 m from it is impossible (the cone forces 0.18-0.23 m); cone has priority. IWER: text 21 cm wide, centre 0.22 m from the button, 29.99 deg; large text 0.25 m. The text now overlaps the right edge of the `Palm up for the menu` hint box (only the box, not the words); it is in DEBT.
+- Warning 6 (Rotate): `rotateDecision` does not time out while `covered`; `rotateResumedWindow(window, wasCovered, covered, now)` restarts the 12 s when the covering surface closes (system keeps `coveredBy` from the previous frame, so a window opened under an open menu is not restarted on its first frame). IWER (right hand only): placed at 0 s with the pinned menu open, closed at 19.6 s, `rotate button shown` the same ms, pressed 7.5 s later (`furniture rotated rot=90 source=button`), ended `timeout` 12.0 s after the press. CLI latency is ~1.5 s per call: a `press` after `sleep 8` came too late, use `sleep 2`.
+- Warning 7 (start-up): `FONT_PRELOAD_TIMEOUT_MS` 5000 -> 1500; `loadPanelFonts()` is started right after `World.create` and awaited in the same `Promise.all` as house, catalog and my-furniture (`showGlyphTest` moved after it; no panel exists before). The two weights are also checked with `Promise.all` inside `loadPanelFonts`. Source-order tests in `tests/unit/font-preload.test.ts` read `src/index.ts` as text.
+- Italian leftovers in src/ and tests/: only the two `D34 "Quando si mostra"` comments (grep with an Italian word list + accented letters finds nothing else).
+- Scratchpad helpers: `lib.sh` `shot` now writes to the scratchpad (it used to write into `qa/reports/`, which must not be touched). `dev-params.local.txt` is git-ignored; remove it at the end.

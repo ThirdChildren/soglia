@@ -27,3 +27,4 @@
 - [M5 accessibility, Rotate, coach (T5.11-T5.15)](m5-access.md) — `applyPanelLook` walk (originals WeakMap, modes none/font/layout), explicit URL vs saved, View large layout + rebuild, widened fixed buttons, Rotate must register first (+ menu claim guards), coach placement traps; second round: uniform `scale` mode for Issues/menu/labels, large pinned anchor, UIKit peek traps
 - [M5 gate A/B fixes](m5-gate-ab-fixes.md) — coach clock pause on panels, T5.RA merged walls/thresholds (K18 84 -> 68), sun marker visibility, A2 sliver is physical, K18 recipe
 - [M5 gate C2/D fixes](m5-gate-cd-fixes.md) — Rotate hidden while a menu/panel is open (F-D-2), UIKit font race + atlas preload (F-D-1), Vite deep-import trap and recovery
+- [M5 review warnings](m5-review-warnings.md) — View note "Simplified light" (box beside Close), coach text forced into the 30 deg cone (0.22 m from button, 29.99 deg), Rotate 12 s restart after cover closes, fonts parallel + 1.5 s, DEBT rows
