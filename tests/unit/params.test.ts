@@ -517,6 +517,8 @@ describe('formatParamsLine', () => {
       failmy: false,
       failcatalog: false,
       pinch: 'auto',
+      contrast: false,
+      text: 'normal',
     });
     expect(line).toBe('params source=dev-file house=apartment-b role=visitor reset=false seed=1 debug=true time=-');
   });
