@@ -6,3 +6,5 @@
 - [M3 gate traps](reference_m3_gate_traps.md) — runtime restart, v2 menu poses, viewpoint marker vs zoom recipe, pinned menu window, MCP latency, expected M3 differences
 - [M4 gate traps](reference_m4_gate_traps.md) — IWER grip offset at rest vs settled, long pinch, Issues buttons/panel entities, move-in default off, state log changes, framework warn
 - [M5 gate traps](reference_m5_gate_traps.md) — CLI helper-lib pitfalls (cd in sourced file), regex-log traps, info-pin head offset, coach 20 s timing, sun patches behind V1, budget readings, W1/W2 findings
+
+- [M5 rerun recipes](reference_m5_rerun_recipes.md) — lib.sh overwrite/variable traps, coach v9 and K18 scripts, post-T5.RA budget numbers, merged-wall checks, V1/B coordinates, measure F1/F2
