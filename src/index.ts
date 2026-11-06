@@ -31,6 +31,7 @@ import { createFurnitureReasons } from './systems/furniture-reasons';
 import { createMeasure } from './systems/measure';
 import { createIssueCreate } from './systems/issue-create';
 import { createIssuePanel } from './systems/issue-panel';
+import { createViewPanel } from './systems/view-panel';
 import { createMenuButton } from './systems/menu-button';
 import { createMenuItems, setMenuTabData } from './systems/menu-items';
 import { attachLifecycle } from './systems/lifecycle';
@@ -194,6 +195,8 @@ async function start(): Promise<void> {
     createTabletopButton(world);
     // The Issues panel (T4.6a): its Close/Back controls are a `menu` claim too, so it goes after the menu and the buttons.
     createIssuePanel(world, store, result.house, issueClock);
+    // The View panel (T5.5): its controls are a `menu` claim too, so it goes right after the Issues panel.
+    createViewPanel(world, store, result.house);
     // The tape measure claims the pinch above the grab (and below the menu): register it after the menu, before the grab (T3.14).
     createMeasure(world, store, result.house, merged ? merged.items : [], built.entity, miniature.root);
     // The long pinch (T4.5): after the tape measure (a point wins), before the grab (it waits for the claims of the later systems).

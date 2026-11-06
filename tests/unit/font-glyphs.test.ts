@@ -45,6 +45,8 @@ const SAMPLE_CALLS: Record<string, () => string[]> = {
   pageOf: () => [strings.issues.list.pageOf(1, 3), strings.issues.list.pageOf(10, 40)],
   openList: () => [0, 4, 40, 99].map((count) => strings.issues.openList(count)),
   more: () => [1, 2, 37].map((count) => strings.issues.detail.more(count)),
+  sun: () => [0, 13, 67].map((alt) => strings.view.sun(alt, 'SE')),
+  turn: () => ['0', '15', '345'].map((deg) => strings.view.turn(deg)),
   wontFitNarrow: () => [strings.fit.wontFitNarrow(80, 'three-seat sofa', 85)],
   wontFitMobility: () => [strings.fit.wontFitMobility(75, 'wheelchair', 80)],
   wontFitLow: () => [strings.fit.wontFitLow(210, 'glass panel', 230)],

@@ -55,6 +55,11 @@ export const uiColors = {
   ink: '#1a1a1a',
 } as const;
 
+/** The colours of the flat UI panels now. M5 (T5.12) makes this follow the contrast preference; for now it is `uiColors`. */
+export function getUiColors(): typeof uiColors {
+  return uiColors;
+}
+
 /**
  * Border colour of the FitCheck label by outcome (CSS strings), T3.9. The text says the same thing in words, so the
  * colour is never the only signal. The markers on the doors use `palette.outlineValid` / `palette.outlineInvalid`.

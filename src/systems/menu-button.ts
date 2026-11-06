@@ -4,6 +4,9 @@
 // above every piece (`buttonLift`) and turned toward the head about the vertical axis only. The geometry, the pick
 // rectangle and the numbers that keep them inside 0.5-0.8 m and 45 degrees of the gaze are in src/logic/menu-button.ts.
 //
+// The "View" buttons (T5.5, D56) are a third floor, 7 cm above the "Issues" ones (`ui:view-button-left/-right`, 8 x 6 cm): a pinch on
+// one opens (or closes) the View panel (src/systems/view-panel.ts).
+//
 // The "Issues" buttons (T4.6a, D47) are two more panels, 7 cm above the "Menu" ones (`ui:issue-button-left/-right`): same place on
 // the ring, same yaw, 9 x 6 cm, and a pinch on one opens (or closes) the Issues panel instead of the menu.
 //
@@ -26,14 +29,17 @@ import { MINIATURE_ROOT_ID } from '../logic/ids';
 import {
   ISSUE_BUTTON_IDS,
   MENU_BUTTON_IDS,
+  VIEW_BUTTON_IDS,
   buttonAnchors,
   buttonView,
   createButtonPair,
   faceHead,
   formatButtonView,
   formatIssueButtonView,
+  formatViewButtonView,
   issueButtonAnchors,
   pickButton,
+  viewButtonAnchors,
   type ButtonAnchor,
   type ButtonView,
 } from '../logic/menu-button';
@@ -43,6 +49,7 @@ import { isMiniatureGestureActive } from './miniature-gesture';
 import { getMiniatureAnchor, getMiniatureAnchorYaw } from './miniature';
 import { closeIssuePanel, isIssuePanelOpen, openIssuePanel } from './issue-panel';
 import { closeMenu, getMenuMode, openPinnedMenu } from './palm-menu';
+import { closeViewPanel, isViewPanelOpen, openViewPanel } from './view-panel';
 import { onPinchStart, pinchClaims, pinchPoint, type Hand } from './pinch-input';
 import { isRealScale } from './view-mode';
 
@@ -51,12 +58,14 @@ interface MenuButtonContext {
   panels: readonly [MenuButtonPanel, MenuButtonPanel];
   /** The two "Issues" buttons above them (T4.6a), left first. */
   issuePanels: readonly [MenuButtonPanel, MenuButtonPanel];
+  /** The two "View" buttons above those (T5.5), left first. */
+  viewPanels: readonly [MenuButtonPanel, MenuButtonPanel];
 }
 
 // Shared with the system, which has no constructor arguments: set by `createMenuButton`.
 let context: MenuButtonContext | null = null;
 
-/** Creates the four buttons ("Menu" and "Issues", left and right) and registers the system. */
+/** Creates the six buttons ("Menu", "Issues" and "View", left and right) and registers the system. */
 export function createMenuButton(world: World): void {
   context = {
     panels: [
@@ -66,6 +75,10 @@ export function createMenuButton(world: World): void {
     issuePanels: [
       new MenuButtonPanel(world, ISSUE_BUTTON_IDS.left, strings.issues.button, 'issues'),
       new MenuButtonPanel(world, ISSUE_BUTTON_IDS.right, strings.issues.button, 'issues'),
+    ],
+    viewPanels: [
+      new MenuButtonPanel(world, VIEW_BUTTON_IDS.left, strings.view.button, 'view'),
+      new MenuButtonPanel(world, VIEW_BUTTON_IDS.right, strings.view.button, 'view'),
     ],
   };
   world.registerSystem(MenuButtonSystem);
@@ -79,8 +92,9 @@ export class MenuButtonSystem extends createSystem({
 }) {
   private readonly buttons = createButtonPair();
   private readonly issueButtons = createButtonPair();
-  /** The four pick targets, disjoint (the "Issues" ones are 1 cm above the "Menu" ones): the objects are shared with the pairs above. */
-  private readonly targets: readonly ButtonAnchor[] = [...this.buttons, ...this.issueButtons];
+  private readonly viewButtons = createButtonPair();
+  /** The six pick targets, disjoint (each floor is 1 cm above the one below): the objects are shared with the pairs above. */
+  private readonly targets: readonly ButtonAnchor[] = [...this.buttons, ...this.issueButtons, ...this.viewButtons];
   private readonly view: ButtonView = { distance: 0, angleDeg: 180 };
   private readonly anchor = { x: 0, y: 0, z: 0 };
   private readonly headPosition = new Vector3();
@@ -102,6 +116,7 @@ export class MenuButtonSystem extends createSystem({
     for (let i = 0; i < 2; i += 1) {
       ctx.panels[i].prepare();
       ctx.issuePanels[i].prepare();
+      ctx.viewPanels[i].prepare();
     }
 
     const head = this.world.player.head;
@@ -111,6 +126,7 @@ export class MenuButtonSystem extends createSystem({
       for (let i = 0; i < 2; i += 1) {
         ctx.panels[i].place(0, 0, 0, 0, false);
         ctx.issuePanels[i].place(0, 0, 0, 0, false);
+        ctx.viewPanels[i].place(0, 0, 0, 0, false);
       }
       this.loggedScale = Number.NaN; // the next session logs its view again
       return;
@@ -123,11 +139,14 @@ export class MenuButtonSystem extends createSystem({
     head.getWorldPosition(this.headPosition);
     faceHead(this.buttons, this.headPosition);
     issueButtonAnchors(this.buttons, this.issueButtons);
+    viewButtonAnchors(this.issueButtons, this.viewButtons);
     for (let i = 0; i < 2; i += 1) {
       const b = this.buttons[i];
       ctx.panels[i].place(b.x, b.y, b.z, b.yawRad, true);
       const c = this.issueButtons[i];
       ctx.issuePanels[i].place(c.x, c.y, c.z, c.yawRad, true);
+      const v = this.viewButtons[i];
+      ctx.viewPanels[i].place(v.x, v.y, v.z, v.yawRad, true);
     }
     this.logView(head);
   }
@@ -142,6 +161,8 @@ export class MenuButtonSystem extends createSystem({
     slog(formatButtonView(this.view));
     buttonView(this.issueButtons, this.headPosition, this.headForward, this.view);
     slog(formatIssueButtonView(this.view));
+    buttonView(this.viewButtons, this.headPosition, this.headForward, this.view);
+    slog(formatViewButtonView(this.view));
     this.loggedScale = this.scale;
   }
 
@@ -153,13 +174,21 @@ export class MenuButtonSystem extends createSystem({
     const hit = pickButton(this.point, this.targets);
     if (!hit) return;
     const isIssues = hit === this.issueButtons[0] || hit === this.issueButtons[1];
+    const isView = hit === this.viewButtons[0] || hit === this.viewButtons[1];
     // With a piece in the hand the buttons do not react: the pinch of the other hand rotates the piece.
     if (pinchClaims.anyClaimed('furniture')) {
-      slog(`${isIssues ? 'issue' : 'menu'} button ignored id=${hit.id} hand=${hand} reason=piece-held`);
+      slog(`${isIssues ? 'issue' : isView ? 'view' : 'menu'} button ignored id=${hit.id} hand=${hand} reason=piece-held`);
       return;
     }
     // The menu has the highest priority: this only fails if the menu already owns the hand (checked above).
     if (!pinchClaims.claim(hand, 'menu')) return;
+    if (isView) {
+      // The View panel toggles like the Issues panel; opening it closes the menu and the Issues panel that are open.
+      slog(`view button pressed id=${hit.id} hand=${hand}`);
+      if (isViewPanelOpen()) closeViewPanel('button');
+      else openViewPanel(hand);
+      return;
+    }
     if (isIssues) {
       // The Issues panel toggles like the pinned menu; opening it closes the menu that is open (one panel at a time).
       slog(`issue button pressed id=${hit.id} hand=${hand}`);

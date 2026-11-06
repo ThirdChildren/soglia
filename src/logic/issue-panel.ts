@@ -303,7 +303,7 @@ export function formatScreenLine(screen: IssueScreen): string {
 }
 
 /** Why the panel closed (the `via=` of the `issues panel closed` line, D47 contract). */
-export type IssuePanelCloseVia = 'button' | 'close' | 'report' | 'menu' | 'suspend' | 'view';
+export type IssuePanelCloseVia = 'button' | 'close' | 'report' | 'menu' | 'panel' | 'suspend' | 'view';
 
 export function formatPanelClosed(via: IssuePanelCloseVia): string {
   return `issues panel closed via=${via}`;

@@ -68,6 +68,21 @@ export const strings = {
   viewpoint: {
     tabletopButton: 'Tabletop',
   },
+  /** The View panel and its buttons (M5, D56): sun, zoom and turn of the model. */
+  view: {
+    /** The third floor of fixed buttons beside the model, above "Issues": they open and close the View panel with one hand. */
+    button: 'View',
+    title: 'View',
+    close: 'Close',
+    rows: { zoom: 'Zoom', turn: 'Turn', month: 'Month', hour: 'Hour' },
+    less: '-',
+    more: '+',
+    /** `Sun 14° SE` (`deg` when the local panel font has no degree sign). */
+    sun: (altitudeDeg: number, compass: string, ascii = false): string => `Sun ${altitudeDeg}${ascii ? ' deg' : '\u00b0'} ${compass}`,
+    sunDown: 'Sun below the horizon',
+    /** `15°`. */
+    turn: (degrees: string, ascii = false): string => `${degrees}${ascii ? ' deg' : '\u00b0'}`,
+  },
   /** The Issues panel and its buttons (M4, D47, D50). */
   issues: {
     /** The fixed buttons beside the model (T4.6a), above the "Menu" ones: they open and close the Issues panel with one hand. */
