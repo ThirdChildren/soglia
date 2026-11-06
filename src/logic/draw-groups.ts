@@ -16,7 +16,7 @@ export const DRAW_GROUPS: readonly DrawGroup[] = ['house', 'furniture', 'hands',
 export type GroupCounts = Record<DrawGroup, number>;
 
 /** Stable-id kinds (the part before the colon) that belong to the house model. */
-const HOUSE_KINDS: ReadonlySet<string> = new Set(['house', 'room', 'wall', 'door', 'window', 'fixture']);
+const HOUSE_KINDS: ReadonlySet<string> = new Set(['house', 'room', 'wall', 'door', 'window', 'fixture', 'merged']);
 
 /** Singleton ids that belong to the house model (the table plinth is part of the miniature's base). */
 const HOUSE_IDS: ReadonlySet<string> = new Set(['table:plinth']);

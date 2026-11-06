@@ -146,3 +146,80 @@ export function boxesToBuffers(boxes: readonly Box[]): MeshBuffers {
   }
   return { positions, normals, indices };
 }
+
+// --- Merging the walls and the thresholds of a house into a few meshes (task T5.RA, R-A of docs/plans/M3.md D33) ------------
+//
+// Every wall used to be its own mesh (13 draw calls in apartment A) and every threshold strip too (5): 18 of the 24 draw calls of the
+// house. They all share one material each, so the builder bakes the pose of every wall and strip into its vertices and draws the
+// walls with one call and the thresholds with one call. Pure, so that it can be tested without three.
+
+/** Where a part sits in the frame it is merged into: first `shiftX` along its local x, then a turn about y, then the translation. */
+export interface BufferPlacement {
+  /** Added to the local x before the turn (the wall geometry is centred on its midpoint this way). */
+  shiftX?: number;
+  /** Turn about the y axis, radians, same sign and sense as `Object3D.rotation.y`: x' = x cos + z sin, z' = -x sin + z cos. */
+  rotationY: number;
+  x: number;
+  y?: number;
+  z: number;
+}
+
+/** A copy of `buffers` placed by `placement` (normals turned, not moved). The indices are copied as they are. */
+export function placeBuffers(buffers: Readonly<MeshBuffers>, placement: Readonly<BufferPlacement>): MeshBuffers {
+  const { rotationY, x, z } = placement;
+  const shiftX = placement.shiftX ?? 0;
+  const y = placement.y ?? 0;
+  const c = Math.cos(rotationY);
+  const s = Math.sin(rotationY);
+  const positions = new Float32Array(buffers.positions.length);
+  const normals = new Float32Array(buffers.normals.length);
+  for (let i = 0; i < buffers.positions.length; i += 3) {
+    const px = buffers.positions[i] + shiftX;
+    const pz = buffers.positions[i + 2];
+    positions[i] = px * c + pz * s + x;
+    positions[i + 1] = buffers.positions[i + 1] + y;
+    positions[i + 2] = -px * s + pz * c + z;
+    const nx = buffers.normals[i];
+    const nz = buffers.normals[i + 2];
+    normals[i] = nx * c + nz * s;
+    normals[i + 1] = buffers.normals[i + 1];
+    normals[i + 2] = -nx * s + nz * c;
+  }
+  return { positions, normals, indices: buffers.indices.slice() };
+}
+
+/** One buffer for all `parts`, in order; the indices of every part are offset by the vertices before it. */
+export function mergeBuffers(parts: readonly Readonly<MeshBuffers>[]): MeshBuffers {
+  let vertices = 0;
+  let indexCount = 0;
+  for (const part of parts) {
+    vertices += part.positions.length / 3;
+    indexCount += part.indices.length;
+  }
+  const positions = new Float32Array(vertices * 3);
+  const normals = new Float32Array(vertices * 3);
+  const indices: Uint16Array | Uint32Array = vertices <= 65535 ? new Uint16Array(indexCount) : new Uint32Array(indexCount);
+  let vertexOffset = 0;
+  let indexOffset = 0;
+  for (const part of parts) {
+    positions.set(part.positions, vertexOffset * 3);
+    normals.set(part.normals, vertexOffset * 3);
+    for (let i = 0; i < part.indices.length; i++) indices[indexOffset + i] = part.indices[i] + vertexOffset;
+    vertexOffset += part.positions.length / 3;
+    indexOffset += part.indices.length;
+  }
+  return { positions, normals, indices };
+}
+
+/**
+ * The threshold strip of a door: a flat rectangle `width` along x and `depth` along z, centred on the origin and `lift` above the
+ * floor (so it does not z-fight with it), facing up. Two triangles, counter-clockwise seen from above.
+ */
+export function thresholdBuffers(width: number, depth: number, lift: number): MeshBuffers {
+  const hx = width / 2;
+  const hz = depth / 2;
+  const positions = new Float32Array([-hx, lift, -hz, hx, lift, -hz, hx, lift, hz, -hx, lift, hz]);
+  const normals = new Float32Array([0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0]);
+  const indices = new Uint16Array([0, 3, 2, 0, 2, 1]);
+  return { positions, normals, indices };
+}

@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import type { House } from '../../src/logic/house';
-import { boxesToBuffers, buildWallBoxes, type Box, type WallBoxesInput } from '../../src/logic/wall-mesh';
+import {
+  boxesToBuffers,
+  buildWallBoxes,
+  mergeBuffers,
+  placeBuffers,
+  thresholdBuffers,
+  type Box,
+  type MeshBuffers,
+  type WallBoxesInput,
+} from '../../src/logic/wall-mesh';
 import { loadJson } from '../helpers/load-json';
 
 type O = WallBoxesInput['openings'][number];
@@ -537,4 +546,193 @@ describe('boxesToBuffers', () => {
     expect(buf.indices).toBeInstanceOf(Uint16Array);
     for (const v of buf.positions) expect(Number.isFinite(v)).toBe(true);
   });
+});
+
+
+// ---------- T5.RA: placing and merging the parts of a house into a few meshes ----------
+
+/** Signed volume of a closed triangle mesh (divergence theorem): positive when every face looks outward. */
+function signedVolume(b: MeshBuffers): number {
+  let sum = 0;
+  for (let i = 0; i < b.indices.length; i += 3) {
+    const [a, c, d] = [b.indices[i], b.indices[i + 1], b.indices[i + 2]].map((k) => [
+      b.positions[k * 3],
+      b.positions[k * 3 + 1],
+      b.positions[k * 3 + 2],
+    ]);
+    sum += (a[0] * (c[1] * d[2] - c[2] * d[1]) - a[1] * (c[0] * d[2] - c[2] * d[0]) + a[2] * (c[0] * d[1] - c[1] * d[0])) / 6;
+  }
+  return sum;
+}
+
+/** Every triangle must be wound so that its geometric normal agrees with the normal stored on its vertices. */
+function expectWindingMatchesNormals(b: MeshBuffers, label: string): void {
+  for (let i = 0; i < b.indices.length; i += 3) {
+    const k = [b.indices[i], b.indices[i + 1], b.indices[i + 2]];
+    const p = k.map((n) => [b.positions[n * 3], b.positions[n * 3 + 1], b.positions[n * 3 + 2]]);
+    const u = [p[1][0] - p[0][0], p[1][1] - p[0][1], p[1][2] - p[0][2]];
+    const v = [p[2][0] - p[0][0], p[2][1] - p[0][1], p[2][2] - p[0][2]];
+    const cross = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
+    const n = [b.normals[k[0] * 3], b.normals[k[0] * 3 + 1], b.normals[k[0] * 3 + 2]];
+    const dot = cross[0] * n[0] + cross[1] * n[1] + cross[2] * n[2];
+    expect(dot, `${label} triangle ${i / 3} faces the wrong way`).toBeGreaterThan(1e-9);
+  }
+}
+
+function bounds(b: MeshBuffers): { min: number[]; max: number[] } {
+  const min = [Infinity, Infinity, Infinity];
+  const max = [-Infinity, -Infinity, -Infinity];
+  for (let i = 0; i < b.positions.length; i += 3) {
+    for (let a = 0; a < 3; a++) {
+      min[a] = Math.min(min[a], b.positions[i + a]);
+      max[a] = Math.max(max[a], b.positions[i + a]);
+    }
+  }
+  return { min, max };
+}
+
+describe('placeBuffers', () => {
+  const box: Box = { min: [0, 0, -0.1], max: [4, 2.5, 0.1] };
+  const base = boxesToBuffers([box]);
+
+  it('does nothing with a zero turn and no shift', () => {
+    const placed = placeBuffers(base, { rotationY: 0, x: 0, z: 0 });
+    expect(Array.from(placed.positions)).toEqual(Array.from(base.positions));
+    expect(Array.from(placed.normals)).toEqual(Array.from(base.normals));
+    expect(Array.from(placed.indices)).toEqual(Array.from(base.indices));
+  });
+
+  it('does not change the input', () => {
+    const before = Array.from(base.positions);
+    placeBuffers(base, { rotationY: 1, x: 3, y: 1, z: 4, shiftX: -2 });
+    expect(Array.from(base.positions)).toEqual(before);
+  });
+
+  it('shifts, then turns about y like Object3D.rotation.y, then moves (a wall along +z: angle pi/2 gives rotation.y = -pi/2)', () => {
+    // Wall from (5, 0) to (5, 4): angleRad = atan2(4, 0) = pi/2, node at the midpoint (5, 2), rotation.y = -pi/2.
+    const placed = placeBuffers(base, { shiftX: -2, rotationY: -Math.PI / 2, x: 5, z: 2 });
+    const { min, max } = bounds(placed);
+    expect(min[0]).toBeCloseTo(4.9, 5);
+    expect(max[0]).toBeCloseTo(5.1, 5);
+    expect(min[2]).toBeCloseTo(0, 5);
+    expect(max[2]).toBeCloseTo(4, 5);
+    expect(min[1]).toBeCloseTo(0, 6);
+    expect(max[1]).toBeCloseTo(2.5, 6);
+  });
+
+  it('turns the normals and keeps them unit length; the volume and the winding survive any placement', () => {
+    const volume = signedVolume(base);
+    expect(volume).toBeGreaterThan(0);
+    for (const angle of [0, 0.3, -1.2, Math.PI / 2, 2.9, -Math.PI]) {
+      const placed = placeBuffers(base, { shiftX: -2, rotationY: angle, x: 7.5, y: 0.01, z: -3 });
+      expect(signedVolume(placed)).toBeCloseTo(volume, 4);
+      expectWindingMatchesNormals(placed, `angle ${angle}`);
+      for (let i = 0; i < placed.normals.length; i += 3) {
+        expect(Math.hypot(placed.normals[i], placed.normals[i + 1], placed.normals[i + 2])).toBeCloseTo(1, 6);
+      }
+    }
+  });
+});
+
+describe('mergeBuffers', () => {
+  const a = boxesToBuffers([{ min: [0, 0, 0], max: [1, 1, 1] }]);
+  const b = boxesToBuffers([
+    { min: [2, 0, 0], max: [3, 1, 1] },
+    { min: [4, 0, 0], max: [5, 1, 1] },
+  ]);
+
+  it('concatenates the vertices and offsets the indices of each part', () => {
+    const merged = mergeBuffers([a, b]);
+    expect(merged.positions.length).toBe(a.positions.length + b.positions.length);
+    expect(merged.normals.length).toBe(merged.positions.length);
+    expect(merged.indices.length).toBe(a.indices.length + b.indices.length);
+    for (let i = 0; i < a.indices.length; i++) expect(merged.indices[i]).toBe(a.indices[i]);
+    for (let i = 0; i < b.indices.length; i++) expect(merged.indices[a.indices.length + i]).toBe(b.indices[i] + 24);
+    expect(signedVolume(merged)).toBeCloseTo(signedVolume(a) + signedVolume(b), 9);
+  });
+
+  it('merging nothing gives empty buffers; one part comes back equal', () => {
+    const none = mergeBuffers([]);
+    expect(none.positions.length).toBe(0);
+    expect(none.indices.length).toBe(0);
+    const one = mergeBuffers([b]);
+    expect(Array.from(one.positions)).toEqual(Array.from(b.positions));
+    expect(Array.from(one.indices)).toEqual(Array.from(b.indices));
+  });
+
+  it('switches to 32-bit indices when the vertices no longer fit 16 bits', () => {
+    const small = mergeBuffers([a, b]);
+    expect(small.indices).toBeInstanceOf(Uint16Array);
+    const many = Array.from({ length: 2731 }, () => a); // 2731 x 24 = 65 544 vertices
+    const big = mergeBuffers(many);
+    expect(big.positions.length / 3).toBe(2731 * 24);
+    expect(big.indices).toBeInstanceOf(Uint32Array);
+    expect(big.indices[big.indices.length - 1]).toBe(a.indices[a.indices.length - 1] + 2730 * 24);
+  });
+});
+
+describe('thresholdBuffers', () => {
+  it('is a flat rectangle facing up, wound counter-clockwise seen from above, lifted by the given height', () => {
+    const strip = thresholdBuffers(0.9, 0.25, 0.01);
+    expect(strip.positions.length / 3).toBe(4);
+    expect(strip.indices.length).toBe(6);
+    const { min, max } = bounds(strip);
+    expect(min).toEqual([expect.closeTo(-0.45, 6), expect.closeTo(0.01, 6), expect.closeTo(-0.125, 6)]);
+    expect(max).toEqual([expect.closeTo(0.45, 6), expect.closeTo(0.01, 6), expect.closeTo(0.125, 6)]);
+    for (let i = 0; i < 12; i += 3) expect(Array.from(strip.normals.slice(i, i + 3))).toEqual([0, 1, 0]);
+    expectWindingMatchesNormals(strip, 'strip');
+  });
+
+  it('covers exactly width x depth', () => {
+    const strip = thresholdBuffers(1.2, 0.3, 0);
+    let area = 0;
+    for (let i = 0; i < strip.indices.length; i += 3) {
+      const [i0, i1, i2] = [strip.indices[i], strip.indices[i + 1], strip.indices[i + 2]];
+      const ux = strip.positions[i1 * 3] - strip.positions[i0 * 3];
+      const uz = strip.positions[i1 * 3 + 2] - strip.positions[i0 * 3 + 2];
+      const vx = strip.positions[i2 * 3] - strip.positions[i0 * 3];
+      const vz = strip.positions[i2 * 3 + 2] - strip.positions[i0 * 3 + 2];
+      area += Math.abs(ux * vz - uz * vx) / 2;
+    }
+    expect(area).toBeCloseTo(1.2 * 0.3, 6);
+  });
+});
+
+describe('the walls of the demo houses merged into one buffer', () => {
+  const houses = [
+    { file: 'apartment-a.json', house: loadJson<House>('public/houses', 'apartment-a.json') },
+    { file: 'apartment-b.json', house: loadJson<House>('public/houses', 'apartment-b.json') },
+  ];
+
+  for (const { file, house } of houses) {
+    it(`${file}: same volume as the sum of the walls, every wall inside the plan box, all faces outward`, () => {
+      const parts: MeshBuffers[] = [];
+      let sum = 0;
+      for (const wall of house.walls) {
+        const length = Math.hypot(wall.to[0] - wall.from[0], wall.to[1] - wall.from[1]);
+        const boxes = buildWallBoxes({ length, thickness: wall.thickness, height: house.ceilingHeight, openings: wall.openings, cutHeight: CUT });
+        sum += totalVolume(boxes);
+        const angleRad = Math.atan2(wall.to[1] - wall.from[1], wall.to[0] - wall.from[0]);
+        const placed = placeBuffers(boxesToBuffers(boxes), {
+          shiftX: -length / 2,
+          rotationY: -angleRad,
+          x: (wall.from[0] + wall.to[0]) / 2,
+          z: (wall.from[1] + wall.to[1]) / 2,
+        });
+        // Each wall lands on its own line: its bounding box holds both end points (within half a thickness).
+        const { min, max } = bounds(placed);
+        for (const end of [wall.from, wall.to]) {
+          expect(end[0]).toBeGreaterThanOrEqual(min[0] - 1e-5);
+          expect(end[0]).toBeLessThanOrEqual(max[0] + 1e-5);
+          expect(end[1]).toBeGreaterThanOrEqual(min[2] - 1e-5);
+          expect(end[1]).toBeLessThanOrEqual(max[2] + 1e-5);
+        }
+        parts.push(placed);
+      }
+      const merged = mergeBuffers(parts);
+      expect(signedVolume(merged)).toBeCloseTo(sum, 4);
+      expectWindingMatchesNormals(merged, file);
+      expect(merged.indices.length / 3).toBe(parts.reduce((n, p) => n + p.indices.length / 3, 0));
+    });
+  }
 });

@@ -145,6 +145,9 @@ describe('classifyGroup: every stable id the project generates (expected group w
     ['door:d-bathroom', 'house'],
     ['window:win-living-1', 'house'],
     ['fixture:washer', 'house'],
+    // T5.RA: the walls and the thresholds are two merged meshes of the house.
+    ['merged:walls', 'house'],
+    ['merged:thresholds', 'house'],
     ['table:plinth', 'house'],
     // Furniture, including multi-digit instance numbers.
     ['furniture:bed-double#1', 'furniture'],
