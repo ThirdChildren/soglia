@@ -12,12 +12,14 @@ import {
   ROTATE_BUTTON_LIFT_WITH_REASON,
   ROTATE_BUTTON_PANEL,
   ROTATE_WINDOW_SECONDS,
+  formatRotateCovered,
   formatRotateHidden,
   formatRotatePressed,
   formatRotatedByButton,
   formatRotateShown,
   openRotateWindow,
   rotateButtonLift,
+  rotateCoveredBy,
   rotateDecision,
   rotatePieceAction,
 } from '../../src/logic/rotate-button';
@@ -31,10 +33,11 @@ import { loadJson, repoPath } from '../helpers/load-json';
 const piece = (state: AppState, id = 'furniture:armchair#1') => state.furniture.find((p) => p.id === id);
 const withChair = (): AppState =>
   reduce(createInitialState({ ...DEFAULT_PARAMS }), placeFurniture('armchair', 2.5, 3, 0, 'living'));
-const inputs = (now: number, extra: Partial<{ holding: boolean; pieceExists: boolean }> = {}) => ({
+const inputs = (now: number, extra: Partial<{ holding: boolean; pieceExists: boolean; covered: boolean }> = {}) => ({
   now,
   holding: false,
   pieceExists: true,
+  covered: false,
   ...extra,
 });
 
@@ -96,6 +99,59 @@ describe('the window of the Rotate button', () => {
     const again = openRotateWindow('furniture:armchair#1', 10);
     expect(rotateDecision(first, inputs(15)).end).toBe('timeout');
     expect(rotateDecision(again, inputs(15)).visible).toBe(true);
+  });
+});
+
+// M5 gate finding F-D-2: with the pinned menu open, the button of a piece at the left of the living room was 3 cm from Undo.
+describe('a menu or a panel that is open hides the button (F-D-2)', () => {
+  const none = { menu: false, issues: false, view: false };
+
+  it('names the surface that covers it: the menu first, then Issues, then View, or none', () => {
+    expect(rotateCoveredBy(none)).toBeNull();
+    expect(rotateCoveredBy({ ...none, menu: true })).toBe('menu');
+    expect(rotateCoveredBy({ ...none, issues: true })).toBe('issues');
+    expect(rotateCoveredBy({ ...none, view: true })).toBe('view');
+    expect(rotateCoveredBy({ menu: true, issues: true, view: true })).toBe('menu');
+    expect(rotateCoveredBy({ menu: false, issues: true, view: true })).toBe('issues');
+  });
+
+  it('hides the button for every surface and every moment of the window, without ending it', () => {
+    const w = openRotateWindow('furniture:sofa-3seat#1', 100);
+    for (const t of [100, 101, 105.5, 111.9, 112]) {
+      expect(rotateDecision(w, inputs(t, { covered: true })), String(t)).toEqual({ end: null, visible: false });
+    }
+  });
+
+  it('brings the button back when the surface closes, if the 12 seconds are not over', () => {
+    const w = openRotateWindow('furniture:sofa-3seat#1', 100);
+    expect(rotateDecision(w, inputs(104, { covered: true })).visible).toBe(false);
+    expect(rotateDecision(w, inputs(106, { covered: false }))).toEqual({ end: null, visible: true });
+    // The time kept running while the surface was open: closed after the 12 seconds, the window is over.
+    expect(rotateDecision(w, inputs(113, { covered: false }))).toEqual({ end: 'timeout', visible: false });
+  });
+
+  it('still ends the window for the usual reasons while covered', () => {
+    const w = openRotateWindow('furniture:sofa-3seat#1', 0);
+    expect(rotateDecision(w, inputs(3, { covered: true, holding: true })).end).toBe('grab');
+    expect(rotateDecision(w, inputs(3, { covered: true, pieceExists: false })).end).toBe('removed');
+    expect(rotateDecision(w, inputs(30, { covered: true })).end).toBe('timeout');
+  });
+
+  it('never has a visible button and a covering surface at the same time (the button and Undo are one pinch apart)', () => {
+    const w = openRotateWindow('furniture:sofa-3seat#1', 0);
+    for (let t = -1; t <= 14; t += 0.25) {
+      for (const holding of [false, true]) {
+        for (const pieceExists of [false, true]) {
+          expect(rotateDecision(w, inputs(t, { covered: true, holding, pieceExists })).visible).toBe(false);
+        }
+      }
+    }
+  });
+
+  it('writes the log line the QA reads', () => {
+    expect(formatRotateCovered('menu')).toBe('rotate button covered by=menu');
+    expect(formatRotateCovered('issues')).toBe('rotate button covered by=issues');
+    expect(formatRotateCovered('view')).toBe('rotate button covered by=view');
   });
 });
 

@@ -7,6 +7,11 @@
 // The window is 12 seconds; it ends by itself, when another piece is taken, or when the piece is gone. Every press starts it again.
 //
 // The button is never nearer to the head than 0.50 m, like the labels, and is kept inside the 30 degree cone.
+//
+// It is also never shown on top of a menu or a panel (M5 gate finding F-D-2): the pinned menu, the palm menu, the Issues panel and the
+// View panel are drawn at about the same distance and height as the button, so a pinch meant for one of their controls (Undo, 3 cm
+// from the button) could fire the button, or the other way round. While one of them is open the button is hidden and takes no
+// pinch; the 12 seconds keep running, and it comes back when the surface closes if the window is still open.
 
 import { ROOM_LABEL_MIN_DISTANCE, VIEW_CONE_HALF_ANGLE_DEG } from './menu-thresholds';
 import type { PanelExtent } from './menu';
@@ -55,6 +60,27 @@ export function openRotateWindow(pieceId: string, now: number): RotateWindow {
   return { pieceId, startedAt: now };
 }
 
+/** The surfaces that can be open in front of the user and carry controls of their own (the menu in either mode, two panels). */
+export interface OpenSurfaces {
+  /** The palm menu or the pinned menu is open. */
+  readonly menu: boolean;
+  /** The Issues panel is open. */
+  readonly issues: boolean;
+  /** The View panel is open. */
+  readonly view: boolean;
+}
+
+/** Which surface covers the button (the `by=` of the log line), or null when none does. The menu is named first. */
+export type RotateCover = 'menu' | 'issues' | 'view';
+
+/** The surface that keeps the button hidden, or null when the way is free. */
+export function rotateCoveredBy(surfaces: Readonly<OpenSurfaces>): RotateCover | null {
+  if (surfaces.menu) return 'menu';
+  if (surfaces.issues) return 'issues';
+  if (surfaces.view) return 'view';
+  return null;
+}
+
 /** What is going on around the button, from the caller. */
 export interface RotateInputs {
   /** The clock, seconds (the same the window was started on). */
@@ -63,6 +89,8 @@ export interface RotateInputs {
   readonly holding: boolean;
   /** The piece is still in the store. */
   readonly pieceExists: boolean;
+  /** A menu or a panel is open (see `rotateCoveredBy`): the window goes on, the button is not there. */
+  readonly covered: boolean;
 }
 
 /** What to do with the window: keep it (`end` null) or end it for the reason. `visible` is whether the button is there now. */
@@ -74,7 +102,8 @@ export interface RotateDecision {
 /**
  * The state of the window at `inputs.now`. A piece in a hand ends it (the other hand has the tap and the wrist: `grab`), so does
  * a piece that is gone (`removed`) and the time (`timeout`, strictly after ROTATE_WINDOW_SECONDS). A clock that is not finite
- * or went back before the start ends nothing and shows nothing. No window: nothing to show.
+ * or went back before the start ends nothing and shows nothing. No window: nothing to show. An open menu or panel (`covered`) hides
+ * the button without ending the window: the time keeps running and the button is back when the surface closes.
  */
 export function rotateDecision(window: RotateWindow, inputs: Readonly<RotateInputs>): RotateDecision {
   if (window.pieceId === null) return { end: null, visible: false };
@@ -83,7 +112,7 @@ export function rotateDecision(window: RotateWindow, inputs: Readonly<RotateInpu
   const elapsed = inputs.now - window.startedAt;
   if (!Number.isFinite(elapsed) || elapsed < 0) return { end: null, visible: false };
   if (elapsed > ROTATE_WINDOW_SECONDS) return { end: 'timeout', visible: false };
-  return { end: null, visible: true };
+  return { end: null, visible: !inputs.covered };
 }
 
 /** The action of a press: the piece turned a quarter turn clockwise where it stands (same place, same room). */
@@ -104,6 +133,11 @@ export function formatRotateShown(pieceId: string): string {
 /** `rotate button hidden reason=timeout`. */
 export function formatRotateHidden(reason: RotateEnd): string {
   return `rotate button hidden reason=${reason}`;
+}
+
+/** `rotate button covered by=menu`: a menu or a panel opened over the button, which hides until it closes. */
+export function formatRotateCovered(by: RotateCover): string {
+  return `rotate button covered by=${by}`;
 }
 
 /** `rotate button pressed id=furniture:chair#1 hand=right`: the press itself. */

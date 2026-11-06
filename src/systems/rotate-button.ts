@@ -7,6 +7,9 @@
 // is turned toward the head about the vertical axis only, never nearer than 0.50 m and inside the cone of the view. A pinch inside its
 // rectangle claims that hand as `menu` (the highest priority: it never grabs the piece below it) and a press starts the window again.
 //
+// While a menu (either mode) or the Issues or View panel is open the button is hidden and takes no pinch (F-D-2: it sat 3 cm from
+// Undo of the pinned menu); the window keeps running and the button is back when the surface closes. Log: `rotate button covered by=...`.
+//
 // Register this system BEFORE the menu, the panels, the tape measure and the grab (index.ts puts it first): its pinch listener must
 // run before theirs, or a control or the piece under the button would get the pinch meant for it (the button is drawn over the menu
 // when the menu is open). Nothing here allocates per frame.
@@ -21,14 +24,17 @@ import {
   NO_ROTATE_WINDOW,
   ROTATE_BUTTON_EXTENT,
   ROTATE_BUTTON_FIT,
+  formatRotateCovered,
   formatRotateHidden,
   formatRotatePressed,
   formatRotatedByButton,
   formatRotateShown,
   openRotateWindow,
   rotateButtonLift,
+  rotateCoveredBy,
   rotateDecision,
   rotatePieceAction,
+  type RotateCover,
   type RotateWindow,
 } from '../logic/rotate-button';
 import type { Store } from '../logic/state';
@@ -36,9 +42,12 @@ import { anchorInCone, yawTowardHead } from '../logic/view-fit';
 import { RotateButtonPanel } from '../ui/rotate-button-panel';
 import { strings } from '../ui/strings';
 import { onFurnitureReleased } from './furniture-grab';
+import { isIssuePanelOpen } from './issue-panel';
+import { isPalmMenuOpen } from './palm-menu';
 import { currentReasons } from './piece-reasons';
 import { onPinchStart, pinchClaims, pinchPoint, type Hand } from './pinch-input';
 import { isRealScale, isViewTransitioning } from './view-mode';
+import { isViewPanelOpen } from './view-panel';
 
 interface RotateContext {
   panel: RotateButtonPanel;
@@ -68,6 +77,10 @@ interface Slot extends PickSlot {
 export class RotateButtonSystem extends createSystem({ pieces: { required: [Furniture] } }) {
   private window: RotateWindow = NO_ROTATE_WINDOW;
   private shown = false;
+  /** The surface that hid the button at the last frame (for the log line: one line per change). */
+  private coveredBy: RotateCover | null = null;
+  /** Filled again by `cover()`, never recreated. */
+  private readonly surfaces: { menu: boolean; issues: boolean; view: boolean } = { menu: false, issues: false, view: false };
   private readonly pieceObjects = new Map<string, Object3D>();
   private readonly headPosition = new Vector3();
   private readonly headForward = new Vector3();
@@ -94,6 +107,15 @@ export class RotateButtonSystem extends createSystem({ pieces: { required: [Furn
     );
   }
 
+  /** The menu or panel open in front of the user now, or null: they hide the button (F-D-2). Allocates nothing. */
+  private cover(): RotateCover | null {
+    const surfaces = this.surfaces;
+    surfaces.menu = isPalmMenuOpen();
+    surfaces.issues = isIssuePanelOpen();
+    surfaces.view = isViewPanelOpen();
+    return rotateCoveredBy(surfaces);
+  }
+
   /** A piece was put down: the button belongs to it for 12 seconds. */
   private start(id: string): void {
     this.window = openRotateWindow(id, clock());
@@ -115,12 +137,20 @@ export class RotateButtonSystem extends createSystem({ pieces: { required: [Furn
       return;
     }
     const presenting = this.world.renderer.xr.isPresenting;
+    const cover = this.cover();
     const decision = rotateDecision(this.window, {
       now: clock(),
       holding: pinchClaims.anyClaimed('furniture'),
       pieceExists: ctx.store.get().furniture.some((p) => p.id === pieceId),
+      covered: cover !== null,
     });
+    if (cover !== this.coveredBy) {
+      // One line when a menu or panel hides the button; the next `shown` line says it is back.
+      if (cover !== null && this.shown && decision.end === null) slog(formatRotateCovered(cover));
+      this.coveredBy = cover;
+    }
     if (decision.end !== null) {
+      this.coveredBy = null;
       this.end(decision.end);
       ctx.panel.place(0, 0, 0, 0, false);
       return;
@@ -168,6 +198,8 @@ export class RotateButtonSystem extends createSystem({ pieces: { required: [Furn
     if (pinchClaims.ownerOf(hand) !== null) return;
     // With a piece in a hand the other hand has the tap: no button then (the window ends in `update`).
     if (pinchClaims.anyClaimed('furniture')) return;
+    // A menu or panel is open: the button is hidden (it can lag a frame behind a menu that opened with this very pinch).
+    if (this.cover() !== null) return;
     pinchPoint(hand, this.point);
     if (!pickRect(this.point, this.slots, this.quat)) return;
     if (!pinchClaims.claim(hand, 'menu')) return;
