@@ -39,6 +39,7 @@ describe('parseParams defaults', () => {
       furnish: 'none',
       failmodels: false,
       failmy: false,
+      failcatalog: false,
       pinch: 'auto',
     });
   });
@@ -249,7 +250,7 @@ describe('parseParams time', () => {
 
 describe('parseParams multiple keys', () => {
   it('parses every key in one query string', () => {
-    const r = parseParams('house=apartment-b&role=landlord&reset=1&seed=7&time=2026-12-21T10:00&debug=1&mr=1&glyphs=1&furnish=scandinavian&failmodels=1&failmy=1&pinch=grip');
+    const r = parseParams('house=apartment-b&role=landlord&reset=1&seed=7&time=2026-12-21T10:00&debug=1&mr=1&glyphs=1&furnish=scandinavian&failmodels=1&failmy=1&failcatalog=1&pinch=grip');
     expect(r.params).toEqual({
       house: 'apartment-b',
       role: 'landlord',
@@ -262,9 +263,10 @@ describe('parseParams multiple keys', () => {
       furnish: 'scandinavian',
       failmodels: true,
       failmy: true,
+      failcatalog: true,
       pinch: 'grip',
     });
-    expect([...r.present].sort()).toEqual(['debug', 'failmodels', 'failmy', 'furnish', 'glyphs', 'house', 'mr', 'pinch', 'reset', 'role', 'seed', 'time']);
+    expect([...r.present].sort()).toEqual(['debug', 'failcatalog', 'failmodels', 'failmy', 'furnish', 'glyphs', 'house', 'mr', 'pinch', 'reset', 'role', 'seed', 'time']);
     expect(r.warnings).toEqual([]);
   });
 
@@ -293,7 +295,7 @@ describe('parseParams multiple keys', () => {
     expect(r.params.house).toBe('apartment-b');
     expect(r.present).toEqual(['house']);
     expect(r.warnings).toEqual([]);
-    expect(Object.keys(r.params).sort()).toEqual(['debug', 'failmodels', 'failmy', 'furnish', 'glyphs', 'house', 'mr', 'pinch', 'reset', 'role', 'seed', 'time']);
+    expect(Object.keys(r.params).sort()).toEqual(['debug', 'failcatalog', 'failmodels', 'failmy', 'furnish', 'glyphs', 'house', 'mr', 'pinch', 'reset', 'role', 'seed', 'time']);
   });
 
   it('ignores key names that differ only by case', () => {
@@ -476,6 +478,7 @@ describe('formatParamsLine', () => {
       furnish: 'none',
       failmodels: false,
       failmy: false,
+      failcatalog: false,
       pinch: 'auto',
     });
     expect(line).toBe('params source=dev-file house=apartment-b role=visitor reset=false seed=1 debug=true time=-');

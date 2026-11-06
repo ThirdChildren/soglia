@@ -41,12 +41,14 @@ export interface RestoreOutcome {
  * With `ignoreFurniture` (a staging preset will replace the pieces) only the preferences come back.
  * `parked` (D44): saved pieces of a catalog item that is not available now. They are not put in the store; pass
  * them to `attachPersistence` so every save writes them again.
+ * `catalog` null (T5.R2, D63): the catalog did not load. Everything else comes back as usual (role, issues,
+ * preferences, view, counters) and every saved piece is parked, so the next save writes them again untouched.
  */
 export function restoreSavedState(
   store: Store,
   storage: SafeStorage,
   house: House,
-  catalog: readonly CatalogItem[],
+  catalog: readonly CatalogItem[] | null,
   ignoreFurniture: boolean,
   roleExplicit = false,
 ): RestoreOutcome {
@@ -60,7 +62,7 @@ export function restoreSavedState(
   }
   const picked = pickRestorable(saved, {
     houseId: store.get().houseId,
-    catalogIds: new Set(catalog.map((item) => item.id)),
+    catalogIds: new Set((catalog ?? []).map((item) => item.id)),
     roomIds: new Set(house.rooms.map((room) => room.id)),
     viewpointIds: new Set(house.viewpoints.map((viewpoint) => viewpoint.id)),
     ignoreFurniture,
@@ -75,7 +77,11 @@ export function restoreSavedState(
   for (const piece of picked.parked) swarn(`state piece parked id=${piece.id} reason=unknown-catalog`);
   for (const issue of picked.discardedIssues) swarn(`state issue discarded id=${issue.id} reason=${issue.reason}`);
   store.dispatch(restoreSaved(picked));
-  slog(`state restored pieces=${store.get().furniture.length} key=${key}`);
+  if (catalog === null) {
+    slog(`state restored pieces=${store.get().furniture.length} parked=${picked.parked.length} catalog=missing key=${key}`);
+  } else {
+    slog(`state restored pieces=${store.get().furniture.length} key=${key}`);
+  }
   if (store.get().issues.length > 0) slog(`issues restored count=${store.get().issues.length} key=${key}`);
   return { parked: picked.parked, roleRestored: picked.role !== null };
 }

@@ -96,7 +96,15 @@ async function start(): Promise<void> {
   } else {
     myLoad = loadMyFurniture();
   }
-  const [result, catalogResult, myResult] = await Promise.all([loadHouse(params.house), loadCatalog(), myLoad]);
+  // `failcatalog=1` (with `debug=1`): the catalog is not even requested, as if it failed (T5.R2).
+  let catalogLoad: ReturnType<typeof loadCatalog>;
+  if (params.failcatalog) {
+    slog('debug failcatalog=1: catalog.json is not loaded');
+    catalogLoad = Promise.resolve({ ok: false, errors: ['failcatalog'] });
+  } else {
+    catalogLoad = loadCatalog();
+  }
+  const [result, catalogResult, myResult] = await Promise.all([loadHouse(params.house), catalogLoad, myLoad]);
   // The catalog the whole app works with: the catalog items plus the user's own pieces (T3.8, D34). A failed load of
   // the own pieces only hides their tab; an own id that the catalog already uses is left out (the catalog wins).
   const merged = catalogResult.ok ? mergeCatalog(catalogResult.items, myResult.ok ? myResult.items : []) : null;
@@ -108,8 +116,16 @@ async function start(): Promise<void> {
     // An explicit `role=` beats the saved role (D41); without one the saved role comes back, else `visitor`.
     const roleExplicit = explicit.includes('role');
     let roleRestored = false;
-    if (merged) {
-      const restored = restoreSavedState(store, storage, result.house, merged.items, params.furnish !== 'none', roleExplicit);
+    // Also without a catalog (T5.R2): role, issues and preferences come back and are saved; the saved pieces stay parked.
+    {
+      const restored = restoreSavedState(
+        store,
+        storage,
+        result.house,
+        merged ? merged.items : null,
+        params.furnish !== 'none',
+        roleExplicit,
+      );
       roleRestored = restored.roleRestored;
       persistence = attachPersistence(store, storage, restored.parked);
     }

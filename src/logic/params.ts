@@ -1,5 +1,5 @@
 // Pure URL / dev-file parameter parsing: no imports from @iwsdk/core or three.
-// Recognised keys: house, role, reset, seed, time, debug, mr, glyphs, furnish, failmodels, failmy, pinch.
+// Recognised keys: house, role, reset, seed, time, debug, mr, glyphs, furnish, failmodels, failmy, failcatalog, pinch.
 // Unknown values fall back to the default and produce a warning returned as data;
 // the caller decides how to log it.
 
@@ -25,6 +25,7 @@ export type ParamKey =
   | 'furnish'
   | 'failmodels'
   | 'failmy'
+  | 'failcatalog'
   | 'pinch';
 
 export type ParamsSource = 'url' | 'dev-file' | 'default';
@@ -58,6 +59,12 @@ export interface Params {
    */
   failmy: boolean;
   /**
+   * `failcatalog=1`: do not load `catalog.json`, as if it failed (404), to try that the app still restores and saves
+   * the role, issues, preferences and view, and keeps the saved pieces parked (T5.R2, D63; development aid). Only
+   * honoured together with `debug=1`, like `failmy`.
+   */
+  failcatalog: boolean;
+  /**
    * `pinch=auto|grip|joints` (development aid, D31): `auto` (default) and `joints` use the hand joints when the
    * session provides them; `grip` always uses the grip space, as in M2 (to re-run the older QA scenarios).
    */
@@ -76,7 +83,7 @@ export interface ParsedParams {
 export interface MergedParams {
   params: Params;
   /**
-   * The keys that were named on purpose, in the URL or in the dev file (a valid value; `failmodels` / `failmy` dropped
+   * The keys that were named on purpose, in the URL or in the dev file (a valid value; `failmodels` / `failmy` / `failcatalog` dropped
    * for lack of `debug=1` are not here). An explicit `role` beats the saved one (D41).
    */
   explicit: readonly ParamKey[];
@@ -97,6 +104,7 @@ export const DEFAULT_PARAMS: Readonly<Params> = Object.freeze({
   furnish: 'none',
   failmodels: false,
   failmy: false,
+  failcatalog: false,
   pinch: 'auto',
 });
 
@@ -155,6 +163,7 @@ const FIELD_PARSERS: { [K in ParamKey]: (raw: string) => FieldResult<Params[K]> 
   },
   failmodels: parseFlag,
   failmy: parseFlag,
+  failcatalog: parseFlag,
   pinch: (raw) =>
     (PINCH_MODES as readonly string[]).includes(raw)
       ? { ok: true, value: raw as PinchMode }
@@ -237,6 +246,11 @@ export function mergeParams(
     explicit.splice(explicit.indexOf('failmy'), 1);
     warnings.push('param failmy ignored: needs debug=1');
   }
+  if (params.failcatalog && !params.debug) {
+    params.failcatalog = false;
+    explicit.splice(explicit.indexOf('failcatalog'), 1);
+    warnings.push('param failcatalog ignored: needs debug=1');
+  }
   return { params, explicit, source, warnings };
 }
 
@@ -248,7 +262,8 @@ export function formatParamsLine(source: ParamsSource, p: Params): string {
   // Only when they differ from the default, so the line stays the one the QA scenarios know.
   const withFail = p.failmodels ? `${line} failmodels=true` : line;
   const withMy = p.failmy ? `${withFail} failmy=true` : withFail;
-  return p.pinch === 'auto' ? withMy : `${withMy} pinch=${p.pinch}`;
+  const withCatalog = p.failcatalog ? `${withMy} failcatalog=true` : withMy;
+  return p.pinch === 'auto' ? withCatalog : `${withCatalog} pinch=${p.pinch}`;
 }
 
 /** True when the warnings include a discarded `house` value (the app then logs that it kept the default home). */
