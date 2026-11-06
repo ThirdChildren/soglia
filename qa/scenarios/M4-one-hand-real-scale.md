@@ -3,6 +3,8 @@
 > **Changelog 2026-11-02**: scenario creato dal piano M4 (D49 R1, T4.R1; riporto 1 del gate di M3, avviso del `contest-reviewer` sulla regola 9).
 > **Changelog 2026-11-02 (dopo T4.R1, prima di ogni esecuzione)**: l'entità `ui:tabletop-button` esiste sempre e si nasconde fuori dalla scala reale (come `ui:menu-button-*`): al plastico si verifica "1 entità non visibile" (`Visibility.isVisible` falso), non "0 entità"; angolo massimo atteso 24,7° (pulsante 0,13 × 0,05 m). Nessun criterio cambia nel significato.
 
+> **Changelog 2026-11-06 (gate di M5, F-C2-3)**: la durata d'ingresso/uscita in IWER arriva a 747 ms (717 ms in B): tolleranza IWER **250 ≤ n < 1000 ms = PASS** (700 < n < 1000 "avviso noto IWER"), n ≥ 1000 FAIL; la verifica nominale 250–700 ms è **solo visore** (vedi `qa/scenarios/M3-viewpoint.md`, stessa data). Nessun altro criterio cambia.
+
 **Milestone**: M4 · **Tipo**: PC (emulatore IWER via MCP `iwsdk-runtime`) · **Regole di `CLAUDE.md`**: 2 (ci si sposta solo tra punti di vista con dissolvenza), 8 (campo visivo), 9 (una mano sola)
 Prerequisiti di implementazione: T4.R1 (T3.12 già c'è). Vedi `docs/plans/M4.md`, D49. Convenzioni: `qa/scenarios/M4-issue-create.md`.
 
