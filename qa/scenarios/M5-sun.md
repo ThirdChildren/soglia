@@ -1,6 +1,7 @@
 # S5.1 · Il sole: posizione, chiazze di luce e controllo mese/ora
 
 > **Changelog 2026-11-06**: scenario creato dal piano M5 (D54, D55, D56; T5.1–T5.6). I valori di riferimento del sole erano calcolati **a mano** (piano M5, D54).
+> **Changelog 2026-11-06 (esiti di T5.8–T5.10 e correzioni di `logic-tester`)**: `time=` è più severo: `sunTimeFromParam` rifiuta codice dopo i minuti, `params.ts` rifiuta un anno fuori 1900–2100 con `param time="…" ignored: year must be between 1900 and 2100` e non lo marca esplicito; l'orologio NaN o fuori 1900–2100 dà il fallback `2026-12-21T10:00`; i passi con NaN/Infinity non avanzano. Nuovo passo 8a e verifica 7a. Calibrazione IWER con `pinch=grip`: mano a `T + (0,029; −0,0015; −0,045)`.
 > **Changelog 2026-11-06 (esiti di T5.1–T5.7)**: (1) tabella del sole sostituita dai **golden** del test unitario (confrontati con un'implementazione indipendente delle formule USNO, non col sito NOAA); (2) **alle 15:00 del 21 dic in A non c'è nessuna chiazza** (sole basso, davanzale a 0,9 m: la macchia cade nella stanza accanto e viene ritagliata): lo studio **non** è illuminato (la prima stesura diceva il contrario) e il passo 3 verifica `windows=-`; (3) aree dorate: soggiorno 21 dic 10:00 = **2,3029 m²**, studio 21 giu 18:00 = **1,1616 m²**, camera di B 21 dic 12:00 = **2,4284 m²**; d'estate col sole alto il soggiorno è a **0 m²** (l'imbotte toglie anche l'altezza utile); (4) il pannello View ha per ora **4 righe** (`Zoom`, `Turn`, `Month`, `Hour`; `Contrast` e `Text` arrivano con T5.11) e `Turn` è la rotazione assoluta del plastico, con valore iniziale non sempre 0; (5) a scala reale il quadrante è nascosto, le chiazze restano; (6) il pannello View si chiude da solo se si apre il menu o il pannello Issues; (7) calibrazione IWER per le righe del pannello (vedi Convenzioni).
 
 **Milestone**: M5 · **Tipo**: PC (emulatore IWER via MCP `iwsdk-runtime`) · **Regole di `CLAUDE.md`**: 1, 2, 5 (nessuna API di rete o sensori), 7, 8, 9, 10
@@ -35,6 +36,7 @@ Prerequisiti di implementazione: T5.1–T5.6. Vedi `docs/plans/M5.md`. Convenzio
 6. **Persistenza e precedenza**: attesa 1,5 s (`state saved … sun=…`); riscrivere il file **senza** `reset=1` e **senza** `time=`, ricaricare: log `pattern: "sun set"`; poi riscrivere **con** `time=2026-12-21T10:00` e ricaricare: log `pattern: "sun set"`.
 7. **Scala reale**: entrare in `viewpoint:V1` con la destra (S3.1/S4.6), attesa 2,5 s; `ecs_find_entities` `^light:patches$` e `^ui:view-button-` (visibili? vedi verifica 8); `browser_screenshot` → allegare (dal soggiorno a grandezza reale, le chiazze sul pavimento); tornare con `ui:tabletop-button`.
 8. **Default**: riscrivere il file **senza** `time=` e con `reset=1`, ricaricare: log `pattern: "sun set"`.
+8a. **`time=` non valido**: riscrivere il file tre volte con `time=2026-12-21T10:00x` (codice dopo i minuti), `time=2200-01-01T10:00` (anno fuori 1900–2100) e `time=2026-13-01T10:00` (mese inesistente); per ognuna ricaricare e leggere `pattern: "param time|sun set"`.
 8b. **Casa B**: riscrivere il file con `house=apartment-b&role=visitor&reset=1&seed=1&debug=1&pinch=auto&time=2026-12-21T12:00`, ricaricare: log `pattern: "sun set|sun light"`; `ecs_find_entities` `^light:`.
 9. Log senza filtro (`error`, `uncaught`, `Cannot read`, `reading 'add'`, `Missing glyph`); pulizia: select 0 su entrambe, mani a riposo, `xr_end_session`, cancellare `dev-params.local.txt`.
 
@@ -46,6 +48,7 @@ Prerequisiti di implementazione: T5.1–T5.6. Vedi `docs/plans/M5.md`. Convenzio
 5. **Passo 5**: a 00:00 (giugno) `sun below horizon time=2026-06-21T00:00`: la regola è "altezza < 0 ⇒ nessun `light:*`, `windows=-`, disco nascosto"; nessun NaN e nessuna riga `error`.
 6. **Passo 6**: senza `time=`: `sun set time=<ultimo valore> source=saved`; con `time=` esplicito: `sun set time=2026-12-21T10:00 source=url` (l'esplicito vince sul salvato).
 7. **Passo 7** (con `time` tale da avere chiazze: usare per questo passo `time=2026-12-21T10:00` dopo il passo 6): in scala reale `light:patches` esiste ed è visibile (le chiazze sul pavimento nello screenshot) e `[soglia:stats:groups]` dà `sun=1`; il **quadrante** `sun:dial` è nascosto (`Visibility.isVisible` falso); il pannello "View" non si apre (i pulsanti "View" non ci sono, come "Menu" e "Issues", e il ritorno è `ui:tabletop-button`).
+7a. **Passo 8a (`time=` non valido)**: in tutti e tre i casi la riga `param time="…" ignored` (warn; per l'anno `ignored: year must be between 1900 and 2100`), `time` **non** è esplicito e la riga `sun set … source=default` (o `saved`) ha minuti `00`; nessuna riga `error`, nessun NaN nel log; l'ora non diventa mai quella scritta nel valore non valido.
 7b. **Passo 8b (casa B)**: `sun light` ha la camera con **2,4284 m² ± 0,05** (id della stanza da leggere dal log; nome `Bedroom`); riportare le altre stanze illuminate.
 8. **Passo 8**: riga `sun set time=<ISO> source=default` con minuti `00`; se `az`/`el` dicono altezza < 0 allora l'ora è **10:00** (regola del default). Il valore dipende dall'orologio reale: si controlla il **formato**, non il valore.
 9. **Budget**: nessuna riga `budget exceeded` in tutto lo scenario.
@@ -53,7 +56,7 @@ Prerequisiti di implementazione: T5.1–T5.6. Vedi `docs/plans/M5.md`. Convenzio
 11. **Solo visore** (media): azimut e altezza plausibili rispetto al sole vero all'ora indicata; chiazze leggibili a 1:20; "simplified light" capito.
 
 ## Esito
-PASS se le verifiche 1–10 (e 7b) sono soddisfatte · FAIL altrimenti. I valori di azimut, altezza e area sono i golden dei test unitari di T5.1 e T5.3 (confronto con un'implementazione indipendente delle formule USNO, non con il calcolatore NOAA: nessuna rete); un valore fuori tolleranza è un FAIL.
+PASS se le verifiche 1–10 (e 7a, 7b) sono soddisfatte · FAIL altrimenti. I valori di azimut, altezza e area sono i golden dei test unitari di T5.1 e T5.3 (confronto con un'implementazione indipendente delle formule USNO, non con il calcolatore NOAA: nessuna rete); un valore fuori tolleranza è un FAIL.
 
 ## Da rimandare al visore
 Voci "Sole", "Quadrante" e "Pulsanti View" di M5 in `qa/device/DEBT.md`.

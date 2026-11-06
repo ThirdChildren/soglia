@@ -4,6 +4,7 @@
 
 **Milestone**: M5 · **Tipo**: PC (emulatore IWER via MCP `iwsdk-runtime`); gli fps sono **solo informativi** · **Regola di `CLAUDE.md`**: 3 (prestazioni)
 > **Changelog 2026-11-06 (esiti di T5.7)**: il punto di controllo è stato eseguito (IWER, casa A, `time=2026-12-21T10:00`): **K1 47, K2 61, K3 69, K10 64, K17 64, caso peggiore 76, K12 29** chiamate per vista; gruppi `house` 24, `ui` 12, `sun` 2 (1 a scala reale: il quadrante è nascosto, le chiazze restano), `markers` 1; triangoli massimi 31.354. **Il caso peggiore (76) è sotto 85: T5.RA NON serve.** K14, K15, K16 e K18 restano da misurare (dopo T5.9, T5.14, T5.15 e a gate); K18 va rimisurato col ruolo `tenant` e le due etichette. Il pannello View ha per ora 4 righe, quindi K17 vale per quelle.
+> **Changelog 2026-11-06 (esiti di T5.8–T5.10)**: **K14 misurato = 65** (previsto 66) con 14 pezzi + 5 rombi + pannello Issues sulla `home` dell'agente; gruppi `house` 24, `furniture` 14, `ui` 15, `markers` 2 (i rombi `pin:info-instances` costano +1), `sun` 2; triangoli 28.418. K18 **non è stato misurato con l'agente** (un pezzo in mano non valido con le due etichette): stima < 85, da misurare al gate; K15 e K16 restano da misurare.
 
 Prerequisiti di implementazione: T5.4, T5.5, T5.9, T5.14, T5.15 (il **punto di controllo T5.7** misura K1–K4 e K9–K12 appena esistono pulsanti, quadrante e chiazze, **prima** di T5.8). Stesse regole di lettura di `qa/scenarios/M3-budget.md` e `M4-budget.md` (`callsPerView = calls / views`, con un pannello aperto la fonte è la riga `[soglia:stats]`, mai `scene_get_render_stats`). Convenzioni: `qa/scenarios/M4-issue-create.md`.
 
@@ -28,7 +29,7 @@ Prerequisiti di implementazione: T5.4, T5.5, T5.9, T5.14, T5.15 (il **punto di c
 | K10 pannello Issues aperto | 58 | **65** | 73 | **64** |
 | K11 caso peggiore di M4 | 71 | **78** | 86 | – |
 | K12 scala reale con "Tabletop" | 24 | **26** | 34 | **29** (+3 sulla previsione, sotto l'avviso) |
-| **K14** agente, 14 pezzi, pannello `home` | – | **66** | 74 | da misurare |
+| **K14** agente, 14 pezzi, pannello `home` | – | **66** | 74 | **65** (14 pezzi + 5 rombi + pannello Issues sulla `home` dell'agente) |
 | **K15** dopo una posa, con "Rotate" | – | **64** | 72 | da misurare |
 | **K16** a freddo con il coach | 59 | **70** | 78 | da misurare |
 | **K17** pannello View aperto | – | **65** | 73 | **64** |
@@ -44,7 +45,7 @@ Prerequisiti di implementazione: T5.4, T5.5, T5.9, T5.14, T5.15 (il **punto di c
 2. **Regola di T5.7 (D61)**: il caso peggiore di K4/K11/K18 **≥ 85** apre T5.RA (R-A, −16) **prima** di T5.8; tra 85 e 100 non è FAIL ma blocca l'avvio dell'agente finché R-A non è fatto. Il report dice in chiaro quale ramo si è applicato.
 3. **Tracciamento** (non blocca): tabella "previsione contro misura" per tutti i casi (colonne M4, previsione, misurato, scarto); AVVISO per scarto > +8 con l'ipotesi da correggere.
 4. **Costi unitari** da dichiarare: pulsanti "View" (K1 − K1 di M4 con il resto uguale = +4 atteso, avviso se > +6), quadrante (+1, avviso > +2), chiazze (+1, avviso > +2; 0 con il sole sotto l'orizzonte), punti informativi (+1, avviso > +2), "Rotate" (+2, avviso > +4), coach (+3…+4, avviso > +6), pannello View (≈ 0…+3 sul K9, avviso > +9).
-5. `[soglia:stats:groups]`: `house` 24 ± 2, `furniture` uguale al numero di pezzi ± 1, `sun` ≤ 2 (**1 a scala reale**: il quadrante è nascosto, le chiazze restano), `markers` ≤ 6 (pin, rombi, marcatori dei punti di vista; 1 nel punto di controllo con `visitor`), `ui` coerente (**12** con i 6 pulsanti a plastico, più pannello ed etichette).
+5. `[soglia:stats:groups]`: `house` 24 ± 2, `furniture` uguale al numero di pezzi ± 1, `sun` ≤ 2 (**1 a scala reale**: il quadrante è nascosto, le chiazze restano), `markers` ≤ 6 (pin, rombi, marcatori dei punti di vista; 1 nel punto di controllo con `visitor`, **2** con i rombi informativi di visitor/agent: K14), `ui` coerente (**12** con i 6 pulsanti a plastico, più pannello ed etichette).
 6. Texture dell'app ≤ 4 e ciascuna ≤ 1024 px; 0 righe `budget exceeded`; `shadowCasters` = 0 (nessuna ombra con shadow map: D55); 0 voci `error`; nessun `Missing glyph`.
 7. Il report dichiara in chiaro: "il conteggio di IWER (due passate) è un proxy; gli fps del PC non rappresentano il Quest" e le voci per il visore (caso K18, costo reale dei pannelli UIKit e dei sei pulsanti, multiview).
 
