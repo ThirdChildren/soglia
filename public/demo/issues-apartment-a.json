@@ -122,5 +122,88 @@
         "event": "created"
       }
     ]
+  },
+  {
+    "id": "info-002",
+    "houseId": "apartment-a",
+    "kind": "info",
+    "position": [
+      0.42,
+      0.85,
+      5.05
+    ],
+    "fixtureId": "washer",
+    "category": "appliances",
+    "urgency": "low",
+    "text": "Washing machine included, with water inlet and drain behind it.",
+    "history": [
+      {
+        "at": "2026-09-30T10:00:00+02:00",
+        "by": "agent",
+        "event": "created"
+      }
+    ]
+  },
+  {
+    "id": "info-003",
+    "houseId": "apartment-a",
+    "kind": "info",
+    "position": [
+      0.4,
+      0.9,
+      2.2
+    ],
+    "fixtureId": "kitchen-unit",
+    "category": "appliances",
+    "urgency": "low",
+    "text": "Induction hob with four zones, included in the rent.",
+    "history": [
+      {
+        "at": "2026-09-30T10:00:00+02:00",
+        "by": "agent",
+        "event": "created"
+      }
+    ]
+  },
+  {
+    "id": "info-004",
+    "houseId": "apartment-a",
+    "kind": "info",
+    "position": [
+      6.8,
+      2.2,
+      0.1
+    ],
+    "fixtureId": "bedroom-shutter",
+    "category": "windows_doors",
+    "urgency": "low",
+    "text": "Electric roller shutter with a switch by the window.",
+    "history": [
+      {
+        "at": "2026-09-30T10:00:00+02:00",
+        "by": "agent",
+        "event": "created"
+      }
+    ]
+  },
+  {
+    "id": "info-005",
+    "houseId": "apartment-a",
+    "kind": "info",
+    "position": [
+      1.9,
+      1.65,
+      0.0
+    ],
+    "category": "windows_doors",
+    "urgency": "low",
+    "text": "Double glazing with two panes and a low-emissivity coating.",
+    "history": [
+      {
+        "at": "2026-09-30T10:00:00+02:00",
+        "by": "agent",
+        "event": "created"
+      }
+    ]
   }
 ]

@@ -20,13 +20,15 @@ const EXPECTED: Record<PermissionAction, Role[]> = {
   confirm: ['tenant'],
   reopen: ['tenant'],
   'view-move-in': ['tenant', 'landlord'],
+  'view-info': ['visitor', 'agent'],
+  stage: ['agent'],
   'change-role': ['visitor', 'agent', 'tenant', 'landlord'],
 };
 
 describe('permission table', () => {
-  it('covers the four roles and the eight actions', () => {
+  it('covers the four roles and the ten actions', () => {
     expect(ROLES).toHaveLength(4);
-    expect(PERMISSION_ACTIONS).toHaveLength(8);
+    expect(PERMISSION_ACTIONS).toHaveLength(10);
     expect(Object.keys(PERMISSION_TABLE).sort()).toEqual([...PERMISSION_ACTIONS].sort());
   });
 
@@ -40,14 +42,22 @@ describe('permission table', () => {
     for (const role of ROLES) expect(can(role, 'change-role')).toBe(true);
   });
 
-  it('gives the visitor nothing but the role change', () => {
+  it('gives the visitor the info points and the role change, nothing about issues', () => {
     const allowed = PERMISSION_ACTIONS.filter((a) => can('visitor', a));
-    expect(allowed).toEqual(['change-role']);
+    expect(allowed).toEqual(['view-info', 'change-role']);
   });
 
-  it('gives the agent nothing about issues in M4', () => {
+  it('gives the agent the info points, the staging and the role change, nothing about issues', () => {
     const allowed = PERMISSION_ACTIONS.filter((a) => can('agent', a));
-    expect(allowed).toEqual(['change-role']);
+    expect(allowed).toEqual(['view-info', 'stage', 'change-role']);
+  });
+
+  it('never shows the pins of the issues and the info points to the same role (no screen has both)', () => {
+    for (const role of ROLES) expect(can(role, 'view-pins') && can(role, 'view-info')).toBe(false);
+  });
+
+  it('lets only the agent stage the house', () => {
+    expect(ROLES.filter((role) => can(role, 'stage'))).toEqual(['agent']);
   });
 
   it('never lets the same role create and manage', () => {

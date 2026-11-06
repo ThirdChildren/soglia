@@ -14,6 +14,8 @@ export const PERMISSION_ACTIONS = [
   'confirm',
   'reopen',
   'view-move-in',
+  'view-info',
+  'stage',
   'change-role',
 ] as const;
 export type PermissionAction = (typeof PERMISSION_ACTIONS)[number];
@@ -21,7 +23,10 @@ export type PermissionAction = (typeof PERMISSION_ACTIONS)[number];
 /** The four status transitions. */
 export type TransitionAction = Extract<PermissionAction, 'take-on' | 'resolve' | 'confirm' | 'reopen'>;
 
-/** The roles that may do each action. Agent: nothing about issues in M4 (M5 adds info points). */
+/**
+ * The roles that may do each action. The agent has no issue tools: it sees the info points (`view-info`, shared with the visitor,
+ * who never sees the pins of the issues) and furnishes or clears the house (`stage`, D57 in docs/plans/M5.md).
+ */
 export const PERMISSION_TABLE: Readonly<Record<PermissionAction, readonly Role[]>> = {
   'view-pins': ['tenant', 'landlord'],
   create: ['tenant'],
@@ -30,6 +35,8 @@ export const PERMISSION_TABLE: Readonly<Record<PermissionAction, readonly Role[]
   confirm: ['tenant'],
   reopen: ['tenant'],
   'view-move-in': ['tenant', 'landlord'],
+  'view-info': ['visitor', 'agent'],
+  stage: ['agent'],
   'change-role': ['visitor', 'agent', 'tenant', 'landlord'],
 };
 
