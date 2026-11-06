@@ -2,6 +2,8 @@
 
 > **Changelog 2026-11-06**: scenario creato dal piano M5; ricalca `qa/scenarios/M4-regression.md`. Usa gli scenari esistenti **con i punti di partenza corretti** (S1.2, S2.6, S2.9, S3.0, S3.2, S3.3) e le correzioni del riporto 6 **approvate dall'utente e applicate il 2026-11-06** (piano M5, "Riporti: correzioni agli scenari"): S3.0 (verifica 4 e fase 2), S3.5 (passo 3), S4.3 (passo 4) e S4.5 (passi 2 e 5, verbale viola).
 
+> **Changelog 2026-11-06 (gate di M5)**: l'ordine di esecuzione in parti (A, B, C1, C2, D), le calibrazioni delle mani (`pinch=grip` storica e misurata, `pinch=auto`), gli id e le righe di log nuovi sono in **`qa/scenarios/M5-gate-notes.md`**: questo file resta l'elenco di ciò che si ripete e di ciò che cambia. Le correzioni di S3.0, S3.5, S4.3 e S4.5 e il quarto chip (`Agent`) di S4.3 sono già applicati negli scenari.
+
 **Milestone**: M5 · **Tipo**: PC (emulatore IWER via MCP `iwsdk-runtime`) · **Regole di `CLAUDE.md`**: tutte · Vedi `docs/plans/M5.md`.
 
 ## Cosa cambia in M5 e può rompere i vecchi scenari
