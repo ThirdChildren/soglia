@@ -9,7 +9,7 @@ import { PanelDocument, PanelUI, type Entity, type UIKit, type World } from '@iw
 import { tagEntity } from '../components/tag-entity';
 import { TABLETOP_BUTTON_ID } from '../logic/tabletop-button';
 import { applyPanelLook } from './panel-theme';
-import { getUiColors, onAccessChange } from './theme';
+import { getUiColors } from './theme';
 
 const PANEL_ASSET = 'tabletop-button';
 const ROOT_ELEMENT = 'tabletop-button-root';
@@ -37,8 +37,6 @@ export class TabletopButtonPanel {
     // Hidden until its content is in and it has a place.
     if (entity.object3D) entity.object3D.visible = false;
     this.entity = entity;
-    // A change of the contrast preference recolours the button where it is (the button lives for the whole session).
-    onAccessChange(() => this.paint());
   }
 
   /** True once the layout is loaded and filled in. */
@@ -68,7 +66,7 @@ export class TabletopButtonPanel {
     const doc = this.entity.getValue(PanelDocument, 'document') as UiDocument | undefined;
     const text = doc?.getElementById<UIKit.Text>(TEXT_ELEMENT);
     if (!doc || !text) return;
-    applyPanelLook(doc, ROOT_ELEMENT);
+    applyPanelLook(doc, ROOT_ELEMENT, 'layout');
     this.root = doc.getElementById<UIKit.Container>(ROOT_ELEMENT);
     this.root?.setProperties({ depthTest: false, renderOrder: BUTTON_RENDER_ORDER });
     this.label = text;

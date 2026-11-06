@@ -5,17 +5,28 @@
 /** Where a value came from: the URL (or the dev file), the saved state, or a press on the View panel. */
 export type AccessSource = 'url' | 'saved' | 'ui';
 
+/** Large text is 3.0 cm where the normal text is 2.4: the size of the text, and of the boxes that must hold it, grows by this (D58). */
+export const LARGE_TEXT_FACTOR = 1.25;
+
 /** Size of the text of the menu while the large text is on: the menu v2 keeps 2.4 cm (T5.16 is below the line, D58). */
 export const MENU_TEXT_WITH_LARGE = 'normal';
+/**
+ * Size of the text of the Issues panel while the large text is on: it keeps 2.4 cm. Its six screens are packed to the millimetre
+ * (rows, chips, wrapped notes) and need a layout of their own for 3.0 cm, which was cut from T5.13 (see docs/plans/M5.md, D53).
+ */
+export const ISSUES_TEXT_WITH_LARGE = 'normal';
 
 /** `access contrast=on source=ui` */
 export function formatAccessContrast(on: boolean, source: AccessSource): string {
   return `access contrast=${on ? 'on' : 'off'} source=${source}`;
 }
 
-/** `access text=large source=ui menu=normal` (`menu=` says whether the menu follows: it does not while T5.16 is cut). */
+/**
+ * `access text=large source=ui menu=normal issues=normal` (`menu=` and `issues=` say whether those two panels follow: they do not
+ * while T5.16 and the Issues layout are cut). Large text with `menu=normal` is not a failure: it is what is declared.
+ */
 export function formatAccessText(large: boolean, source: AccessSource): string {
-  return `access text=${large ? 'large' : 'normal'} source=${source} menu=${MENU_TEXT_WITH_LARGE}`;
+  return `access text=${large ? 'large' : 'normal'} source=${source} menu=${MENU_TEXT_WITH_LARGE} issues=${ISSUES_TEXT_WITH_LARGE}`;
 }
 
 /** `access applied recolored=7`: the preference was applied to the panels and materials that already existed. */

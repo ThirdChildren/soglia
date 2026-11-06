@@ -29,7 +29,7 @@ import {
   formatViewStep,
   rowOfControl,
   toggleOfControl,
-  viewControlSlots,
+  layoutControlSlots,
   viewControlStableId,
   viewStepFor,
   viewToggleFor,
@@ -138,7 +138,21 @@ export class ViewPanelSystem extends createSystem({}) {
   private onState(state: AppState): void {
     const ctx = context;
     if (!ctx || !ctx.panel.isOpen) return;
+    // The text size is built into the layout: the panel is made again for the new size (it is where the switch is).
+    if (state.prefs.largeText !== ctx.panel.layout.large) {
+      this.rebuild(ctx, state);
+      return;
+    }
     this.writeModel(ctx, state);
+  }
+
+  /** Makes the open panel again for the text size that is on now: same kind of panel, pinned in front of the head as it is now. */
+  private rebuild(ctx: ViewPanelContext, state: AppState): void {
+    ctx.panel.close();
+    this.disposeAnchors();
+    this.writeModel(ctx, state);
+    ctx.panel.open(this.world.player.head);
+    slog(`view panel rebuilt text=${state.prefs.largeText ? 'large' : 'normal'}`);
   }
 
   private writeModel(ctx: ViewPanelContext, state: AppState): void {
@@ -224,7 +238,7 @@ export class ViewPanelSystem extends createSystem({}) {
     this.frameQuat.y = Math.sin(yaw / 2);
     this.frameQuat.w = Math.cos(yaw / 2);
     this.pickSlots.length = 0;
-    for (const base of viewControlSlots()) {
+    for (const base of layoutControlSlots(ctx.panel.layout)) {
       const anchor = new MenuAnchor(this.world, viewControlStableId(base.id));
       this.anchors.set(base.id, anchor);
       pinnedPanelPoint(ctx.panel.framePosition, yaw, base.dx, base.dy, this.spot);

@@ -133,6 +133,142 @@ export function viewControlSlots(): readonly ViewControlSlot[] {
   return VIEW_CONTROL_IDS.map((id) => VIEW_CONTROL_SLOTS[id]);
 }
 
+// --- The two layouts: normal text (2.4 cm) and large text (3.0 cm, D58, T5.13) ------------------------------------------------
+
+/**
+ * Every size of the panel for one text size. The constants above are the normal layout; `VIEW_LAYOUT_LARGE` has text of 3.0 cm,
+ * taller rows and a wider panel (public/ui/view-panel-large.uikitml; a test keeps the files and these numbers equal). The panel
+ * that is open is built for the preference that was on when it opened and is rebuilt when the preference changes (it is where the
+ * switch is). All lengths are UIKit units (cm).
+ */
+export interface ViewLayout {
+  readonly large: boolean;
+  /** Manifest id of the layout file. */
+  readonly asset: string;
+  readonly textSize: number;
+  readonly titleSize: number;
+  readonly width: number;
+  readonly height: number;
+  readonly headerHeight: number;
+  readonly barHeight: number;
+  readonly sectionGap: number;
+  readonly bodyBorder: number;
+  readonly bodyHeight: number;
+  readonly bodyPaddingTop: number;
+  readonly summaryHeight: number;
+  readonly rowHeight: number;
+  readonly rowGap: number;
+  readonly labelWidth: number;
+  readonly labelPadding: number;
+  readonly buttonWidth: number;
+  readonly valueWidth: number;
+  readonly cellGap: number;
+  readonly closeWidth: number;
+}
+
+export const VIEW_LAYOUT_NORMAL: ViewLayout = {
+  large: false,
+  asset: 'view-panel',
+  textSize: 2.4,
+  titleSize: 2.6,
+  width: VIEW_PANEL.width,
+  height: VIEW_PANEL.height,
+  headerHeight: VIEW_HEADER_HEIGHT,
+  barHeight: VIEW_BAR_HEIGHT,
+  sectionGap: VIEW_SECTION_GAP,
+  bodyBorder: VIEW_BODY_BORDER,
+  bodyHeight: 26.6,
+  bodyPaddingTop: VIEW_BODY_PADDING_TOP,
+  summaryHeight: VIEW_SUMMARY_HEIGHT,
+  rowHeight: VIEW_ROW_HEIGHT,
+  rowGap: VIEW_ROW_GAP,
+  labelWidth: VIEW_LABEL_WIDTH,
+  labelPadding: VIEW_LABEL_PADDING,
+  buttonWidth: VIEW_BUTTON_WIDTH,
+  valueWidth: VIEW_VALUE_WIDTH,
+  cellGap: VIEW_CELL_GAP,
+  closeWidth: ISSUE_BAR_BUTTON_WIDTH,
+};
+
+/** Text of 3.0 cm. A line of it is 3.3 cm, so the rows are 3.8 cm: still one pinch target each, and six of them fit. */
+export const VIEW_LARGE_TEXT_SIZE = 3;
+
+export const VIEW_LAYOUT_LARGE: ViewLayout = {
+  large: true,
+  asset: 'view-panel-large',
+  textSize: VIEW_LARGE_TEXT_SIZE,
+  titleSize: 3.25,
+  width: 40,
+  height: 41,
+  headerHeight: 4.4,
+  barHeight: 5.8,
+  sectionGap: 0.4,
+  bodyBorder: 0.4,
+  bodyHeight: 30,
+  bodyPaddingTop: 0.4,
+  summaryHeight: 3.8,
+  rowHeight: 3.8,
+  rowGap: 0.3,
+  labelWidth: 13.4,
+  labelPadding: 0.4,
+  buttonWidth: 6,
+  valueWidth: 12,
+  cellGap: 0.4,
+  closeWidth: 10,
+};
+
+export function viewLayout(large: boolean): ViewLayout {
+  return large ? VIEW_LAYOUT_LARGE : VIEW_LAYOUT_NORMAL;
+}
+
+/** Width of a row of the layout (what its cells add up to). */
+export function layoutRowWidth(l: ViewLayout): number {
+  return l.labelWidth + l.buttonWidth + l.valueWidth + l.buttonWidth + 3 * l.cellGap;
+}
+
+/** Width of the body inside its border. */
+export function layoutBodyInnerWidth(l: ViewLayout): number {
+  return l.width - 2 * l.bodyBorder;
+}
+
+/** Extent of the panel from its frame (the bottom centre), metres: what the cone and distance checks and the pick use. */
+export function layoutExtent(l: ViewLayout): PanelExtent {
+  return { halfWidth: l.width / 200, bottom: MENU_EXTENT.bottom, top: MENU_EXTENT.bottom + l.height / 100 };
+}
+
+/** Centre of the panel from its frame, metres (the entity is placed by it). */
+export function layoutCenter(l: ViewLayout): Offset {
+  const e = layoutExtent(l);
+  return { dx: 0, dy: (e.top + e.bottom) / 2 };
+}
+
+/** Top of the first row, from the bottom of the panel (cm). */
+export function layoutRowsTopY(l: ViewLayout): number {
+  return l.height - l.headerHeight - l.sectionGap - l.bodyBorder - l.bodyPaddingTop - l.summaryHeight - l.rowGap;
+}
+
+/** Centre height of row `index` (0 = Zoom), from the bottom of the panel (cm). */
+export function layoutRowCentreY(l: ViewLayout, index: number): number {
+  return layoutRowsTopY(l) - index * (l.rowHeight + l.rowGap) - l.rowHeight / 2;
+}
+
+/** Every control of the layout in a stable order (rows top to bottom, `-` before `+`, the two switches, then `Close`). */
+export function layoutControlSlots(l: ViewLayout): readonly ViewControlSlot[] {
+  const left = -layoutRowWidth(l) / 2;
+  const lessX = left + l.labelWidth + l.cellGap + l.buttonWidth / 2;
+  const valueX = left + l.labelWidth + 2 * l.cellGap + l.buttonWidth + l.valueWidth / 2;
+  const moreX = left + l.labelWidth + 3 * l.cellGap + l.buttonWidth + l.valueWidth + l.buttonWidth / 2;
+  const slots: ViewControlSlot[] = [];
+  VIEW_ROWS.forEach((row, index) => {
+    const y = layoutRowCentreY(l, index);
+    slots.push(slot(rowControlId(row, 'less'), lessX, y, l.buttonWidth, l.rowHeight));
+    slots.push(slot(rowControlId(row, 'more'), moreX, y, l.buttonWidth, l.rowHeight));
+  });
+  for (const row of VIEW_TOGGLE_ROWS) slots.push(slot(row, valueX, layoutRowCentreY(l, VIEW_ROWS.indexOf(row)), l.valueWidth, l.rowHeight));
+  slots.push(slot('close', l.width / 2 - l.closeWidth / 2, l.barHeight / 2, l.closeWidth, l.barHeight));
+  return slots;
+}
+
 // --- The rows as text ---------------------------------------------------------------------------------------------------
 
 export interface ViewTexts {

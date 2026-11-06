@@ -40,10 +40,16 @@ import {
   issueButtonAnchors,
   pickButton,
   viewButtonAnchors,
+  widenButtons,
+  BUTTON_HALF_WIDTH,
+  ISSUE_BUTTON_HALF_WIDTH,
+  VIEW_BUTTON_HALF_WIDTH,
   type ButtonAnchor,
   type ButtonView,
 } from '../logic/menu-button';
+import { LARGE_TEXT_FACTOR } from '../logic/access';
 import { MenuButtonPanel } from '../ui/menu-button-panel';
+import { isLargeText } from '../ui/theme';
 import { strings } from '../ui/strings';
 import { isMiniatureGestureActive } from './miniature-gesture';
 import { getMiniatureAnchor, getMiniatureAnchorYaw } from './miniature';
@@ -140,6 +146,11 @@ export class MenuButtonSystem extends createSystem({
     faceHead(this.buttons, this.headPosition);
     issueButtonAnchors(this.buttons, this.issueButtons);
     viewButtonAnchors(this.issueButtons, this.viewButtons);
+    // With large text the boxes are wider (their text is 3.0 cm), and so are the rectangles of the pinch.
+    const widen = isLargeText() ? LARGE_TEXT_FACTOR : 1;
+    widenButtons(this.buttons, BUTTON_HALF_WIDTH, widen);
+    widenButtons(this.issueButtons, ISSUE_BUTTON_HALF_WIDTH, widen);
+    widenButtons(this.viewButtons, VIEW_BUTTON_HALF_WIDTH, widen);
     for (let i = 0; i < 2; i += 1) {
       const b = this.buttons[i];
       ctx.panels[i].place(b.x, b.y, b.z, b.yawRad, true);

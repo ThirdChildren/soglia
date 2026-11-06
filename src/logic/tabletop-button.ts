@@ -71,7 +71,12 @@ export function tabletopButtonAnchor(head: Readonly<Point3Like>, yawRad: number,
  * to TABLETOP_BUTTON_PICK_DEPTH in front of or behind its plane; the corners count). A value that is not finite never
  * matches. Allocates nothing.
  */
-export function pickTabletopButton(point: Readonly<Point3Like>, button: Readonly<Point3Like>, yawRad: number): boolean {
+export function pickTabletopButton(
+  point: Readonly<Point3Like>,
+  button: Readonly<Point3Like>,
+  yawRad: number,
+  widthFactor = 1,
+): boolean {
   const dx = point.x - button.x;
   const dy = point.y - button.y;
   const dz = point.z - button.z;
@@ -81,7 +86,7 @@ export function pickTabletopButton(point: Readonly<Point3Like>, button: Readonly
   const lx = dx * c - dz * s;
   const lz = dx * s + dz * c;
   return (
-    Math.abs(lx) <= TABLETOP_BUTTON_HALF_WIDTH &&
+    Math.abs(lx) <= TABLETOP_BUTTON_HALF_WIDTH * (widthFactor >= 1 ? widthFactor : 1) &&
     Math.abs(dy) <= TABLETOP_BUTTON_HALF_HEIGHT &&
     Math.abs(lz) <= TABLETOP_BUTTON_PICK_DEPTH
   );
@@ -116,6 +121,7 @@ export function tabletopButtonView(
   head: Readonly<Point3Like>,
   forward: Readonly<Point3Like>,
   out: TabletopButtonView = { distance: 0, centerAngleDeg: 180, maxAngleDeg: 180 },
+  widthFactor = 1,
 ): TabletopButtonView {
   out.distance = 0;
   out.centerAngleDeg = 180;
@@ -132,7 +138,8 @@ export function tabletopButtonView(
   const s = Math.sin(yawRad);
   let worst = 0;
   for (let i = 0; i < 4; i += 1) {
-    const side = i < 2 ? -TABLETOP_BUTTON_HALF_WIDTH : TABLETOP_BUTTON_HALF_WIDTH;
+    const half = TABLETOP_BUTTON_HALF_WIDTH * (widthFactor >= 1 ? widthFactor : 1);
+    const side = i < 2 ? -half : half;
     const rise = i % 2 === 0 ? -TABLETOP_BUTTON_HALF_HEIGHT : TABLETOP_BUTTON_HALF_HEIGHT;
     const vx = dx + side * c;
     const vy = dy + rise;

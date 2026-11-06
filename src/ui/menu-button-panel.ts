@@ -8,7 +8,7 @@
 import { PanelDocument, PanelUI, type Entity, type UIKit, type World } from '@iwsdk/core';
 import { tagEntity } from '../components/tag-entity';
 import { applyPanelLook } from './panel-theme';
-import { getUiColors, onAccessChange } from './theme';
+import { getUiColors } from './theme';
 
 /** The "Menu" button (8 x 6 cm), the "Issues" button above it (9 x 6 cm, T4.6a) and the "View" button above that (8 x 6 cm, T5.5): same look, own layout file. */
 export type ButtonPanelKind = 'menu' | 'issues' | 'view';
@@ -41,8 +41,6 @@ export class MenuButtonPanel {
     // Hidden until its content is in and it has a place.
     if (entity.object3D) entity.object3D.visible = false;
     this.entity = entity;
-    // A change of the contrast preference recolours the button where it is (the button lives for the whole session).
-    onAccessChange(() => this.paint());
   }
 
   /** True once the layout is loaded and filled in. */
@@ -72,7 +70,7 @@ export class MenuButtonPanel {
     const doc = this.entity.getValue(PanelDocument, 'document') as UiDocument | undefined;
     const text = doc?.getElementById<UIKit.Text>(TEXT_ELEMENT[this.kind]);
     if (!doc || !text) return;
-    applyPanelLook(doc, ROOT_ELEMENT[this.kind]);
+    applyPanelLook(doc, ROOT_ELEMENT[this.kind], 'layout');
     this.root = doc.getElementById<UIKit.Container>(ROOT_ELEMENT[this.kind]);
     this.root?.setProperties({ depthTest: false, renderOrder: BUTTON_RENDER_ORDER });
     this.label = text;

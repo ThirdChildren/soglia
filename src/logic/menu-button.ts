@@ -339,6 +339,16 @@ export function viewButtonAnchors(issues: Readonly<ButtonPair>, out: ButtonPair 
   return out;
 }
 
+/**
+ * Makes the pick rectangles of `buttons` `factor` times as wide as `halfWidth` (metres): the buttons are wider while the text is
+ * large (the box holds a text of 3.0 cm, D58). A factor that is not at least 1 and finite counts as 1. Allocates nothing.
+ */
+export function widenButtons(buttons: ButtonPair, halfWidth: number, factor: number): ButtonPair {
+  const f = Number.isFinite(factor) && factor >= 1 ? factor : 1;
+  for (let i = 0; i < buttons.length; i += 1) buttons[i].halfWidth = halfWidth * f;
+  return buttons;
+}
+
 /** Body of the `view button view` log line: `view button view distance=0.715 angleDeg=37.6`. */
 export function formatViewButtonView(view: Readonly<ButtonView>): string {
   return `view button view distance=${view.distance.toFixed(3)} angleDeg=${view.angleDeg.toFixed(1)}`;

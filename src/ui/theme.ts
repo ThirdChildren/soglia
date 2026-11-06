@@ -56,6 +56,9 @@ export const highContrastPalette: Palette = {
 
 export type Palette = { readonly [K in keyof typeof palette]: K extends 'floor' ? Readonly<Record<FloorMaterial, number>> : number };
 
+/** Large text is 3.0 cm where the normal text is 2.4 cm (D58). */
+export { LARGE_TEXT_FACTOR } from '../logic/access';
+
 /** Factor of the size of a pin head in high contrast (D58: the head is 30 % bigger). */
 export const HIGH_CONTRAST_PIN_SCALE = 1.3;
 

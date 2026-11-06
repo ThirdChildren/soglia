@@ -83,6 +83,11 @@ export default defineAssets({
     type: AssetType.UIKitML,
     priority: 'lazy',
   },
+  'view-panel-large': {
+    url: `${import.meta.env.BASE_URL}ui/view-panel-large.uikitml`,
+    type: AssetType.UIKitML,
+    priority: 'lazy',
+  },
   'tabletop-button': {
     url: `${import.meta.env.BASE_URL}ui/tabletop-button.uikitml`,
     type: AssetType.UIKitML,

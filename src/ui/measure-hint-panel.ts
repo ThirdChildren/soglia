@@ -77,7 +77,7 @@ export class MeasureHintPanel {
     const doc = entity.getValue(PanelDocument, 'document') as UiDocument | undefined;
     const text = doc?.getElementById<UIKit.Text>(TEXT_ELEMENT);
     if (!doc || !text) return;
-    applyPanelLook(doc, ROOT_ELEMENT);
+    applyPanelLook(doc, ROOT_ELEMENT, 'font');
     doc.getElementById<UIKit.Container>(ROOT_ELEMENT)?.setProperties({
       depthTest: false,
       renderOrder: HINT_RENDER_ORDER,

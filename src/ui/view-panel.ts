@@ -7,18 +7,25 @@
 import { PanelDocument, PanelUI, Quaternion, Vector3, type Entity, type Object3D, type UIKit, type World } from '@iwsdk/core';
 import { tagEntity } from '../components/tag-entity';
 import { stableId } from '../logic/ids';
-import { PANEL_CENTER } from '../logic/menu';
 import { pinnedAnchorPitchRad, pinnedConeAngleDeg, pinnedMenuAnchor, pitchOfForward, yawOfForward } from '../logic/menu-anchor';
 import type { Vec3Like } from '../logic/palm';
-import { VIEW_PANEL_EXTENT, VIEW_ROWS, formatViewPanelView, type ViewModel, type ViewRowId } from '../logic/view-panel';
+import {
+  VIEW_ROWS,
+  formatViewPanelView,
+  layoutCenter,
+  layoutExtent,
+  viewLayout,
+  type ViewLayout,
+  type ViewModel,
+  type ViewRowId,
+} from '../logic/view-panel';
 import { slog } from '../log';
 import { panelFontSupports } from './fonts';
-import { applyPanelLook, applyPanelTheme } from './panel-theme';
+import { applyPanelLook } from './panel-theme';
 import { disposePanelEntity } from './panel-lifecycle';
 import { strings } from './strings';
-import { onAccessChange } from './theme';
+import { isLargeText } from './theme';
 
-const PANEL_ASSET = 'view-panel';
 const ROOT_ELEMENT = 'view-panel-root';
 /** Drawn after the scene (and its transparent parts) so it is never covered; the menu uses the same order. */
 const PANEL_RENDER_ORDER = 1000;
@@ -41,8 +48,8 @@ export class ViewPanel {
   private placed = false;
   private viewLogged = false;
   private model: ViewModel | null = null;
-  /** Stops listening to the contrast preference (set while the panel is open and has its document). */
-  private stopTheme: (() => void) | null = null;
+  /** The layout the open panel was built with: the text size that was on when it opened (D58). */
+  private panelLayout: ViewLayout = viewLayout(false);
   private summary: UIKit.Text | null = null;
   private readonly rows = new Map<ViewRowId, RowElements>();
   private readonly headPosition = new Vector3();
@@ -60,6 +67,11 @@ export class ViewPanel {
   /** Yaw of the panel, radians (rotation about +Y; the panel faces +Z, so +Z points back at the user). */
   get frameYaw(): number {
     return this.yaw;
+  }
+
+  /** The layout of the open panel (its sizes and the places of its controls). */
+  get layout(): ViewLayout {
+    return this.panelLayout;
   }
 
   /** True while the panel entity exists. */
@@ -84,7 +96,8 @@ export class ViewPanel {
     slog(`view panel pitchDeg=${degrees1(pitch)} anchorPitchDeg=${degrees1(pinnedAnchorPitchRad(pitch))}`);
     const entity = this.world.createTransformEntity();
     tagEntity(entity, stableId.ui('view-panel'));
-    entity.addComponent(PanelUI, { config: PANEL_ASSET });
+    this.panelLayout = viewLayout(isLargeText());
+    entity.addComponent(PanelUI, { config: this.panelLayout.asset });
     if (entity.object3D) entity.object3D.visible = false;
     this.entity = entity;
     this.applied = false;
@@ -94,8 +107,6 @@ export class ViewPanel {
 
   /** Disposes the panel entity (deferred while its document is still loading: see panel-lifecycle.ts). */
   close(): void {
-    this.stopTheme?.();
-    this.stopTheme = null;
     if (this.entity) disposePanelEntity(this.entity);
     this.entity = null;
     this.applied = false;
@@ -123,7 +134,8 @@ export class ViewPanel {
     object.rotation.set(0, this.yaw, 0);
     object.position.set(this.anchor.x, this.anchor.y, this.anchor.z);
     this.framePosition.copy(object.position);
-    this.centerOffset.set(PANEL_CENTER.dx, PANEL_CENTER.dy, 0).applyQuaternion(object.quaternion);
+    const center = layoutCenter(this.panelLayout);
+    this.centerOffset.set(center.dx, center.dy, 0).applyQuaternion(object.quaternion);
     object.position.add(this.centerOffset);
     object.updateMatrixWorld(true);
     object.visible = true;
@@ -136,7 +148,7 @@ export class ViewPanel {
     head.getWorldPosition(this.headPosition);
     head.getWorldQuaternion(this.headQuaternion);
     this.headForward.set(0, 0, -1).applyQuaternion(this.headQuaternion);
-    const angle = pinnedConeAngleDeg(this.anchor, this.yaw, this.headPosition, this.headForward, VIEW_PANEL_EXTENT);
+    const angle = pinnedConeAngleDeg(this.anchor, this.yaw, this.headPosition, this.headForward, layoutExtent(this.panelLayout));
     slog(formatViewPanelView(angle, this.headPosition.distanceTo(this.framePosition)));
   }
 
@@ -159,9 +171,6 @@ export class ViewPanel {
       label?.setProperties({ text: strings.view.rows[row] });
       this.rows.set(row, { label, value });
     }
-    // The panel is where the contrast switch is: it must restyle itself where it is, without being rebuilt.
-    this.stopTheme?.();
-    this.stopTheme = onAccessChange(() => applyPanelTheme(doc, ROOT_ELEMENT));
     this.applied = true;
     this.writeModel();
   }
