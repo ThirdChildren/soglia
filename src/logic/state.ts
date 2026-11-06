@@ -10,6 +10,7 @@ import type { Issue, StoredIssue } from './issues';
 import { applyTransition } from './issue-state';
 import type { IssueAction, TransitionDenied, TransitionResult } from './issue-state';
 import { can, isRole } from './permissions';
+import { parseSunTime, stepHour, stepMonth, sunTimeFromParam } from './sun-time';
 
 export type { PlacedPiece, StoredIssue };
 
@@ -26,6 +27,9 @@ export const ZOOM_MAX = 0.12;
 
 export const ONBOARDING_STEPS = ['pinch', 'two-hands', 'done'] as const;
 export type OnboardingStep = (typeof ONBOARDING_STEPS)[number];
+
+/** The sun time when nothing was asked or saved and the house has not computed one yet (the real default is `defaultSunTime`). */
+export const DEFAULT_SUN_TIME = '2026-12-21T10:00';
 
 /** Undo keeps this many furniture states (D17). */
 export const HISTORY_LIMIT = 20;
@@ -122,6 +126,8 @@ export interface AppState {
   readonly nextIssue: number;
   /** True once the demo seed has been put in (once per saved state, D42). */
   readonly issuesSeeded: boolean;
+  /** The local time of the house the sun is shown at (D54): `YYYY-MM-DDTHH:MM`, always a real date-time. Saved. */
+  readonly sunTime: string;
 }
 
 /** The saved preferences as a restore may give them: `moveInVisible` can be absent (an older state). */
@@ -147,6 +153,8 @@ export type Action =
       readonly note?: string;
     }
   | { readonly type: 'setMoveIn'; readonly visible: boolean }
+  | { readonly type: 'setSunTime'; readonly sunTime: string }
+  | { readonly type: 'stepSunTime'; readonly unit: SunStepUnit; readonly delta: number }
   | {
       readonly type: 'placeFurniture';
       readonly catalogId: string;
@@ -180,7 +188,11 @@ export type Action =
       readonly issues?: readonly StoredIssue[];
       readonly nextIssue?: number;
       readonly issuesSeeded?: boolean;
+      /** Absent or null: the sun time stays as it is (the URL named one, or nothing was saved). */
+      readonly sunTime?: string | null;
     };
+
+export type SunStepUnit = 'hour' | 'month';
 
 /** Action creators. */
 export function setMiniature(scale: number, yawDeg: number): Action {
@@ -243,6 +255,17 @@ export function transitionIssue(id: string, action: IssueAction, nowIso: string,
     ? { type: 'transitionIssue', id, action, nowIso }
     : { type: 'transitionIssue', id, action, nowIso, note };
 }
+/** Sets the sun time (D54). Text that is not a real `YYYY-MM-DDTHH:MM` is ignored; the same time again changes nothing. Not undoable. */
+export function setSunTime(sunTime: string): Action {
+  return { type: 'setSunTime', sunTime };
+}
+/**
+ * Steps the sun time by `delta` hours (wrapping 24 on the same day) or months (wrapping Dec to Jan in the same year,
+ * the day clamped to the month). An unknown unit or a delta that is not a finite integer is ignored. Not undoable.
+ */
+export function stepSunTime(unit: SunStepUnit, delta: number): Action {
+  return { type: 'stepSunTime', unit, delta };
+}
 /** Show or hide the move-in pins on the model (D48). Not a boolean: ignored. */
 export function setMoveIn(visible: boolean): Action {
   return { type: 'setMoveIn', visible };
@@ -284,6 +307,7 @@ export function restoreSaved(saved: {
   issues?: readonly StoredIssue[];
   nextIssue?: number;
   issuesSeeded?: boolean;
+  sunTime?: string | null;
 }): Action {
   return { type: 'restoreSaved', ...saved };
 }
@@ -309,6 +333,7 @@ export function createInitialState(params: Params): AppState {
     issues: [],
     nextIssue: FIRST_NEW_ISSUE,
     issuesSeeded: false,
+    sunTime: sunTimeFromParam(params.time) ?? DEFAULT_SUN_TIME,
   };
 }
 
@@ -550,6 +575,17 @@ export function reduce(state: AppState, action: Action): AppState {
       if (typeof action.visible !== 'boolean' || action.visible === state.prefs.moveInVisible) return state;
       return { ...state, prefs: { ...state.prefs, moveInVisible: action.visible } };
     }
+    case 'setSunTime': {
+      const sunTime = parseSunTime(action.sunTime);
+      if (sunTime === null || sunTime === state.sunTime) return state;
+      return { ...state, sunTime };
+    }
+    case 'stepSunTime': {
+      if (action.unit !== 'hour' && action.unit !== 'month') return state;
+      if (!Number.isInteger(action.delta) || action.delta === 0) return state;
+      const sunTime = action.unit === 'hour' ? stepHour(state.sunTime, action.delta) : stepMonth(state.sunTime, action.delta);
+      return sunTime === state.sunTime ? state : { ...state, sunTime };
+    }
     case 'seedIssues': {
       if (state.issuesSeeded || !Array.isArray(action.issues)) return state;
       const wanted = action.issues.filter((i) => isIssue(i) && (i.kind === 'issue' || i.kind === 'baseline'));
@@ -652,6 +688,7 @@ export function reduce(state: AppState, action: Action): AppState {
         issues,
         nextIssue: nextIssueFor(counter, issues),
         issuesSeeded: typeof action.issuesSeeded === 'boolean' ? action.issuesSeeded : state.issuesSeeded,
+        sunTime: (typeof action.sunTime === 'string' ? parseSunTime(action.sunTime) : null) ?? state.sunTime,
       };
     }
     default:
@@ -714,7 +751,9 @@ export function deserialize(json: string): AppState | null {
 }
 
 /** `deserialize` that also says which saved issues were left out (the caller logs them). */
-export function deserializeWithReport(json: string): { state: AppState; discardedIssues: DiscardedIssue[] } | null {
+export function deserializeWithReport(
+  json: string,
+): { state: AppState; discardedIssues: DiscardedIssue[]; savedSunTime: string | null } | null {
   if (typeof json !== 'string') return null;
   let data: unknown;
   try {
@@ -820,6 +859,8 @@ export function deserializeWithReport(json: string): { state: AppState; discarde
   }
   const nextIssue = nextIssueFor(typeof data.nextIssue === 'number' ? data.nextIssue : FIRST_NEW_ISSUE, issues);
   const issuesSeeded = data.issuesSeeded === true;
+  // Added in M5 (D62): absent or broken means "none saved" (the caller then uses the default), never a rejection.
+  const savedSunTime = 'sunTime' in data ? parseSunTime(data.sunTime) : null;
 
   return {
     state: {
@@ -837,7 +878,9 @@ export function deserializeWithReport(json: string): { state: AppState; discarde
       issues,
       nextIssue,
       issuesSeeded,
+      sunTime: savedSunTime ?? DEFAULT_SUN_TIME,
     },
     discardedIssues,
+    savedSunTime,
   };
 }

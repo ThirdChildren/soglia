@@ -84,3 +84,16 @@ export function hourLabel(sunTime: string): string {
 export function monthLabel(sunTime: string): string {
   return MONTH_NAMES[parts(sunTime).month - 1];
 }
+
+/**
+ * The log line of a sun time (contract of M5): `sun set time=2026-12-21T10:00 source=url utc=2026-12-21T09:00Z
+ * az=145.5 el=13.7`, or `sun below horizon time=... source=... utc=...` when the sun is not up.
+ */
+export function sunLogLine(sunTime: string, source: SunTimeSource, lat: number, lon: number): string {
+  const utc = localToUtcMs(sunTime);
+  if (utc === null) return `sun set time=${sunTime} source=${source} utc=-`;
+  const utcText = new Date(utc).toISOString().slice(0, 16) + 'Z';
+  const pos = sunPosition(utc, lat, lon);
+  if (pos.altitudeDeg <= 0) return `sun below horizon time=${sunTime} source=${source} utc=${utcText}`;
+  return `sun set time=${sunTime} source=${source} utc=${utcText} az=${pos.azimuthDeg.toFixed(1)} el=${pos.altitudeDeg.toFixed(1)}`;
+}

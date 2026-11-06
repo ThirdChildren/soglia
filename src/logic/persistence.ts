@@ -50,6 +50,8 @@ export interface RestoreContext {
   ignoreFurniture?: boolean;
   /** True when `role=` was named in the URL or the dev file: it beats the saved role (D41), which is then not restored. */
   roleExplicit?: boolean;
+  /** True when `time=` was named in the URL or the dev file: it beats the saved sun time (D54, D62). */
+  timeExplicit?: boolean;
 }
 
 /** The part of a saved state that is put back (the whitelist of D29). */
@@ -66,6 +68,8 @@ export interface Restorable {
   issues: StoredIssue[];
   nextIssue: number;
   issuesSeeded: boolean;
+  /** The saved sun time, or null when none was saved (or `timeExplicit`: the session keeps the time the URL named). */
+  sunTime: string | null;
   /** Saved issues left out for good (malformed, repeated, over the limit): the caller logs them. */
   discardedIssues: DiscardedIssue[];
   /** Pieces left out for good (a room that is gone), with the reason (the caller logs them). */
@@ -91,7 +95,7 @@ function dropReasonOf(piece: PlacedPiece, ctx: RestoreContext): DropReason | nul
  * `history`, `prefs` (`onboardingStep`, `menuOpened`, `moveInVisible`) and `view` (only a viewpoint that exists in
  * the open house, `ctx.viewpointIds`; any other saved view becomes the tabletop), and, since M4 (D41, D44), `role`
  * (null when `ctx.roleExplicit`: the URL wins), `issues` (a malformed one goes away alone), `nextIssue` and
- * `issuesSeeded`. NOT `selectedRoomId` (its label would not exist), `miniature` (the model is placed again every
+ * `issuesSeeded`, and, since M5 (D54, D62), `sunTime` (null when none was saved or `ctx.timeExplicit`). NOT `selectedRoomId` (its label would not exist), `miniature` (the model is placed again every
  * session, D3) nor `houseId`.
  * Returns null for broken JSON, an invalid state or a state of another house.
  * Pieces of an unknown room are dropped; pieces of an unknown catalog item are parked (`parked`, D44). The undo
@@ -101,12 +105,13 @@ function dropReasonOf(piece: PlacedPiece, ctx: RestoreContext): DropReason | nul
 export function pickRestorable(saved: string, ctx: RestoreContext): Restorable | null {
   const report = deserializeWithReport(saved);
   if (report === null || report.state.houseId !== ctx.houseId) return null;
-  const { state, discardedIssues } = report;
+  const { state, discardedIssues, savedSunTime } = report;
   const m4 = {
     role: ctx.roleExplicit === true ? null : state.role,
     issues: state.issues as StoredIssue[],
     nextIssue: state.nextIssue,
     issuesSeeded: state.issuesSeeded,
+    sunTime: ctx.timeExplicit === true ? null : savedSunTime,
     discardedIssues,
   };
 

@@ -16,8 +16,10 @@ import { describeError, slog, swarn } from './log';
 import { formatParamsLine, hasInvalidHouse, mergeParams, parseParams } from './logic/params';
 import { mergeCatalog, menuSections } from './logic/catalog';
 import { planRadius } from './logic/house-layout';
-import { createInitialState, createStore, setMiniature, setMiniatureOffset } from './logic/state';
+import { createInitialState, createStore, setMiniature, setMiniatureOffset, setSunTime } from './logic/state';
 import { createIssueClock, observeIssues } from './logic/issue-clock';
+import { defaultSunTime, sunLogLine } from './logic/sun-time';
+import type { SunTimeSource } from './logic/sun-time';
 import { applyFurnish, createFurniture } from './systems/furniture';
 import { buildHouse } from './systems/house-builder';
 import { installLocalControllers } from './systems/local-controllers';
@@ -116,6 +118,9 @@ async function start(): Promise<void> {
     // An explicit `role=` beats the saved role (D41); without one the saved role comes back, else `visitor`.
     const roleExplicit = explicit.includes('role');
     let roleRestored = false;
+    // An explicit `time=` beats the saved sun time (D54, D62); without one the saved time comes back, else now.
+    const timeExplicit = explicit.includes('time');
+    let sunRestored = false;
     // Also without a catalog (T5.R2): role, issues and preferences come back and are saved; the saved pieces stay parked.
     {
       const restored = restoreSavedState(
@@ -125,11 +130,21 @@ async function start(): Promise<void> {
         merged ? merged.items : null,
         params.furnish !== 'none',
         roleExplicit,
+        timeExplicit,
       );
       roleRestored = restored.roleRestored;
+      sunRestored = restored.sunRestored;
       persistence = attachPersistence(store, storage, restored.parked);
     }
     slog(`role set ${store.get().role} source=${roleExplicit ? 'url' : roleRestored ? 'saved' : 'default'}`);
+    // The sun time: `time=` (already in the store), else the saved one, else the local time of the house now (D54).
+    const { lat, lon } = result.house.location;
+    let sunSource: SunTimeSource = timeExplicit ? 'url' : 'saved';
+    if (!timeExplicit && !sunRestored) {
+      sunSource = 'default';
+      store.dispatch(setSunTime(defaultSunTime(Date.now(), lat, lon)));
+    }
+    slog(sunLogLine(store.get().sunTime, sunSource, lat, lon));
     // The demo issues come once, after the restore and after the saving started, so the seed is saved too (D42).
     await seedDemoIssues(store);
     // The clock for the history of the issues (D42): fixed by `time=`, else the real time. The systems that write

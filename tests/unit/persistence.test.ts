@@ -91,7 +91,7 @@ describe('pickRestorable', () => {
   it('restores nothing outside the whitelist', () => {
     const picked = pickRestorable(serialize(busyState()), ctx());
     expect(picked).not.toBeNull();
-    expect(Object.keys(picked ?? {}).sort()).toEqual(['discardedIssues', 'dropped', 'furniture', 'history', 'issues', 'issuesSeeded', 'nextInstance', 'nextIssue', 'parked', 'prefs', 'role', 'view']);
+    expect(Object.keys(picked ?? {}).sort()).toEqual(['discardedIssues', 'dropped', 'furniture', 'history', 'issues', 'issuesSeeded', 'nextInstance', 'nextIssue', 'parked', 'prefs', 'role', 'sunTime', 'view']);
   });
 
   it('accepts a state saved before the newer fields existed', () => {
@@ -116,6 +116,7 @@ describe('pickRestorable', () => {
       issues: [],
       nextIssue: 14,
       issuesSeeded: false,
+      sunTime: null,
       discardedIssues: [],
     });
   });
@@ -193,6 +194,7 @@ describe('pickRestorable', () => {
       issues: [],
       nextIssue: 14,
       issuesSeeded: false,
+      sunTime: '2026-12-21T10:00',
       discardedIssues: [],
     });
   });
@@ -672,7 +674,7 @@ describe('what is NOT restored, even when it is in the saved text', () => {
 
   it('keeps the object of the result free of fields that are outside the whitelist', () => {
     const picked = mustPick(loudText());
-    expect(Object.keys(picked).sort()).toEqual(['discardedIssues', 'dropped', 'furniture', 'history', 'issues', 'issuesSeeded', 'nextInstance', 'nextIssue', 'parked', 'prefs', 'role', 'view']);
+    expect(Object.keys(picked).sort()).toEqual(['discardedIssues', 'dropped', 'furniture', 'history', 'issues', 'issuesSeeded', 'nextInstance', 'nextIssue', 'parked', 'prefs', 'role', 'sunTime', 'view']);
     expect(Object.keys(picked.prefs).sort()).toEqual(['menuOpened', 'moveInVisible', 'onboardingStep']);
   });
 

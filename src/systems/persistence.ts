@@ -32,6 +32,8 @@ export interface RestoreOutcome {
   parked: readonly PlacedPiece[];
   /** True when the role of the store came from the saved state (not from the URL, not the default), D41. */
   roleRestored: boolean;
+  /** True when the sun time of the store came from the saved state (not from `time=`, not the default), D54. */
+  sunRestored: boolean;
 }
 
 /**
@@ -51,8 +53,9 @@ export function restoreSavedState(
   catalog: readonly CatalogItem[] | null,
   ignoreFurniture: boolean,
   roleExplicit = false,
+  timeExplicit = false,
 ): RestoreOutcome {
-  const nothing: RestoreOutcome = { parked: [], roleRestored: false };
+  const nothing: RestoreOutcome = { parked: [], roleRestored: false, sunRestored: false };
   if (!storage.available()) return nothing;
   const key = storageKey(store.get().houseId);
   const saved = storage.get(key);
@@ -67,6 +70,7 @@ export function restoreSavedState(
     viewpointIds: new Set(house.viewpoints.map((viewpoint) => viewpoint.id)),
     ignoreFurniture,
     roleExplicit,
+    timeExplicit,
   });
   if (picked === null) {
     swarn(`state discarded key=${key} reason=invalid`);
@@ -83,7 +87,7 @@ export function restoreSavedState(
     slog(`state restored pieces=${store.get().furniture.length} key=${key}`);
   }
   if (store.get().issues.length > 0) slog(`issues restored count=${store.get().issues.length} key=${key}`);
-  return { parked: picked.parked, roleRestored: picked.role !== null };
+  return { parked: picked.parked, roleRestored: picked.role !== null, sunRestored: picked.sunTime !== null };
 }
 
 /**
@@ -119,7 +123,8 @@ function savedPartChanged(prev: AppState, next: AppState): boolean {
     prev.role !== next.role ||
     prev.issues !== next.issues ||
     prev.nextIssue !== next.nextIssue ||
-    prev.issuesSeeded !== next.issuesSeeded
+    prev.issuesSeeded !== next.issuesSeeded ||
+    prev.sunTime !== next.sunTime
   );
 }
 
@@ -146,7 +151,7 @@ export function attachPersistence(store: Store, storage: SafeStorage, parked: re
     const state = store.get();
     slog(
       `state saved key=${key} pieces=${state.furniture.length} bytes=${utf8Length(text)} reason=${reason} ` +
-        `issues=${state.issues.length} role=${state.role} parked=${written}`,
+        `issues=${state.issues.length} role=${state.role} parked=${written} sun=${state.sunTime}`,
     );
   };
 

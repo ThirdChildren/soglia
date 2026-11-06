@@ -69,6 +69,7 @@ describe('createInitialState', () => {
       issues: [],
       nextIssue: 14,
       issuesSeeded: false,
+      sunTime: '2026-12-21T10:00',
     });
   });
 
@@ -108,6 +109,7 @@ describe('createInitialState', () => {
       'issues',
       'nextIssue',
       'issuesSeeded',
+      'sunTime',
     ]);
   });
 });
@@ -563,6 +565,7 @@ describe('serialize', () => {
       'issues',
       'nextIssue',
       'issuesSeeded',
+      'sunTime',
     ]);
     expect(Object.keys(parsed.miniature)).toEqual(['scale', 'yawDeg', 'offset']);
     expect(Object.keys(parsed.prefs)).toEqual(['onboardingStep', 'menuOpened', 'moveInVisible']);
@@ -574,7 +577,7 @@ describe('serialize', () => {
         '"miniature":{"scale":0.05,"yawDeg":0,"offset":[0,0]},"selectedRoomId":null,' +
         '"prefs":{"onboardingStep":"pinch","menuOpened":false,"moveInVisible":false},' +
         '"furniture":[],"nextInstance":{},"history":[],"view":{"kind":"tabletop"},' +
-        '"issues":[],"nextIssue":14,"issuesSeeded":false}',
+        '"issues":[],"nextIssue":14,"issuesSeeded":false,"sunTime":"2026-12-21T10:00"}',
     );
   });
 
@@ -609,6 +612,7 @@ describe('serialize', () => {
       'issues',
       'nextIssue',
       'issuesSeeded',
+      'sunTime',
     ]);
   });
 
