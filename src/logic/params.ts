@@ -3,6 +3,8 @@
 // Unknown values fall back to the default and produce a warning returned as data;
 // the caller decides how to log it.
 
+import { SUN_MAX_YEAR, SUN_MIN_YEAR } from './sun';
+
 export const ROLES = ['visitor', 'agent', 'tenant', 'landlord'] as const;
 export type Role = (typeof ROLES)[number];
 
@@ -158,6 +160,11 @@ const FIELD_PARSERS: { [K in ParamKey]: (raw: string) => FieldResult<Params[K]> 
     const m = TIME_PATTERN.exec(raw);
     if (!m || !isRealDateTime(m)) {
       return { ok: false, reason: 'expected a local date-time like 2026-12-21T10:00' };
+    }
+    // The sun module covers these years only; a time outside them would be accepted here and silently replaced there.
+    const year = Number(m[1]);
+    if (year < SUN_MIN_YEAR || year > SUN_MAX_YEAR) {
+      return { ok: false, reason: `year must be between ${SUN_MIN_YEAR} and ${SUN_MAX_YEAR}` };
     }
     return { ok: true, value: raw };
   },

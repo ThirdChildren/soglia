@@ -102,6 +102,9 @@ export function euUtcOffsetMinutes(year: number, month: number, day: number, hou
   return asSummer >= start && asSummer < end ? 120 : 60;
 }
 
+/** The years the sun module covers (about 0.01 degrees of accuracy): a local date-time outside them is not valid. */
+export const SUN_MIN_YEAR = 1900;
+export const SUN_MAX_YEAR = 2100;
 const SUN_TIME_PATTERN = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/;
 
 /** The parts of a local date-time `YYYY-MM-DDTHH:MM` (no seconds, no zone). */
@@ -119,7 +122,7 @@ export function parseLocalDateTime(text: unknown): LocalDateTime | null {
   const m = SUN_TIME_PATTERN.exec(text);
   if (!m) return null;
   const [year, month, day, hour, minute] = [m[1], m[2], m[3], m[4], m[5]].map(Number);
-  if (month < 1 || month > 12 || hour > 23 || minute > 59 || year < 1900 || year > 2100) return null;
+  if (month < 1 || month > 12 || hour > 23 || minute > 59 || year < SUN_MIN_YEAR || year > SUN_MAX_YEAR) return null;
   if (day < 1 || day > daysInMonth(year, month)) return null;
   return { year, month, day, hour, minute };
 }

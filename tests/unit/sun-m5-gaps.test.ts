@@ -13,6 +13,7 @@ import {
   utcToLocalText,
 } from '../../src/logic/sun';
 import {
+  FALLBACK_SUN_TIME,
   defaultSunTime,
   isSunUp,
   parseSunTime,
@@ -340,12 +341,11 @@ describe('parseLocalDateTime and parseSunTime edges', () => {
     expect(sunTimeFromParam('1850-06-21T10:00')).toBeNull();
   });
 
-  // The parameter parser (params.ts) already refuses these, so the app never gets here; but the function says "null
-  // if invalid" and any 19-character text is cut to 16 characters without looking at the tail.
-  it.fails('sunTimeFromParam gives null for a 19-character text whose tail is not seconds (BUG, low: only reachable without params.ts)', () => {
+  // The parameter parser (params.ts) already refuses these; the function says "null if invalid" and now checks the tail too.
+  it('sunTimeFromParam gives null for a 19-character text whose tail is not seconds', () => {
     expect(sunTimeFromParam('2026-12-21T10:00abc')).toBeNull();
   });
-  it.fails('sunTimeFromParam gives null for seconds above 59 (BUG, low: only reachable without params.ts)', () => {
+  it('sunTimeFromParam gives null for seconds above 59', () => {
     expect(sunTimeFromParam('2026-12-21T10:00:99')).toBeNull();
   });
 });
@@ -401,16 +401,17 @@ describe('stepHour and stepMonth edges', () => {
     }
   });
 
-  // stepSunTime in the store ignores a delta that is not a finite integer, so the app is safe; the pure function
-  // itself writes "NaN" in the text.
-  it.fails('stepHour gives back a valid sun time for a NaN delta (BUG, low: the store guards it, the pure function does not)', () => {
-    expect(parseSunTime(stepHour('2026-12-21T10:00', Number.NaN))).not.toBeNull();
+  // A delta that is not finite is no step (like stepZoom and stepTurn); the store guards it too.
+  it('stepHour leaves the time as it is for a NaN delta', () => {
+    expect(stepHour('2026-12-21T10:00', Number.NaN)).toBe('2026-12-21T10:00');
   });
-  it.fails('stepHour gives back a valid sun time for an infinite delta (BUG, low: the store guards it)', () => {
-    expect(parseSunTime(stepHour('2026-12-21T10:00', Number.POSITIVE_INFINITY))).not.toBeNull();
+  it('stepHour leaves the time as it is for an infinite delta', () => {
+    expect(stepHour('2026-12-21T10:00', Number.POSITIVE_INFINITY)).toBe('2026-12-21T10:00');
+    expect(stepHour('2026-12-21T10:30', Number.NEGATIVE_INFINITY)).toBe('2026-12-21T10:30');
   });
-  it.fails('stepMonth gives back a valid sun time for a NaN delta (BUG, low: the store guards it)', () => {
-    expect(parseSunTime(stepMonth('2026-12-21T10:00', Number.NaN))).not.toBeNull();
+  it('stepMonth leaves the time as it is for a NaN or infinite delta', () => {
+    expect(stepMonth('2026-12-21T10:00', Number.NaN)).toBe('2026-12-21T10:00');
+    expect(stepMonth('2026-12-21T10:00', Number.POSITIVE_INFINITY)).toBe('2026-12-21T10:00');
   });
 });
 
@@ -463,15 +464,20 @@ describe('defaultSunTime edges', () => {
     }
   });
 
-  // Date.now() is finite in production, so this only bites an injected clock that is wrong; but the result is then
-  // text that no parser accepts, and the sun log line would print it.
-  it.fails('gives a valid sun time for a clock that is NaN (BUG, low: returns the text "NaN-NaN-NaNTNaN:NaN")', () => {
-    const text = defaultSunTime(Number.NaN, LAT, LON);
-    expect(parseSunTime(text)).not.toBeNull();
+  // Date.now() is finite in production, so this only bites an injected clock that is wrong: the result is the fixed fallback.
+  it('gives the fixed fallback for a clock that is NaN or infinite', () => {
+    for (const clock of [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
+      const text = defaultSunTime(clock, LAT, LON);
+      expect(parseSunTime(text)).toBe(text);
+      expect(text).toBe(FALLBACK_SUN_TIME);
+    }
   });
-  it.fails('gives a valid sun time for a clock beyond the year 2100 (BUG, low: returns a text that parseSunTime refuses)', () => {
-    const text = defaultSunTime(utc('2150-06-21T10:00:00Z'), LAT, LON);
-    expect(parseSunTime(text)).not.toBeNull();
+  it('gives the fixed fallback for a clock outside the years 1900-2100', () => {
+    for (const t of [utc('2150-06-21T10:00:00Z'), utc('1850-06-21T10:00:00Z')]) {
+      const text = defaultSunTime(t, LAT, LON);
+      expect(parseSunTime(text)).toBe(text);
+      expect(text).toBe(FALLBACK_SUN_TIME);
+    }
   });
 });
 

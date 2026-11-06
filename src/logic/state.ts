@@ -10,7 +10,7 @@ import type { Issue, StoredIssue } from './issues';
 import { applyTransition } from './issue-state';
 import type { IssueAction, TransitionDenied, TransitionResult } from './issue-state';
 import { can, isRole } from './permissions';
-import { parseSunTime, stepHour, stepMonth, sunTimeFromParam } from './sun-time';
+import { FALLBACK_SUN_TIME, parseSunTime, stepHour, stepMonth, sunTimeFromParam } from './sun-time';
 
 export type { PlacedPiece, StoredIssue };
 
@@ -29,7 +29,7 @@ export const ONBOARDING_STEPS = ['pinch', 'two-hands', 'done'] as const;
 export type OnboardingStep = (typeof ONBOARDING_STEPS)[number];
 
 /** The sun time when nothing was asked or saved and the house has not computed one yet (the real default is `defaultSunTime`). */
-export const DEFAULT_SUN_TIME = '2026-12-21T10:00';
+export const DEFAULT_SUN_TIME = FALLBACK_SUN_TIME;
 
 /** Undo keeps this many furniture states (D17). */
 export const HISTORY_LIMIT = 20;

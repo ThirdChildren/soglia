@@ -300,16 +300,28 @@ describe('T5.R6: development flags that need debug=1, with the flags and the swi
 });
 
 describe('time= between params.ts and the sun module', () => {
-  it('the store takes the default sun time for a time the sun module does not cover (year outside 1900-2100)', () => {
+  it('params.ts refuses a time in a year the sun module does not cover (1900-2100), with a warning, and does not mark it explicit', () => {
     for (const time of ['2200-01-01T10:00', '1850-06-21T10:00', '0001-01-01T00:00']) {
-      expect(parseParams(`time=${time}`).params.time, time).toBe(time); // params.ts accepts it...
-      expect(createInitialState({ ...DEFAULT_PARAMS, time }).sunTime, time).toBe(DEFAULT_SUN_TIME); // ...the sun module does not
+      const r = parseParams(`time=${time}`);
+      expect(r.params.time, time).toBeNull();
+      expect(r.present, time).not.toContain('time');
+      expect(mergeParams(r, null).explicit, time).not.toContain('time');
+      expect(r.warnings, time).toEqual([`param time="${time}" ignored: year must be between 1900 and 2100`]);
     }
   });
 
-  // The URL is explicit, so the saved sun time is also ignored (timeExplicit), and no line says why the time asked for
-  // was not used. A rejection in params.ts (a warning) would make the cause visible.
-  it.todo('time= with a year outside 1900-2100 is refused with a warning by params.ts (it is accepted silently today)');
+  it('keeps the edges of the covered years: 1900 and 2100 are accepted', () => {
+    expect(parseParams('time=1900-01-01T00:00').params.time).toBe('1900-01-01T00:00');
+    expect(parseParams('time=2100-12-31T23:59').params.time).toBe('2100-12-31T23:59');
+    expect(parseParams('time=1899-12-31T23:59').params.time).toBeNull();
+    expect(parseParams('time=2101-01-01T00:00').params.time).toBeNull();
+  });
+
+  it('the store still takes the default sun time for a time it is handed outside the covered years (defence in depth)', () => {
+    for (const time of ['2200-01-01T10:00', '1850-06-21T10:00', '0001-01-01T00:00']) {
+      expect(createInitialState({ ...DEFAULT_PARAMS, time }).sunTime, time).toBe(DEFAULT_SUN_TIME);
+    }
+  });
 
   it('a time with seconds becomes the same time without them', () => {
     expect(createInitialState({ ...DEFAULT_PARAMS, time: '2026-12-21T10:00:45' }).sunTime).toBe('2026-12-21T10:00');

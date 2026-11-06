@@ -97,7 +97,7 @@ describe('restore without a catalog', () => {
     expect(mustPick(serializeForSave(busy()), withoutCatalog()).history).toEqual([]);
   });
 
-  it('a piece in a room that is gone is still dropped for good', () => {
+  it('a piece in a room that is gone is parked, not dropped, when there is no catalog (the catalog check comes first)', () => {
     const saved = run(initial(), placeFurniture('chair', 1, 1, 0, 'attic'));
     const picked = mustPick(serializeForSave(saved), withoutCatalog());
     // the catalog check comes first: with no catalog the piece is parked, whatever its room (as with a catalog gap)
