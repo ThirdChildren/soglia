@@ -364,5 +364,31 @@ describe('golden values (to keep an eye on regressions)', () => {
   });
 });
 
+describe('a high summer sun in the living room (21 Jun 14:00, the QA gate of M5 saw 0.1 m2)', () => {
+  // Independent of the code under test: the light that gets through a window is the glass cut by the reveal of the wall, and
+  // lands as a parallelogram of width w' and length h' / tan(altitude) along the ray, of which cos(theta) counts across the wall.
+  it('is a thin sliver by the north wall, equal to the geometry worked out by hand, not zero', () => {
+    const sun = sunAt('2026-06-21T14:00');
+    expect(sun.altitudeDeg).toBeCloseTo(67.6, 1);
+    // `w-north` looks out to plan angle 0; the sun is at bearing az, and plan up is at bearing 360 - northAngleDeg.
+    const theta = ((sun.azimuthDeg - (360 - A.northAngleDeg)) * Math.PI) / 180;
+    const alt = (sun.altitudeDeg * Math.PI) / 180;
+    const wall = A.walls.find((w) => w.id === 'w-north')!;
+    const window = wall.openings.find((o) => o.id === 'win-living-1')!;
+    const width = window.width - wall.thickness * Math.tan(Math.abs(theta));
+    const height = window.height - (wall.thickness * Math.tan(alt)) / Math.cos(theta);
+    expect(height).toBeGreaterThan(0);
+    const oneWindow = width * (height / Math.tan(alt)) * Math.cos(theta);
+    const result = lightPatches(A, sun);
+    expect(result.roomAreas.living).toBeCloseTo(2 * oneWindow, 2);
+    expect(result.roomAreas.living).toBeGreaterThan(0.05);
+    expect(result.roomAreas.living).toBeLessThan(0.15);
+    expect(result.patches.filter((p) => p.windowId.startsWith('win-living')).map((p) => p.windowId).sort()).toEqual([
+      'win-living-1',
+      'win-living-2',
+    ]);
+  });
+});
+
 // Filled in from the first run of the code on 2026-11-06 (areas in m2); they pin the behaviour, not an external truth.
 const GOLDEN = { livingDec10: 2.3029, studyJun18: 1.1616, bedroomBDec12: 2.4284 };
