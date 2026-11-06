@@ -3,6 +3,7 @@
 > **Changelog 2026-11-06**: scenario creato dal piano M5 (ROADMAP S5.5). Il "meno di 10 minuti" del primo ROADMAP vale per una persona sul visore: **il tempo di orologio non è un criterio PC** (ogni chiamata MCP costa 0,5–3 s). Il criterio PC è: percorso completo, zero errori, e un conteggio di pizzichi.
 
 > **Changelog 2026-11-06 (esiti di T5.1–T5.7)**: passo 6 allineato ai golden del sole (alle 15:00 del 21 dic in A non ci sono chiazze); vedi `qa/scenarios/M5-sun.md`.
+> **Changelog 2026-11-06 (esiti di T5.11–T5.15)**: passo 1: il coach è a due passi con timeout di 20 s per passo e aspetta se Issues o View sono aperti; passo 2: "Rotate" (11 × 5 cm, 12 s, ogni pressione riparte da 12 s); passo 11: alto contrasto e testo grande dal pannello View (6 righe, `+`/`−` o cella) con `contrast=`/`text=` espliciti che vincono sul salvato; testo grande del pannello **Issues** e del **menu v2** **in corso** (T5.13 parte rimasta, T5.16): se non consegnati, la verifica 4 di S5.6 resta sull'esito `menu=normal issues=normal` dichiarato. Alla ripresa (passo 12) anche `coach step=done reason=saved`. Problema noto: un'etichetta del motivo persistente può coprire le righe basse del pannello View (avviso).
 > **Changelog 2026-11-06 (esiti di T5.8–T5.10)**: passo 7 allineato a Furnish/Clear come realizzati (pannello che si chiude dopo l'azione, Undo `action=stage`, id a contatori crescenti, chip `Agent` acceso, 5 rombi informativi per visitor e agent); calibrazione IWER con `pinch=grip`: mano a `T + (0,029; −0,0015; −0,045)` per i bersagli piccoli (rombi, righe del pannello); vedi `qa/scenarios/M5-agent.md`.
 
 **Milestone**: M5 · **Tipo**: PC (emulatore IWER via MCP `iwsdk-runtime`) · **Regole di `CLAUDE.md`**: tutte le non negoziabili (1, 2, 4, 5, 7, 8, 9, 10) · Vedi `docs/plans/M5.md`. Si esegue **per ultimo** (dopo S5.1–S5.9). Convenzioni: `qa/scenarios/M4-issue-create.md`.
@@ -26,7 +27,7 @@
 9. `Landlord`: elenco (`014, 013, 012, 010`), `Take on`, `Resolved` (S4.3).
 10. `Tenant`: `Confirm` sulla 014 (archiviata) e `Reopen` su un'altra.
 11. Accessibilità: alto contrasto e testo grande (S5.6 passi 2–3) e, con la sola destra, una segnalazione a testo grande.
-12. **Ripresa**: attesa 1,5 s, ricaricare **senza** `reset=1` e senza `role=`: stesso ruolo, stesse segnalazioni, stessi pezzi, stessa ora del sole, stesso contrasto; poi `F8`/`F9` (sospensione/ripresa simulate) con un pezzo in mano: nessun duplicato.
+12. **Ripresa**: attesa 1,5 s, ricaricare **senza** `reset=1` e senza `role=`: stesso ruolo, stesse segnalazioni, stessi pezzi, stessa ora del sole, stesso contrasto, `coach step=done reason=saved`; poi `F8`/`F9` (sospensione/ripresa simulate) con un pezzo in mano: nessun duplicato.
 13. Log senza filtro e per i filtri `[soglia:stats]`; pulizia.
 
 ## Verifiche (tutte obbligatorie)

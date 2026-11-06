@@ -4,6 +4,7 @@
 
 **Milestone**: M5 · **Tipo**: PC (emulatore IWER via MCP `iwsdk-runtime`); gli fps sono **solo informativi** · **Regola di `CLAUDE.md`**: 3 (prestazioni)
 > **Changelog 2026-11-06 (esiti di T5.7)**: il punto di controllo è stato eseguito (IWER, casa A, `time=2026-12-21T10:00`): **K1 47, K2 61, K3 69, K10 64, K17 64, caso peggiore 76, K12 29** chiamate per vista; gruppi `house` 24, `ui` 12, `sun` 2 (1 a scala reale: il quadrante è nascosto, le chiazze restano), `markers` 1; triangoli massimi 31.354. **Il caso peggiore (76) è sotto 85: T5.RA NON serve.** K14, K15, K16 e K18 restano da misurare (dopo T5.9, T5.14, T5.15 e a gate); K18 va rimisurato col ruolo `tenant` e le due etichette. Il pannello View ha per ora 4 righe, quindi K17 vale per quelle.
+> **Changelog 2026-11-06 (esiti di T5.11–T5.15)**: misurato **K16 = 57** a freddo con il coach (previsto 70) e **62** con il menu aperto e il coach `grab`; il **caso peggiore con alto contrasto e testo grande = 65** (nessun warning né errore; `toNonIndexed` non compare più). Alto contrasto e testo grande non costano chiamate (come previsto). K15 (Rotate visibile) non è stato letto a parte: il pulsante c'è solo per 12 s dopo la posa, rileggere entro 5 s dalla posa. Il testo grande di Issues e del menu v2 (T5.13 parte rimasta, T5.16) è **in corso**: le chiamate di K10/K3 a testo grande vanno rimisurate quando saranno consegnati.
 > **Changelog 2026-11-06 (esiti di T5.8–T5.10)**: **K14 misurato = 65** (previsto 66) con 14 pezzi + 5 rombi + pannello Issues sulla `home` dell'agente; gruppi `house` 24, `furniture` 14, `ui` 15, `markers` 2 (i rombi `pin:info-instances` costano +1), `sun` 2; triangoli 28.418. K18 **non è stato misurato con l'agente** (un pezzo in mano non valido con le due etichette): stima < 85, da misurare al gate; K15 e K16 restano da misurare.
 
 Prerequisiti di implementazione: T5.4, T5.5, T5.9, T5.14, T5.15 (il **punto di controllo T5.7** misura K1–K4 e K9–K12 appena esistono pulsanti, quadrante e chiazze, **prima** di T5.8). Stesse regole di lettura di `qa/scenarios/M3-budget.md` e `M4-budget.md` (`callsPerView = calls / views`, con un pannello aperto la fonte è la riga `[soglia:stats]`, mai `scene_get_render_stats`). Convenzioni: `qa/scenarios/M4-issue-create.md`.
@@ -31,9 +32,9 @@ Prerequisiti di implementazione: T5.4, T5.5, T5.9, T5.14, T5.15 (il **punto di c
 | K12 scala reale con "Tabletop" | 24 | **26** | 34 | **29** (+3 sulla previsione, sotto l'avviso) |
 | **K14** agente, 14 pezzi, pannello `home` | – | **66** | 74 | **65** (14 pezzi + 5 rombi + pannello Issues sulla `home` dell'agente) |
 | **K15** dopo una posa, con "Rotate" | – | **64** | 72 | da misurare |
-| **K16** a freddo con il coach | 59 | **70** | 78 | da misurare |
+| **K16** a freddo con il coach | 59 | **70** | 78 | **57** (con il coach `grab` e il menu aperto: **62**) |
 | **K17** pannello View aperto | – | **65** | 73 | **64** |
-| **K18** caso peggiore di M5 | – | **82** (alto 88) | 90 | da misurare al gate (finora 76 senza agente, Rotate e coach) |
+| **K18** caso peggiore di M5 | – | **82** (alto 88) | 90 | **65** con alto contrasto e testo grande attivi (misura di T5.11–T5.15); 76 era il caso peggiore di T5.7; da rimisurare al gate col pezzo non valido e le due etichette |
 
 ## Passi
 1. **K1–K4, K7, K9–K12** (punto di controllo T5.7): come `M3-budget.md`/`M4-budget.md`; in più `ecs_find_entities` `^ui:(menu|issue|view)-button-` (→ 6 nei casi con plastico, 0 nel punto di vista) e `^(sun|light):` (→ `sun:dial`, `sun:marker`, `light:patches`, ancore `light:win-*`).
