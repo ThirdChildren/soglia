@@ -81,9 +81,11 @@ export const VIEW_SUMMARY_HEIGHT = 3.4;
 export const VIEW_ROW_HEIGHT = 3.3;
 export const VIEW_ROW_GAP = 0.3;
 /** Width of the label, of a `-`/`+` button and of the value; the space between them (all cm). Their sum is inside the body (35.2). */
-export const VIEW_LABEL_WIDTH = 10.6;
+export const VIEW_LABEL_WIDTH = 11;
+/** Space left of the label inside its cell (the layout file says the same). */
+export const VIEW_LABEL_PADDING = 0.4;
 export const VIEW_BUTTON_WIDTH = 6;
-export const VIEW_VALUE_WIDTH = 11.2;
+export const VIEW_VALUE_WIDTH = 10.8;
 export const VIEW_CELL_GAP = 0.4;
 /** Width of a row (what the cells add up to) and of the body inside its border. */
 export const VIEW_ROW_WIDTH = VIEW_LABEL_WIDTH + VIEW_BUTTON_WIDTH + VIEW_VALUE_WIDTH + VIEW_BUTTON_WIDTH + 3 * VIEW_CELL_GAP;

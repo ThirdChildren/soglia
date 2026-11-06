@@ -48,10 +48,11 @@ import { fitName } from '../logic/text-fit';
 import { fitPanelToCone, panelConeAngleDeg, type ConeFit } from '../logic/view-fit';
 import { slog } from '../log';
 import { swarn } from '../log';
-import { applyPanelFont } from './fonts';
+import { applyPanelLook } from './panel-theme';
 import { BUTTON_ICONS } from './menu-icons';
 import { disposePanelEntity } from './panel-lifecycle';
 import { strings } from './strings';
+import { chipLook, getUiColors } from './theme';
 
 export type PalmMenuMode = 'palm' | 'pinned';
 
@@ -66,7 +67,6 @@ const MENU_RENDER_ORDER = 1000;
 const ICON_RENDER_ORDER = 1001;
 /** Icon size in UIKit units; an icon is scaled to fit its drawing, so the narrow chevrons are drawn smaller. */
 const ICON_SIZE: Readonly<Record<ButtonId, number>> = { undo: 2.4, prev: 2, next: 2, recenter: 2.4 };
-const ICON_COLOR = '#1a1a1a';
 const BUTTON_LABELS: Readonly<Record<ButtonId, string>> = {
   undo: strings.menu.undo,
   prev: strings.menu.previous,
@@ -75,9 +75,6 @@ const BUTTON_LABELS: Readonly<Record<ButtonId, string>> = {
 };
 /** Item cards of the panel (a 2 x 3 grid: two columns, three rows). */
 const SLOT_COUNT = 6;
-/** The active tab is drawn dark with light text, the others light with dark text (both pass 7:1 contrast). */
-const TAB_ACTIVE = { backgroundColor: '#1a1a1a', color: '#ffffff' } as const;
-const TAB_IDLE = { backgroundColor: '#ffffff', color: '#1a1a1a' } as const;
 
 /** What an item card shows. */
 export interface MenuItemContent {
@@ -266,7 +263,7 @@ export class PalmMenuPanel {
       const doc = entity.getValue(PanelDocument, 'document') as UiDocument | undefined;
       const title = doc?.getElementById<UIKit.Text>(TITLE_ELEMENT);
       if (title) {
-        applyPanelFont(doc, ROOT_ELEMENT);
+        applyPanelLook(doc, ROOT_ELEMENT);
         // The hand menu is never hidden by the model or the table that happen to be in front of it.
         this.root = doc?.getElementById<UIKit.Container>(ROOT_ELEMENT) ?? null;
         this.root?.setProperties({ depthTest: false, renderOrder: MENU_RENDER_ORDER, opacity: this.opacity });
@@ -369,7 +366,7 @@ export class PalmMenuPanel {
           new Icon({
             width: ICON_SIZE[button],
             height: ICON_SIZE[button],
-            color: ICON_COLOR,
+            color: getUiColors().ink,
             depthTest: false,
             renderOrder: ICON_RENDER_ORDER,
           }),
@@ -387,7 +384,7 @@ export class PalmMenuPanel {
     this.tabRow?.setProperties({ display: showRow ? 'flex' : 'none' });
     for (const [id, elements] of this.tabElements) {
       const visible = this.visibleTabs.includes(id);
-      const look = id === this.activeTab ? TAB_ACTIVE : TAB_IDLE;
+      const look = chipLook(id === this.activeTab);
       elements.tab?.setProperties({ display: visible ? 'flex' : 'none', backgroundColor: look.backgroundColor });
       elements.label?.setProperties({ color: look.color });
     }

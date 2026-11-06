@@ -7,8 +7,8 @@
 
 import { PanelDocument, PanelUI, type Entity, type UIKit, type World } from '@iwsdk/core';
 import { tagEntity } from '../components/tag-entity';
-import { applyPanelFont } from './fonts';
-import { uiColors } from './theme';
+import { applyPanelLook } from './panel-theme';
+import { getUiColors, onAccessChange } from './theme';
 
 /** The "Menu" button (8 x 6 cm), the "Issues" button above it (9 x 6 cm, T4.6a) and the "View" button above that (8 x 6 cm, T5.5): same look, own layout file. */
 export type ButtonPanelKind = 'menu' | 'issues' | 'view';
@@ -25,6 +25,8 @@ interface UiDocument {
 export class MenuButtonPanel {
   private readonly entity: Entity;
   private applied = false;
+  private root: UIKit.Container | null = null;
+  private label: UIKit.Text | null = null;
 
   constructor(
     world: World,
@@ -39,6 +41,8 @@ export class MenuButtonPanel {
     // Hidden until its content is in and it has a place.
     if (entity.object3D) entity.object3D.visible = false;
     this.entity = entity;
+    // A change of the contrast preference recolours the button where it is (the button lives for the whole session).
+    onAccessChange(() => this.paint());
   }
 
   /** True once the layout is loaded and filled in. */
@@ -68,14 +72,21 @@ export class MenuButtonPanel {
     const doc = this.entity.getValue(PanelDocument, 'document') as UiDocument | undefined;
     const text = doc?.getElementById<UIKit.Text>(TEXT_ELEMENT[this.kind]);
     if (!doc || !text) return;
-    applyPanelFont(doc, ROOT_ELEMENT[this.kind]);
-    doc.getElementById<UIKit.Container>(ROOT_ELEMENT[this.kind])?.setProperties({
-      backgroundColor: uiColors.surface,
-      borderColor: uiColors.ink,
-      depthTest: false,
-      renderOrder: BUTTON_RENDER_ORDER,
-    });
-    text.setProperties({ text: this.text, color: uiColors.ink });
+    applyPanelLook(doc, ROOT_ELEMENT[this.kind]);
+    this.root = doc.getElementById<UIKit.Container>(ROOT_ELEMENT[this.kind]);
+    this.root?.setProperties({ depthTest: false, renderOrder: BUTTON_RENDER_ORDER });
+    this.label = text;
+    text.setProperties({ text: this.text });
     this.applied = true;
+    this.paint();
+  }
+
+  /** Gives the button the colours of the preference that is on. Returns how many things it recoloured (0 before the layout has loaded). */
+  private paint(): number {
+    if (!this.applied || !this.root || !this.label) return 0;
+    const colors = getUiColors();
+    this.root.setProperties({ backgroundColor: colors.surface, borderColor: colors.border });
+    this.label.setProperties({ color: colors.ink });
+    return 1;
   }
 }

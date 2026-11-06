@@ -22,7 +22,7 @@ import { stableId } from '../logic/ids';
 import { slog } from '../log';
 import { placeRoomLabel, roomLabelMinY } from '../logic/room-label';
 import { yawTowardHead } from '../logic/view-fit';
-import { applyPanelFont } from './fonts';
+import { applyPanelLook } from './panel-theme';
 
 /** Manifest id of the layout (see src/assets.ts) and the id of its text element. */
 const PANEL_ASSET = 'room-label';
@@ -102,7 +102,7 @@ export class RoomLabelPanel {
       const element = doc?.getElementById<UIKit.Text>(TEXT_ELEMENT);
       if (element) {
         if (!this.fontApplied) {
-          applyPanelFont(doc, ROOT_ELEMENT);
+          applyPanelLook(doc, ROOT_ELEMENT);
           this.fontApplied = true;
         }
         doc?.getElementById<UIKit.Container>(ROOT_ELEMENT)?.setProperties({

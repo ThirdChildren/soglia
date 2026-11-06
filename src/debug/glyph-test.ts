@@ -16,7 +16,7 @@ import { StableId } from '../components/stable-id';
 import { tagEntity } from '../components/tag-entity';
 import { stableId } from '../logic/ids';
 import { slog } from '../log';
-import { applyPanelFont } from '../ui/fonts';
+import { applyPanelLook } from '../ui/panel-theme';
 
 const PANEL_ASSET = 'glyph-test';
 const PANEL_ID = stableId.ui('glyph-test');
@@ -58,7 +58,7 @@ export class GlyphTestSystem extends createSystem({
         if (entity.getValue(StableId, 'value') !== PANEL_ID) return;
         const doc = entity.getValue(PanelDocument, 'document') as UiDocument | undefined;
         if (!doc) return;
-        applyPanelFont(doc, 'glyph-test-root');
+        applyPanelLook(doc, 'glyph-test-root');
         doc.getElementById<UIKit.Text>('glyph-test-regular')?.setProperties({ text: LINE_SPECIMEN });
         doc.getElementById<UIKit.Text>('glyph-test-bold')?.setProperties({ text: LINE_SPECIMEN });
         doc.getElementById<UIKit.Text>('glyph-test-control')?.setProperties({ text: LINE_CONTROL });

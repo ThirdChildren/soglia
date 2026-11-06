@@ -12,10 +12,11 @@ import { pinnedAnchorPitchRad, pinnedConeAngleDeg, pinnedMenuAnchor, pitchOfForw
 import type { Vec3Like } from '../logic/palm';
 import { VIEW_PANEL_EXTENT, VIEW_ROWS, formatViewPanelView, type ViewModel, type ViewRowId } from '../logic/view-panel';
 import { slog } from '../log';
-import { applyPanelFont, panelFontSupports } from './fonts';
+import { panelFontSupports } from './fonts';
+import { applyPanelLook, applyPanelTheme } from './panel-theme';
 import { disposePanelEntity } from './panel-lifecycle';
 import { strings } from './strings';
-import { getUiColors } from './theme';
+import { onAccessChange } from './theme';
 
 const PANEL_ASSET = 'view-panel';
 const ROOT_ELEMENT = 'view-panel-root';
@@ -40,6 +41,8 @@ export class ViewPanel {
   private placed = false;
   private viewLogged = false;
   private model: ViewModel | null = null;
+  /** Stops listening to the contrast preference (set while the panel is open and has its document). */
+  private stopTheme: (() => void) | null = null;
   private summary: UIKit.Text | null = null;
   private readonly rows = new Map<ViewRowId, RowElements>();
   private readonly headPosition = new Vector3();
@@ -91,6 +94,8 @@ export class ViewPanel {
 
   /** Disposes the panel entity (deferred while its document is still loading: see panel-lifecycle.ts). */
   close(): void {
+    this.stopTheme?.();
+    this.stopTheme = null;
     if (this.entity) disposePanelEntity(this.entity);
     this.entity = null;
     this.applied = false;
@@ -139,22 +144,24 @@ export class ViewPanel {
     const doc = entity.getValue(PanelDocument, 'document') as UiDocument | undefined;
     const title = doc?.getElementById<UIKit.Text>('view-panel-title');
     if (!doc || !title) return;
-    applyPanelFont(doc, ROOT_ELEMENT);
+    applyPanelLook(doc, ROOT_ELEMENT);
     // Never hidden by the model or the table that happen to be in front of it (the menu does the same).
     doc.getElementById<UIKit.Container>(ROOT_ELEMENT)?.setProperties({ depthTest: false, renderOrder: PANEL_RENDER_ORDER });
-    const colors = getUiColors();
     const minus = panelFontSupports('−') ? '−' : strings.view.less;
-    title.setProperties({ text: strings.view.title, color: colors.ink });
+    title.setProperties({ text: strings.view.title });
     this.summary = doc.getElementById<UIKit.Text>('view-panel-summary');
-    doc.getElementById<UIKit.Text>('view-panel-close-label')?.setProperties({ text: strings.view.close, color: colors.ink });
+    doc.getElementById<UIKit.Text>('view-panel-close-label')?.setProperties({ text: strings.view.close });
     for (const row of VIEW_ROWS) {
       const label = doc.getElementById<UIKit.Text>(`view-panel-${row}-label`);
       const value = doc.getElementById<UIKit.Text>(`view-panel-${row}-value`);
-      doc.getElementById<UIKit.Text>(`view-panel-${row}-less-label`)?.setProperties({ text: minus, color: colors.ink });
-      doc.getElementById<UIKit.Text>(`view-panel-${row}-more-label`)?.setProperties({ text: strings.view.more, color: colors.ink });
-      label?.setProperties({ text: strings.view.rows[row], color: colors.ink });
+      doc.getElementById<UIKit.Text>(`view-panel-${row}-less-label`)?.setProperties({ text: minus });
+      doc.getElementById<UIKit.Text>(`view-panel-${row}-more-label`)?.setProperties({ text: strings.view.more });
+      label?.setProperties({ text: strings.view.rows[row] });
       this.rows.set(row, { label, value });
     }
+    // The panel is where the contrast switch is: it must restyle itself where it is, without being rebuilt.
+    this.stopTheme?.();
+    this.stopTheme = onAccessChange(() => applyPanelTheme(doc, ROOT_ELEMENT));
     this.applied = true;
     this.writeModel();
   }

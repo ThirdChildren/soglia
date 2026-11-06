@@ -25,7 +25,7 @@ import { slog } from '../log';
 import { BASE_RADIUS, BASE_TOP } from '../logic/constants';
 import { MINIATURE_ROOT_ID, TABLE_PLINTH_ID } from '../logic/ids';
 import { computeAnchor, SCALE, yawFromForward } from '../logic/placement';
-import { palette } from '../ui/theme';
+import { getPalette, onAccessChange } from '../ui/theme';
 
 /** The base is BASE_RADIUS (9 real metres: 0.45 m in the world at 1:20) wide and 0.02 m thick in the world at 1:20. */
 const PLINTH_THICKNESS = 0.02;
@@ -183,7 +183,12 @@ export function createMiniature(world: World, onPlaced?: PlacedListener): Miniat
     PLINTH_THICKNESS / SCALE,
     48,
   );
-  const material = new MeshStandardMaterial({ color: palette.base, roughness: 1, metalness: 0 });
+  const material = new MeshStandardMaterial({ color: getPalette().base, roughness: 1, metalness: 0 });
+  // The contrast preference darkens the table under the model where it is.
+  onAccessChange(() => {
+    material.color.setHex(getPalette().base);
+    return 1;
+  });
   const mesh = new Mesh(geometry, material);
   mesh.position.y = PLINTH_TOP - PLINTH_THICKNESS / SCALE / 2;
   const plinth = world.createTransformEntity(mesh, root);

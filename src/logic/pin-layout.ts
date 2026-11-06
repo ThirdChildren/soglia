@@ -245,17 +245,19 @@ export function pinRingPose(
 
 /**
  * World position of the centre of the head of a pin, for the pick: the tip through `planToWorld` (scale, yaw and position of
- * the root; `center` is the plan centre that sits on the root origin) and then the head height, which is constant in the world.
+ * the root; `center` is the plan centre that sits on the root origin) and then the head height, which is constant in the world
+ * (times `size`, the size of the drawn pin: 1, or 1.3 in high contrast, D58).
  */
 export function pinHeadWorld(
   pin: Readonly<Pick<PinView, 'x' | 'y' | 'z'>>,
   root: Readonly<MiniatureRoot>,
   center: Readonly<[number, number]>,
   out: Vec3Tuple = [0, 0, 0],
+  size = 1,
 ): Vec3Tuple {
   const plan: Vec3Tuple = [pin.x, pin.z, pin.y];
   planToWorld(plan, root, center, out);
-  out[1] += PIN_HEAD_CENTER_WORLD;
+  out[1] += PIN_HEAD_CENTER_WORLD * (Number.isFinite(size) && size > 0 ? size : 1);
   return out;
 }
 

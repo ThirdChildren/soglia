@@ -64,6 +64,7 @@ import { loadPanelFonts } from './ui/fonts';
 import { FurnitureVisuals } from './ui/furniture-visuals';
 import { strings } from './ui/strings';
 import { startupAccessLines } from './logic/access';
+import { installAccess } from './systems/access';
 
 async function start(): Promise<void> {
   const devFileParams = await loadDevParams();
@@ -161,6 +162,8 @@ async function start(): Promise<void> {
     })) {
       slog(line);
     }
+    // The theme before anything is built (the model, the panels), then it follows the store (D58).
+    installAccess(store);
     // The sun time: `time=` (already in the store), else the saved one, else the local time of the house now (D54).
     const { lat, lon } = result.house.location;
     let sunSource: SunTimeSource = timeExplicit ? 'url' : 'saved';

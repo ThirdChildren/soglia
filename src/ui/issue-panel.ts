@@ -43,10 +43,11 @@ import { PANEL_CENTER } from '../logic/menu';
 import { pinnedAnchorPitchRad, pinnedConeAngleDeg, pinnedMenuAnchor, pitchOfForward, yawOfForward } from '../logic/menu-anchor';
 import type { Vec3Like } from '../logic/palm';
 import { slog } from '../log';
-import { applyPanelFont, panelFontSupports } from './fonts';
+import { panelFontSupports } from './fonts';
+import { applyPanelLook } from './panel-theme';
 import { disposePanelEntity } from './panel-lifecycle';
 import { strings } from './strings';
-import { uiColors } from './theme';
+import { chipLook as themeChipLook } from './theme';
 
 const PANEL_ASSET = 'issue-panel';
 const ROOT_ELEMENT = 'issue-panel-root';
@@ -59,9 +60,8 @@ const HOME_ELEMENT = 'issue-panel-home';
 const HINT_ELEMENT = 'issue-panel-hint';
 const NOTE_BOX_ELEMENT = 'issue-panel-note-box';
 const NOTE_ELEMENT = 'issue-panel-note';
-/** The active chip is drawn dark with light text, the others light with dark text (the same look as the active tab of the menu). */
-const CHIP_ACTIVE = { backgroundColor: '#1a1a1a', color: '#ffffff' } as const;
-const CHIP_IDLE = { backgroundColor: uiColors.surface, color: uiColors.ink } as const;
+/** The active chip is drawn dark with light text, the others light with dark text (the same look as the active tab of the menu); the colours follow the contrast preference. */
+const chipLook = themeChipLook;
 /** The two boxes of the row of buttons of `home`, left and right: the layout calls them after the buttons of the roles that see issues. */
 const HOME_ACTION_ELEMENTS: readonly string[] = ['open-list', 'open-movein'];
 const NEW_ELEMENT = 'issue-panel-new';
@@ -424,7 +424,7 @@ export class IssuePanel {
     const doc = entity.getValue(PanelDocument, 'document') as UiDocument | undefined;
     const title = doc?.getElementById<UIKit.Text>(TITLE_ELEMENT);
     if (!doc || !title) return;
-    applyPanelFont(doc, ROOT_ELEMENT);
+    applyPanelLook(doc, ROOT_ELEMENT);
     // Never hidden by the model or the table that happen to be in front of it (the menu does the same).
     doc.getElementById<UIKit.Container>(ROOT_ELEMENT)?.setProperties({ depthTest: false, renderOrder: PANEL_RENDER_ORDER });
     this.title = title;
@@ -589,7 +589,7 @@ export class IssuePanel {
     }
     const { role, issueCount, staging } = this.homeModel;
     for (const [chipRole, chip] of this.chips) {
-      const look = chipRole === role ? CHIP_ACTIVE : CHIP_IDLE;
+      const look = chipLook(chipRole === role);
       chip.box?.setProperties({ backgroundColor: look.backgroundColor });
       chip.label?.setProperties({ color: look.color });
     }
@@ -710,7 +710,7 @@ export class IssuePanel {
    */
   private writeMoveIn(page: MoveInPage): void {
     const m = this.movein;
-    const look = page.toggleOn ? CHIP_ACTIVE : CHIP_IDLE;
+    const look = chipLook(page.toggleOn);
     m.toggle?.setProperties({ backgroundColor: look.backgroundColor });
     m.toggleLabel?.setProperties({ text: page.toggleLabel, color: look.color });
     m.toggleState?.setProperties({ text: page.toggleState, color: look.color });
@@ -724,7 +724,7 @@ export class IssuePanel {
       const row = page.rows[i];
       elements.row?.setProperties({ display: row ? 'flex' : 'none' });
       if (!row) continue;
-      const rowLook = row.selected ? CHIP_ACTIVE : CHIP_IDLE;
+      const rowLook = chipLook(row.selected);
       elements.row?.setProperties({ backgroundColor: rowLook.backgroundColor });
       elements.dot?.setProperties({ backgroundColor: hexColor(row.color) });
       elements.text?.setProperties({ text: row.text, color: rowLook.color });
@@ -742,7 +742,7 @@ export class IssuePanel {
       const row: ListRow | undefined = list.rows[i];
       elements.wrapper?.setProperties({ display: row ? 'flex' : 'none' });
       if (!row) continue;
-      const look = row.selected ? CHIP_ACTIVE : CHIP_IDLE;
+      const look = chipLook(row.selected);
       elements.heading?.setProperties({ display: row.heading ? 'flex' : 'none' });
       if (row.heading) elements.headingLabel?.setProperties({ text: list.historyText });
       elements.row?.setProperties({ backgroundColor: look.backgroundColor });
@@ -777,7 +777,7 @@ export class IssuePanel {
 
   private writeCell(elements: ChipElements | undefined, cell: FormCell, sized: boolean): void {
     if (!elements) return;
-    const look = cell.selected ? CHIP_ACTIVE : CHIP_IDLE;
+    const look = chipLook(cell.selected);
     if (sized) elements.box?.setProperties({ display: 'flex', width: cell.width, backgroundColor: look.backgroundColor });
     else elements.box?.setProperties({ backgroundColor: look.backgroundColor });
     elements.label?.setProperties({ text: cell.label, color: look.color });

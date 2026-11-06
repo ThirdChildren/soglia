@@ -8,7 +8,8 @@ import { tagEntity } from '../components/tag-entity';
 import { swarn } from '../log';
 import { stableId } from '../logic/ids';
 import { yawTowardHead } from '../logic/view-fit';
-import { applyPanelFont } from './fonts';
+import { applyPanelLook } from './panel-theme';
+import { getUiColors } from './theme';
 import { HINT_ICON } from './menu-icons';
 import { disposePanelEntity } from './panel-lifecycle';
 
@@ -18,7 +19,6 @@ const TEXT_ELEMENT = 'menu-hint-text';
 const ICON_ELEMENT = 'menu-hint-icon';
 const HINT_RENDER_ORDER = 1000;
 const ICON_SIZE = 3.2;
-const ICON_COLOR = '#1a1a1a';
 
 interface UiDocument {
   getElementById: <T>(id: string) => T | null;
@@ -78,7 +78,7 @@ export class MenuHintPanel {
     const doc = entity.getValue(PanelDocument, 'document') as UiDocument | undefined;
     const text = doc?.getElementById<UIKit.Text>(TEXT_ELEMENT);
     if (!doc || !text) return;
-    applyPanelFont(doc, ROOT_ELEMENT);
+    applyPanelLook(doc, ROOT_ELEMENT);
     doc.getElementById<UIKit.Container>(ROOT_ELEMENT)?.setProperties({
       depthTest: false,
       renderOrder: HINT_RENDER_ORDER,
@@ -91,7 +91,7 @@ export class MenuHintPanel {
           new HINT_ICON({
             width: ICON_SIZE,
             height: ICON_SIZE,
-            color: ICON_COLOR,
+            color: getUiColors().ink,
             depthTest: false,
             renderOrder: HINT_RENDER_ORDER,
           }),

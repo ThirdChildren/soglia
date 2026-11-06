@@ -31,6 +31,7 @@ import {
   VIEW_CONTROL_IDS,
   VIEW_CONTROL_SLOTS,
   VIEW_HEADER_HEIGHT,
+  VIEW_LABEL_PADDING,
   VIEW_LABEL_WIDTH,
   VIEW_MIN_TEXT_SIZE,
   VIEW_PANEL,
@@ -205,7 +206,10 @@ describe('the text is at least 2.4 cm and fits where it is drawn', () => {
   });
 
   it('the labels fit their cell, the values fit theirs (the longest value of each row), and the sun line fits the body', () => {
-    for (const row of VIEW_ROWS) expect(width(strings.view.rows[row], 2.4, BOLD), row).toBeLessThanOrEqual(VIEW_LABEL_WIDTH);
+    // The label cell has a little padding on the left (the layout file), and the `-` button follows at once: keep 2 mm free on the right.
+    for (const row of VIEW_ROWS) {
+      expect(width(strings.view.rows[row], 2.4, BOLD), row).toBeLessThanOrEqual(VIEW_LABEL_WIDTH - VIEW_LABEL_PADDING - 0.2);
+    }
     const longest = ['240%', '345°', 'Sep', '23:00', '10:00', 'Normal', 'Large', 'On', 'Off'];
     for (const v of longest) expect(width(v, 2.4, BOLD), v).toBeLessThanOrEqual(VIEW_VALUE_WIDTH - 0.8);
     for (const sun of [strings.view.sun(67, 'SW'), strings.view.sun(0, 'NW'), strings.view.sunDown]) {

@@ -27,11 +27,11 @@ import {
 import { tagEntity } from '../components/tag-entity';
 import { slog } from '../log';
 import { CUT_HEIGHT } from '../logic/constants';
-import type { House, Wall } from '../logic/house';
+import type { FloorMaterial, House, Wall } from '../logic/house';
 import { openingPlacement, planCenter, polygonRelativeTo, roomOrigin } from '../logic/house-layout';
 import { stableId } from '../logic/ids';
 import { boxesToBuffers, buildWallBoxes } from '../logic/wall-mesh';
-import { floorColor, palette } from '../ui/theme';
+import { floorColor, getPalette, onAccessChange } from '../ui/theme';
 
 /** Door strips sit this far above the floor (metres) to avoid z-fighting with it. */
 const DOOR_LIFT = 0.01;
@@ -104,11 +104,19 @@ export function buildHouse(world: World, house: House, parent: Entity): BuiltHou
 
   // Shared materials: one per floor type used, one for all walls, one for all door strips.
   const floorMaterials = new Map<string, MeshStandardMaterial>();
-  const wallMaterial = material(palette.wall);
-  const doorMaterial = material(palette.door, {
+  const wallMaterial = material(getPalette().wall);
+  const doorMaterial = material(getPalette().door, {
     polygonOffset: true,
     polygonOffsetFactor: -2,
     polygonOffsetUnits: -2,
+  });
+
+  // The contrast preference recolours the shared materials where they are (white walls, darker floors, lighter thresholds).
+  const stopAccess = onAccessChange(() => {
+    wallMaterial.color.setHex(getPalette().wall);
+    doorMaterial.color.setHex(getPalette().door);
+    for (const [key, floorMaterial] of floorMaterials) floorMaterial.color.setHex(floorColor(key as FloorMaterial));
+    return 2 + floorMaterials.size;
   });
 
   const [cx, cz] = planCenter(house);
@@ -195,6 +203,7 @@ export function buildHouse(world: World, house: House, parent: Entity): BuiltHou
       for (const g of geometries) g.dispose();
       for (const item of wallMeshes) item.mesh.geometry.dispose();
       for (const m of materials) m.dispose();
+      stopAccess();
       if (activeHouse === built) activeHouse = null;
     },
   };

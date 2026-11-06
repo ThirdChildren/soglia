@@ -8,8 +8,8 @@
 import { PanelDocument, PanelUI, type Entity, type Object3D, type UIKit, type World } from '@iwsdk/core';
 import { tagEntity } from '../components/tag-entity';
 import { stableId } from '../logic/ids';
-import { applyPanelFont } from './fonts';
-import { fitColors } from './theme';
+import { applyPanelLook } from './panel-theme';
+import { getFitColors } from './theme';
 import { disposePanelEntity } from './panel-lifecycle';
 
 const PANEL_ASSET = 'fit-label';
@@ -29,13 +29,13 @@ interface UiDocument {
 function borderFor(tone: FitTone): string {
   switch (tone) {
     case 'fits':
-      return fitColors.fits;
+      return getFitColors().fits;
     case 'blocked':
-      return fitColors.blocked;
+      return getFitColors().blocked;
     case 'disassembled':
-      return fitColors.disassembled;
+      return getFitColors().disassembled;
     case 'no-route':
-      return fitColors.noRoute;
+      return getFitColors().noRoute;
   }
 }
 
@@ -85,7 +85,7 @@ export class FitLabelPanel {
     const note = doc?.getElementById<UIKit.Text>(NOTE_ELEMENT);
     if (!doc || !text || !note) return;
     if (!this.fontApplied) {
-      applyPanelFont(doc, ROOT_ELEMENT);
+      applyPanelLook(doc, ROOT_ELEMENT);
       this.fontApplied = true;
     }
     doc.getElementById<UIKit.Container>(ROOT_ELEMENT)?.setProperties({

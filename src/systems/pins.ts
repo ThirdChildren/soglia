@@ -48,6 +48,7 @@ import type { Role } from '../logic/params';
 import type { Store } from '../logic/state';
 import type { InstancedMarkers } from '../ui/instanced-markers';
 import { createInfoPinMarkers, createPinMarkers } from '../ui/pin-markers';
+import { HIGH_CONTRAST_PIN_SCALE, isHighContrast, onAccessChange } from '../ui/theme';
 import { isRealScale } from './view-mode';
 
 interface PinsContext {
@@ -155,14 +156,20 @@ function makeAnchor(ctx: PinsContext, id: string, place: Readonly<Vec3Tuple>): E
   return entity;
 }
 
+/** The size of a drawn pin: 1, or 30 % more in high contrast (D58). The head of the pick follows it. */
+function pinSize(): number {
+  return isHighContrast() ? HIGH_CONTRAST_PIN_SCALE : 1;
+}
+
 /** Rewrites the instances for the current scale of the model (no allocation): the pins, then the draft right after them. */
 function writeInstances(ctx: PinsContext): void {
   const scale = rootScale(ctx);
   ctx.scale = scale;
+  const size = pinSize();
   const count = ctx.pins.length;
   for (let i = 0; i < count; i += 1) {
     const pin = ctx.pins[i];
-    if (pinInstancePose(pin, scale, 1, ctx.pose)) ctx.markers.set(i, ctx.pose, pin.color);
+    if (pinInstancePose(pin, scale, size, ctx.pose)) ctx.markers.set(i, ctx.pose, pin.color);
     else ctx.markers.hide(i);
   }
   let end = count;
@@ -192,7 +199,7 @@ function writeInstances(ctx: PinsContext): void {
   // The diamonds of the info points: their own mesh, nothing but the instances.
   const infoCount = ctx.infoPins.length;
   for (let i = 0; i < infoCount; i += 1) {
-    if (pinInstancePose(ctx.infoPins[i], scale, 1, ctx.pose)) ctx.infoMarkers.set(i, ctx.pose, ctx.infoPins[i].color);
+    if (pinInstancePose(ctx.infoPins[i], scale, size, ctx.pose)) ctx.infoMarkers.set(i, ctx.pose, ctx.infoPins[i].color);
     else ctx.infoMarkers.hide(i);
   }
   for (let i = infoCount; i < ctx.infoWritten; i += 1) ctx.infoMarkers.hide(i);
@@ -315,8 +322,9 @@ export function pickPinAt(point: Readonly<Vec3Tuple>): string | null {
   r.z = object.position.z;
   r.yawRad = object.rotation.y;
   r.scale = object.scale.x;
+  const size = pinSize();
   for (let i = 0; i < ctx.pins.length; i += 1) {
-    pinHeadWorld(ctx.pins[i], r, ctx.center, ctx.headScratch);
+    pinHeadWorld(ctx.pins[i], r, ctx.center, ctx.headScratch, size);
     const head = ctx.heads[i];
     head.id = ctx.pins[i].id;
     head.x = ctx.headScratch[0];
@@ -325,7 +333,7 @@ export function pickPinAt(point: Readonly<Vec3Tuple>): string | null {
   }
   const offset = ctx.pins.length;
   for (let i = 0; i < ctx.infoPins.length; i += 1) {
-    pinHeadWorld(ctx.infoPins[i], r, ctx.center, ctx.headScratch);
+    pinHeadWorld(ctx.infoPins[i], r, ctx.center, ctx.headScratch, size);
     const head = ctx.heads[offset + i];
     head.id = ctx.infoPins[i].id;
     head.x = ctx.headScratch[0];
@@ -345,6 +353,11 @@ export class PinsSystem extends createSystem({}) {
         if (state.issues !== seen.issues || state.role !== seen.role || state.prefs.moveInVisible !== seen.moveIn) {
           ctx.dirty = true;
         }
+      }),
+      // A change of the contrast preference makes the pins bigger or smaller where they are.
+      onAccessChange(() => {
+        writeInstances(ctx);
+        return ctx.pins.length + ctx.infoPins.length;
       }),
       () => {
         for (const entity of ctx.entities.values()) entity.dispose({ disposeResources: false });
