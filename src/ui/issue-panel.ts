@@ -36,7 +36,7 @@ import {
 import { LIST_BAR_BUTTON_WIDTH, LIST_PAGE_SIZE, listBarWidth, type ListPage, type ListRow } from '../logic/issue-list';
 import { MOVEIN_MAX_ROWS, type MoveInPage } from '../logic/issue-movein';
 import { ISSUE_URGENCIES } from '../logic/issues';
-import type { Role } from '../logic/params';
+import { ROLES, type Role } from '../logic/params';
 import { PANEL_CENTER } from '../logic/menu';
 import { pinnedAnchorPitchRad, pinnedConeAngleDeg, pinnedMenuAnchor, pitchOfForward, yawOfForward } from '../logic/menu-anchor';
 import type { Vec3Like } from '../logic/palm';
@@ -482,10 +482,13 @@ export class IssuePanel {
     this.hint = doc.getElementById<UIKit.Text>(HINT_ELEMENT);
     this.noteBox = doc.getElementById<UIKit.Container>(NOTE_BOX_ELEMENT);
     this.note = doc.getElementById<UIKit.Text>(NOTE_ELEMENT);
-    for (const role of HOME_ROLES) {
+    for (const role of ROLES) {
       const label = doc.getElementById<UIKit.Text>(`issue-panel-role-${role}-label`);
       label?.setProperties({ text: strings.issues.roles[role] });
-      this.chips.set(role, { box: doc.getElementById<UIKit.Container>(`issue-panel-role-${role}`), label });
+      const box = doc.getElementById<UIKit.Container>(`issue-panel-role-${role}`);
+      // A role that is not available yet has no chip: the other chips keep their places (T5.R3).
+      if (!HOME_ROLES.includes(role)) box?.setProperties({ display: 'none' });
+      else this.chips.set(role, { box, label });
     }
     for (const id of HOME_ACTION_IDS) {
       this.actions.set(id, {
@@ -537,10 +540,6 @@ export class IssuePanel {
     if (detail) {
       if (detailShown) this.writeDetail(detail);
       else this.note?.setProperties({ text: detail.missingText });
-      return;
-    }
-    if (!isHome) {
-      this.note?.setProperties({ text: strings.issues.comingSoon });
       return;
     }
     const { role, issueCount } = this.homeModel;

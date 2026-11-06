@@ -11,6 +11,7 @@ import {
   HOME_GAP_Y,
   HOME_HINT_HEIGHT,
   HOME_HINT_TOP_Y,
+  AGENT_ROLE_AVAILABLE,
   HOME_ROLES,
   HOME_TOP_Y,
   ISSUE_BAR_HEIGHT,
@@ -45,16 +46,30 @@ import { loadJson, readText } from '../helpers/load-json';
 const ALL_ROLES: readonly Role[] = ['visitor', 'agent', 'tenant', 'landlord'];
 
 describe('the controls of home for each role', () => {
-  const chips = ['role-visitor', 'role-agent', 'role-tenant', 'role-landlord'];
+  // The Agent chip is hidden until T5.10 turns AGENT_ROLE_AVAILABLE on (T5.R3): then there are four chips again.
+  const chips = ['visitor', 'agent', 'tenant', 'landlord']
+    .filter((r) => r !== 'agent' || AGENT_ROLE_AVAILABLE)
+    .map((r) => `role-${r}`);
 
-  it('the visitor and the agent have the four chips and Close, nothing else', () => {
+  it.skipIf(AGENT_ROLE_AVAILABLE)('while the Agent role is not available, home has three chips and no Agent chip (T5.R3)', () => {
+    expect(chips).toEqual(['role-visitor', 'role-tenant', 'role-landlord']);
+    for (const role of ALL_ROLES) {
+      expect(homeControls(role)).not.toContain('role-agent');
+      expect(screenControls('home', role)).not.toContain('role-agent');
+    }
+    expect([...HOME_ROLES]).toEqual(['visitor', 'tenant', 'landlord']);
+    // an agent that came in through role=agent still has Close and no buttons
+    expect(homeControls('agent')).toEqual([...chips, 'close']);
+  });
+
+  it('the visitor and the agent have the chips and Close, nothing else', () => {
     for (const role of ['visitor', 'agent'] as const) {
       expect(homeControls(role), role).toEqual([...chips, 'close']);
       expect(homeActions(role), role).toEqual([]);
     }
   });
 
-  it('the tenant and the landlord have the four chips, the list, the move-in report and Close', () => {
+  it('the tenant and the landlord have the chips, the list, the move-in report and Close', () => {
     for (const role of ['tenant', 'landlord'] as const) {
       expect(homeControls(role), role).toEqual([...chips, 'open-list', 'open-movein', 'close']);
       expect(homeActions(role), role).toEqual(['open-list', 'open-movein']);
@@ -78,15 +93,17 @@ describe('the controls of home for each role', () => {
   });
 
   it('the stable ids are the ones of the plan', () => {
-    expect(HOME_ROLES.map((r) => controlStableId(roleControlId(r)))).toEqual([
-      'ui:issue-role-visitor',
-      'ui:issue-role-agent',
-      'ui:issue-role-tenant',
-      'ui:issue-role-landlord',
-    ]);
+    expect(HOME_ROLES.map((r) => controlStableId(roleControlId(r)))).toEqual(
+      [
+        'ui:issue-role-visitor',
+        'ui:issue-role-agent',
+        'ui:issue-role-tenant',
+        'ui:issue-role-landlord',
+      ].filter((id) => id !== 'ui:issue-role-agent' || AGENT_ROLE_AVAILABLE),
+    );
     expect(controlStableId('open-list')).toBe('ui:issue-open-list');
     expect(controlStableId('open-movein')).toBe('ui:issue-open-movein');
-    expect([...HOME_ROLES]).toEqual([...ROLES]);
+    expect([...HOME_ROLES]).toEqual(ROLES.filter((r) => r !== 'agent' || AGENT_ROLE_AVAILABLE));
   });
 
   it('roleOfControl reads the chips and nothing else', () => {
@@ -105,10 +122,10 @@ describe('the controls of home for each role', () => {
 });
 
 describe('the hint of home', () => {
-  it('the tenant is told how to report, the visitor to pick a role, the agent that its tools come later, the landlord nothing', () => {
+  it('the tenant is told how to report, the visitor to pick a role, the agent and the landlord nothing (no "coming soon")', () => {
     expect(homeHint('tenant')).toBe('report');
     expect(homeHint('visitor')).toBe('pick-role');
-    expect(homeHint('agent')).toBe('agent-soon');
+    expect(homeHint('agent')).toBeNull();
     expect(homeHint('landlord')).toBeNull();
   });
 
@@ -159,7 +176,7 @@ describe('the slots of home', () => {
   });
 
   it('the chips are two by two, in reading order, and the buttons sit under the hint with the footer below them', () => {
-    const [visitor, agent, tenant, landlord] = HOME_ROLES.map((r) => CONTROL_SLOTS[roleControlId(r)]);
+    const [visitor, agent, tenant, landlord] = ROLES.map((r) => CONTROL_SLOTS[roleControlId(r)]);
     expect(visitor.dy).toBeCloseTo(agent.dy, 12);
     expect(tenant.dy).toBeCloseTo(landlord.dy, 12);
     expect(visitor.dx).toBeLessThan(0);
@@ -298,12 +315,12 @@ describe('the texts fit where they are drawn', () => {
     expect(2 * 2.4 * 1 + 2 * BORDER).toBeLessThanOrEqual(HOME_ACTION_HEIGHT);
   });
 
-  it('every hint fits the three lines that are kept for it, and "Coming soon" fits one', () => {
+  it('every hint fits the three lines that are kept for it; no text in view says "coming soon"', () => {
     for (const text of Object.values(strings.issues.hints)) {
       expect(lines(text, 2.4, REGULAR, 34.4), text).toBeLessThanOrEqual(3);
     }
     expect(3 * 2.4 * 1).toBeLessThanOrEqual(HOME_HINT_HEIGHT + 1e-9);
-    expect(lines(strings.issues.comingSoon, 2.4, REGULAR, 34.4)).toBe(1);
+    expect(JSON.stringify(strings).toLowerCase()).not.toContain('coming soon');
   });
 });
 

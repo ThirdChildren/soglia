@@ -90,7 +90,6 @@ export const strings = {
     hints: {
       report: 'Hold a pinch on an appliance or a spot to report an issue.',
       'pick-role': 'Pick Tenant to report an issue or Landlord to manage them.',
-      'agent-soon': 'Info points for agents are coming soon.',
     },
     /** The categories and the phrases of the form of a new issue (D40): the tables live in src/logic/issue-text.ts, which builds the saved sentence from the same labels. */
     categories: CATEGORY_LABELS,
@@ -157,7 +156,6 @@ export const strings = {
       close: 'Close',
     },
     /** Body of a screen that has no content yet (shown only for the instant before its model is written). */
-    comingSoon: 'Coming soon',
     /** Title of each screen. */
     screens: {
       home: 'Issues',

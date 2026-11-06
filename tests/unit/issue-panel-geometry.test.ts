@@ -21,6 +21,7 @@ import {
 } from '../../src/logic/menu-button';
 import {
   CONTROL_SLOTS,
+  HOME_ROLES,
   HOME_SCREEN,
   ISSUE_BAR_BUTTON_WIDTH,
   ISSUE_BAR_HEIGHT,
@@ -260,8 +261,8 @@ describe('the model of the screens', () => {
   });
 
   it('the controls of a screen: Close always, Back outside home; the ids are the stable ids of the plan', () => {
-    // `home` also has the four role chips (and the buttons of the role): the exact sets per role are in issue-panel-home.test.ts.
-    expect(screenControls('home', 'visitor')).toEqual(['role-visitor', 'role-agent', 'role-tenant', 'role-landlord', 'close']);
+    // `home` also has the role chips (and the buttons of the role): the exact sets per role are in issue-panel-home.test.ts.
+    expect(screenControls('home', 'visitor')).toEqual([...HOME_ROLES.map((r) => `role-${r}`), 'close']);
     for (const screen of ISSUE_SCREENS.filter((s) => s !== 'home' && s !== 'new')) {
       for (const role of ['visitor', 'agent', 'tenant', 'landlord'] as const) expect(screenControls(screen, role)).toEqual(['back', 'close']);
     }

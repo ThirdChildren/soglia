@@ -46,8 +46,14 @@ export function backVisible(screen: IssueScreen): boolean {
   return backTarget(screen) !== null;
 }
 
-/** The roles of the grid of `home`, in reading order (two per row): the same order as `ROLES`. */
-export const HOME_ROLES: readonly Role[] = ROLES;
+/**
+ * True once the Agent role has something to do (T5.10 turns it on): until then its chip is hidden, so nothing in view
+ * says "coming soon" (T5.R3, D63). Typed `boolean`, not the literal, so the branches stay checked.
+ */
+export const AGENT_ROLE_AVAILABLE: boolean = false;
+
+/** The roles that have a chip on `home`, in reading order (two per row): the order of `ROLES` without the ones not available yet. */
+export const HOME_ROLES: readonly Role[] = ROLES.filter((role) => role !== 'agent' || AGENT_ROLE_AVAILABLE);
 
 /** The id of a role chip (`role-tenant`) and the two buttons of `home`. */
 export type RoleControlId = `role-${Role}`;
@@ -92,7 +98,7 @@ export function homeActions(role: Role): readonly HomeActionId[] {
   return actions;
 }
 
-/** The controls of `home` for `role`, in the order of the layout: the four chips, the buttons, `Close`. */
+/** The controls of `home` for `role`, in the order of the layout: the chips (the available roles), the buttons, `Close`. */
 export function homeControls(role: Role): readonly StaticControlId[] {
   return [...HOME_ROLES.map(roleControlId), ...homeActions(role), 'close'];
 }
@@ -113,14 +119,13 @@ export function controlStableId(id: IssueControlId): string {
   return `ui:issue-${id}`;
 }
 
-/** What the line under the chips says: how to report (who can), pick a role (the visitor), or that the agent has no tool yet. */
-export type HomeHint = 'report' | 'pick-role' | 'agent-soon';
+/** What the line under the chips says: how to report (who can), or pick a role (the visitor). */
+export type HomeHint = 'report' | 'pick-role';
 
 /** The hint of `home` for `role`, or null when it needs none (the landlord). */
 export function homeHint(role: Role): HomeHint | null {
   if (can(role, 'create')) return 'report';
   if (role === 'visitor') return 'pick-role';
-  if (role === 'agent') return 'agent-soon';
   return null;
 }
 
