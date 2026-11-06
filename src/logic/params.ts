@@ -15,6 +15,10 @@ export type FurnishStyle = (typeof FURNISH_STYLES)[number];
 export const PINCH_MODES = ['auto', 'grip', 'joints'] as const;
 export type PinchMode = (typeof PINCH_MODES)[number];
 
+/** `text=normal|large`: the size of the text of panels and labels (D58). */
+export const TEXT_SIZES = ['normal', 'large'] as const;
+export type TextSize = (typeof TEXT_SIZES)[number];
+
 export type ParamKey =
   | 'house'
   | 'role'
@@ -28,7 +32,9 @@ export type ParamKey =
   | 'failmodels'
   | 'failmy'
   | 'failcatalog'
-  | 'pinch';
+  | 'pinch'
+  | 'contrast'
+  | 'text';
 
 export type ParamsSource = 'url' | 'dev-file' | 'default';
 
@@ -71,6 +77,10 @@ export interface Params {
    * session provides them; `grip` always uses the grip space, as in M2 (to re-run the older QA scenarios).
    */
   pinch: PinchMode;
+  /** `contrast=1|0`: high-contrast colours (D58). Named in the URL or the dev file it beats the saved preference, `0` included. */
+  contrast: boolean;
+  /** `text=large|normal`: large text, 3.0 cm (D58). Named in the URL or the dev file it beats the saved preference. */
+  text: TextSize;
 }
 
 export interface ParsedParams {
@@ -108,6 +118,8 @@ export const DEFAULT_PARAMS: Readonly<Params> = Object.freeze({
   failmy: false,
   failcatalog: false,
   pinch: 'auto',
+  contrast: false,
+  text: 'normal',
 });
 
 /** Letters, digits, `_` and `-` only: no dots, slashes, spaces or markup. */
@@ -175,6 +187,11 @@ const FIELD_PARSERS: { [K in ParamKey]: (raw: string) => FieldResult<Params[K]> 
     (PINCH_MODES as readonly string[]).includes(raw)
       ? { ok: true, value: raw as PinchMode }
       : { ok: false, reason: `expected one of ${PINCH_MODES.join(', ')}` },
+  contrast: parseFlag,
+  text: (raw) =>
+    (TEXT_SIZES as readonly string[]).includes(raw)
+      ? { ok: true, value: raw as TextSize }
+      : { ok: false, reason: `expected one of ${TEXT_SIZES.join(', ')}` },
 };
 
 const KEYS = Object.keys(FIELD_PARSERS) as ParamKey[];
@@ -275,7 +292,9 @@ export function formatParamsLine(source: ParamsSource, p: Params): string {
   const withFail = p.failmodels ? `${line} failmodels=true` : line;
   const withMy = p.failmy ? `${withFail} failmy=true` : withFail;
   const withCatalog = p.failcatalog ? `${withMy} failcatalog=true` : withMy;
-  return p.pinch === 'auto' ? withCatalog : `${withCatalog} pinch=${p.pinch}`;
+  const withPinch = p.pinch === 'auto' ? withCatalog : `${withCatalog} pinch=${p.pinch}`;
+  const withContrast = p.contrast ? `${withPinch} contrast=1` : withPinch;
+  return p.text === 'large' ? `${withContrast} text=large` : withContrast;
 }
 
 /** True when the warnings include a discarded `house` value (the app then logs that it kept the default home). */

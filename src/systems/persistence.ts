@@ -34,6 +34,9 @@ export interface RestoreOutcome {
   roleRestored: boolean;
   /** True when the sun time of the store came from the saved state (not from `time=`, not the default), D54. */
   sunRestored: boolean;
+  /** True when a saved `contrast` / `largeText` of `true` came back (not named in the URL), for the `access ... source=saved` line (D58). */
+  contrastRestored: boolean;
+  textRestored: boolean;
 }
 
 /**
@@ -54,8 +57,10 @@ export function restoreSavedState(
   ignoreFurniture: boolean,
   roleExplicit = false,
   timeExplicit = false,
+  contrastExplicit = false,
+  textExplicit = false,
 ): RestoreOutcome {
-  const nothing: RestoreOutcome = { parked: [], roleRestored: false, sunRestored: false };
+  const nothing: RestoreOutcome = { parked: [], roleRestored: false, sunRestored: false, contrastRestored: false, textRestored: false };
   if (!storage.available()) return nothing;
   const key = storageKey(store.get().houseId);
   const saved = storage.get(key);
@@ -71,6 +76,8 @@ export function restoreSavedState(
     ignoreFurniture,
     roleExplicit,
     timeExplicit,
+    contrastExplicit,
+    textExplicit,
   });
   if (picked === null) {
     swarn(`state discarded key=${key} reason=invalid`);
@@ -87,7 +94,13 @@ export function restoreSavedState(
     slog(`state restored pieces=${store.get().furniture.length} key=${key}`);
   }
   if (store.get().issues.length > 0) slog(`issues restored count=${store.get().issues.length} key=${key}`);
-  return { parked: picked.parked, roleRestored: picked.role !== null, sunRestored: picked.sunTime !== null };
+  return {
+    parked: picked.parked,
+    roleRestored: picked.role !== null,
+    sunRestored: picked.sunTime !== null,
+    contrastRestored: picked.prefs.contrast === true,
+    textRestored: picked.prefs.largeText === true,
+  };
 }
 
 /**

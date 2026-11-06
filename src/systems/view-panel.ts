@@ -18,6 +18,7 @@
 import { createSystem, Vector3, type World } from '@iwsdk/core';
 import { slog } from '../log';
 import type { House } from '../logic/house';
+import { formatAccessContrast, formatAccessText } from '../logic/access';
 import { pickRect, type PickSlot } from '../logic/menu';
 import { pinnedPanelPoint } from '../logic/menu-anchor';
 import type { AppState, Store } from '../logic/state';
@@ -27,12 +28,15 @@ import {
   formatViewPanelOpened,
   formatViewStep,
   rowOfControl,
+  toggleOfControl,
   viewControlSlots,
   viewControlStableId,
   viewStepFor,
+  viewToggleFor,
   type ViewControlId,
   type ViewPanelCloseVia,
   type ViewRowId,
+  type ViewStep,
   type ViewTexts,
 } from '../logic/view-panel';
 import { MenuAnchor } from '../ui/menu-anchor';
@@ -98,6 +102,7 @@ function viewTexts(): ViewTexts {
     sun: (altitudeDeg, compass) => strings.view.sun(altitudeDeg, compass, ascii),
     sunDown: strings.view.sunDown,
     turn: (degrees) => strings.view.turn(degrees, ascii),
+    switches: strings.view.switches,
   };
 }
 
@@ -140,7 +145,15 @@ export class ViewPanelSystem extends createSystem({}) {
     const { lat, lon } = ctx.house.location;
     ctx.panel.setModel(
       buildViewModel(
-        { scale: state.miniature.scale, yawDeg: state.miniature.yawDeg, sunTime: state.sunTime, lat, lon },
+        {
+          scale: state.miniature.scale,
+          yawDeg: state.miniature.yawDeg,
+          sunTime: state.sunTime,
+          lat,
+          lon,
+          contrast: state.prefs.contrast,
+          largeText: state.prefs.largeText,
+        },
         viewTexts(),
       ),
     );
@@ -251,6 +264,11 @@ export class ViewPanelSystem extends createSystem({}) {
       this.close('close');
       return;
     }
+    const flip = toggleOfControl(hit.id);
+    if (flip !== null) {
+      this.applyStep(ctx, flip, viewToggleFor(ctx.store.get(), flip));
+      return;
+    }
     const press = rowOfControl(hit.id);
     if (press !== null) this.pressRow(ctx, press.row, press.delta);
   }
@@ -262,8 +280,14 @@ export class ViewPanelSystem extends createSystem({}) {
    * A step that cannot go on (the end of the ladder) leaves the state as it is and says `limit=1`.
    */
   private pressRow(ctx: ViewPanelContext, row: ViewRowId, delta: -1 | 1): void {
-    const step = viewStepFor(ctx.store.get(), row, delta);
+    this.applyStep(ctx, row, viewStepFor(ctx.store.get(), row, delta));
+  }
+
+  /** Dispatches a step and logs it; a switch also says `access ... source=ui` (the part that applies it is src/systems/access.ts). */
+  private applyStep(ctx: ViewPanelContext, row: ViewRowId, step: ViewStep): void {
     ctx.store.dispatch(step.action);
     slog(formatViewStep(row, step.value, step.extra));
+    if (row === 'contrast') slog(formatAccessContrast(ctx.store.get().prefs.contrast, 'ui'));
+    else if (row === 'text') slog(formatAccessText(ctx.store.get().prefs.largeText, 'ui'));
   }
 }

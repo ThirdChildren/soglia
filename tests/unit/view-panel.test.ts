@@ -52,9 +52,11 @@ import {
   rowControlId,
   rowOfControl,
   sunSummary,
+  toggleOfControl,
   viewControlSlots,
   viewControlStableId,
   viewStepFor,
+  viewToggleFor,
   type ViewControlId,
   type ViewRowId,
   type ViewTexts,
@@ -107,6 +109,7 @@ const TEXTS: ViewTexts = {
   sun: (alt, compass) => strings.view.sun(alt, compass),
   sunDown: strings.view.sunDown,
   turn: (d) => strings.view.turn(d),
+  switches: strings.view.switches,
 };
 
 describe('the panel is as big as the menu and its layout file says so', () => {
@@ -203,7 +206,7 @@ describe('the text is at least 2.4 cm and fits where it is drawn', () => {
 
   it('the labels fit their cell, the values fit theirs (the longest value of each row), and the sun line fits the body', () => {
     for (const row of VIEW_ROWS) expect(width(strings.view.rows[row], 2.4, BOLD), row).toBeLessThanOrEqual(VIEW_LABEL_WIDTH);
-    const longest = ['240%', '345°', 'Sep', '23:00', '10:00'];
+    const longest = ['240%', '345°', 'Sep', '23:00', '10:00', 'Normal', 'Large', 'On', 'Off'];
     for (const v of longest) expect(width(v, 2.4, BOLD), v).toBeLessThanOrEqual(VIEW_VALUE_WIDTH - 0.8);
     for (const sun of [strings.view.sun(67, 'SW'), strings.view.sun(0, 'NW'), strings.view.sunDown]) {
       expect(width(sun, 2.4, REGULAR), sun).toBeLessThanOrEqual(VIEW_BODY_INNER_WIDTH - 0.8);
@@ -254,7 +257,10 @@ describe('the panel is in the cone of 30 degrees at 0.5-0.65 m for the whole win
 
 describe('the controls', () => {
   it('have one `-` and one `+` per row and a Close, with ids `ui:view-<row>-less|more` and `ui:view-close`', () => {
-    expect(VIEW_CONTROL_IDS).toHaveLength(VIEW_ROWS.length * 2 + 1);
+    // `-` and `+` of the six rows, the value cell of the two switches (`ui:view-contrast`, `ui:view-text`) and Close.
+    expect(VIEW_CONTROL_IDS).toHaveLength(VIEW_ROWS.length * 2 + 2 + 1);
+    expect(viewControlStableId('contrast')).toBe('ui:view-contrast');
+    expect(viewControlStableId('text')).toBe('ui:view-text');
     expect(viewControlStableId('hour-more')).toBe('ui:view-hour-more');
     expect(viewControlStableId('zoom-less')).toBe('ui:view-zoom-less');
     expect(viewControlStableId('close')).toBe('ui:view-close');
@@ -292,11 +298,15 @@ describe('the controls', () => {
 
 describe('the model of the rows', () => {
   const inputs = { scale: 0.065, yawDeg: 30, sunTime: '2026-12-21T10:00', lat: 45.07, lon: 7.69 };
-  it('shows zoom, turn, month and hour in that order', () => {
+  it('shows zoom, turn, month, hour, contrast and text in that order', () => {
     const m = buildViewModel(inputs, TEXTS);
-    expect(m.rows.map((r) => r.id)).toEqual(['zoom', 'turn', 'month', 'hour']);
-    expect(m.rows.map((r) => r.label)).toEqual(['Zoom', 'Turn', 'Month', 'Hour']);
-    expect(m.rows.map((r) => r.value)).toEqual(['130%', '30°', 'Dec', '10:00']);
+    expect(m.rows.map((r) => r.id)).toEqual(['zoom', 'turn', 'month', 'hour', 'contrast', 'text']);
+    expect(m.rows.map((r) => r.label)).toEqual(['Zoom', 'Turn', 'Month', 'Hour', 'Contrast', 'Text']);
+    expect(m.rows.map((r) => r.value)).toEqual(['130%', '30°', 'Dec', '10:00', 'Off', 'Normal']);
+  });
+  it('shows the two switches as On and Large when the preferences are on', () => {
+    const m = buildViewModel({ ...inputs, contrast: true, largeText: true }, TEXTS);
+    expect(m.rows.slice(4).map((r) => r.value)).toEqual(['On', 'Large']);
   });
   it('says where the sun is: 21 Dec 10:00 is 13 degrees up in the south-east', () => {
     expect(buildViewModel(inputs, TEXTS).summary).toBe('Sun 13° SE');
@@ -311,8 +321,55 @@ describe('the model of the rows', () => {
   });
   it('follows the store: another hour or month changes the values', () => {
     const m = buildViewModel({ ...inputs, sunTime: '2026-06-21T14:00', scale: 0.03, yawDeg: 345 }, TEXTS);
-    expect(m.rows.map((r) => r.value)).toEqual(['60%', '345°', 'Jun', '14:00']);
+    expect(m.rows.map((r) => r.value)).toEqual(['60%', '345°', 'Jun', '14:00', 'Off', 'Normal']);
     expect(m.summary).toMatch(/^Sun 6\d° (S|SW)$/);
+  });
+});
+
+describe('the switch rows (T5.11)', () => {
+  const state = (contrast: boolean, largeText: boolean): AppState => ({
+    ...createInitialState({ ...DEFAULT_PARAMS }),
+    prefs: { ...createInitialState({ ...DEFAULT_PARAMS }).prefs, contrast, largeText },
+  });
+  it('`-` turns a switch off and `+` turns it on, whatever it was', () => {
+    for (const [row, setting] of [['contrast', 'contrast'], ['text', 'largeText']] as const) {
+      for (const was of [false, true]) {
+        const s = state(was, was);
+        const on = reduce(s, viewStepFor(s, row, 1).action).prefs[setting];
+        const off = reduce(s, viewStepFor(s, row, -1).action).prefs[setting];
+        expect([row, on]).toEqual([row, true]);
+        expect([row, off]).toEqual([row, false]);
+      }
+    }
+  });
+  it('the value cell flips the switch', () => {
+    const off = state(false, false);
+    const flipped = reduce(off, viewToggleFor(off, 'contrast').action);
+    expect(flipped.prefs.contrast).toBe(true);
+    expect(flipped.prefs.largeText).toBe(false);
+    expect(reduce(flipped, viewToggleFor(flipped, 'contrast').action).prefs.contrast).toBe(false);
+    expect(reduce(off, viewToggleFor(off, 'text').action).prefs.largeText).toBe(true);
+  });
+  it('says on/off and large/normal in the step line', () => {
+    const off = state(false, false);
+    expect(viewStepFor(off, 'contrast', 1).value).toBe('on');
+    expect(viewStepFor(off, 'text', 1).value).toBe('large');
+    expect(viewToggleFor(state(true, true), 'text').value).toBe('normal');
+    expect(formatViewStep('contrast', 'on')).toBe('view step row=contrast value=on');
+  });
+  it('the value cell of a switch is a control on the row, between `-` and `+`, and nothing else covers it', () => {
+    for (const row of ['contrast', 'text'] as const) {
+      const cell = VIEW_CONTROL_SLOTS[row];
+      const less = VIEW_CONTROL_SLOTS[rowControlId(row, 'less')];
+      const more = VIEW_CONTROL_SLOTS[rowControlId(row, 'more')];
+      expect(cell.dy).toBeCloseTo(less.dy, 12);
+      expect(cell.halfWidth * 200).toBeCloseTo(VIEW_VALUE_WIDTH, 9);
+      expect(less.dx + less.halfWidth).toBeLessThan(cell.dx - cell.halfWidth);
+      expect(cell.dx + cell.halfWidth).toBeLessThan(more.dx - more.halfWidth);
+      expect(toggleOfControl(row)).toBe(row);
+    }
+    expect(toggleOfControl('zoom-more')).toBeNull();
+    expect(toggleOfControl('close')).toBeNull();
   });
 });
 

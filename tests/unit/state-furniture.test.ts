@@ -284,7 +284,7 @@ describe('serialize and deserialize with furniture', () => {
     const restored = deserialize(JSON.stringify(m1));
     expect(restored).not.toBeNull();
     expect(restored?.miniature).toEqual({ scale: 0.07, yawDeg: 12, offset: [0, 0] });
-    expect(restored?.prefs).toEqual({ onboardingStep: 'done', menuOpened: false, moveInVisible: false });
+    expect(restored?.prefs).toEqual({ onboardingStep: 'done', menuOpened: false, moveInVisible: false, contrast: false, largeText: false });
     expect(restored?.furniture).toEqual([]);
     expect(restored?.nextInstance).toEqual({});
     expect(restored?.history).toEqual([]);

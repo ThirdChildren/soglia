@@ -63,6 +63,7 @@ import { ErrorPanelSystem, showErrorPanel } from './ui/error-panel';
 import { loadPanelFonts } from './ui/fonts';
 import { FurnitureVisuals } from './ui/furniture-visuals';
 import { strings } from './ui/strings';
+import { startupAccessLines } from './logic/access';
 
 async function start(): Promise<void> {
   const devFileParams = await loadDevParams();
@@ -124,6 +125,11 @@ async function start(): Promise<void> {
     // An explicit `time=` beats the saved sun time (D54, D62); without one the saved time comes back, else now.
     const timeExplicit = explicit.includes('time');
     let sunRestored = false;
+    // Likewise `contrast=` and `text=` beat the saved accessibility preferences, `0` and `normal` too (D58).
+    const contrastExplicit = explicit.includes('contrast');
+    const textExplicit = explicit.includes('text');
+    let contrastSaved = false;
+    let textSaved = false;
     // Also without a catalog (T5.R2): role, issues and preferences come back and are saved; the saved pieces stay parked.
     {
       const restored = restoreSavedState(
@@ -134,12 +140,27 @@ async function start(): Promise<void> {
         params.furnish !== 'none',
         roleExplicit,
         timeExplicit,
+        contrastExplicit,
+        textExplicit,
       );
       roleRestored = restored.roleRestored;
       sunRestored = restored.sunRestored;
+      contrastSaved = restored.contrastRestored;
+      textSaved = restored.textRestored;
       persistence = attachPersistence(store, storage, restored.parked);
     }
     slog(`role set ${store.get().role} source=${roleExplicit ? 'url' : roleRestored ? 'saved' : 'default'}`);
+    const { prefs } = store.get();
+    for (const line of startupAccessLines({
+      contrast: prefs.contrast,
+      largeText: prefs.largeText,
+      contrastExplicit,
+      textExplicit,
+      contrastSaved,
+      textSaved,
+    })) {
+      slog(line);
+    }
     // The sun time: `time=` (already in the store), else the saved one, else the local time of the house now (D54).
     const { lat, lon } = result.house.location;
     let sunSource: SunTimeSource = timeExplicit ? 'url' : 'saved';

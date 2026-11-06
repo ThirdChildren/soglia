@@ -10,16 +10,24 @@
 
 import { MENU_EXTENT, MENU_PANEL, MIN_TEXT_SIZE, type HalfSize, type Offset, type PanelExtent } from './menu';
 import { ISSUE_BAR_BUTTON_WIDTH, ISSUE_BAR_HEIGHT, ISSUE_BODY_BORDER, ISSUE_HEADER_HEIGHT, ISSUE_SECTION_GAP } from './issue-panel';
-import { setMiniature, stepSunTime, type Action, type AppState } from './state';
+import { setContrast, setLargeText, setMiniature, stepSunTime, type Action, type AppState } from './state';
 import { compassName, localToUtcMs, sunPosition } from './sun';
 import { MONTH_NAMES, hourLabel, monthLabel, stepHour, stepMonth } from './sun-time';
 import { formatTurn, formatZoom, stepTurn, stepZoom } from './view-steps';
 
-/** The rows of the panel, top to bottom. T5.11 appends `contrast` and `text`. */
-export const VIEW_ROWS = ['zoom', 'turn', 'month', 'hour'] as const;
+/** The rows of the panel, top to bottom: the four that step a value, then the two accessibility switches (T5.11, D58). */
+export const VIEW_ROWS = ['zoom', 'turn', 'month', 'hour', 'contrast', 'text'] as const;
 export type ViewRowId = (typeof VIEW_ROWS)[number];
 
-export type ViewControlId = `${ViewRowId}-less` | `${ViewRowId}-more` | 'close';
+/** The rows that are an on/off switch: `-` turns it off, `+` on, and the value between them flips it (`ui:view-contrast`, `ui:view-text`). */
+export const VIEW_TOGGLE_ROWS = ['contrast', 'text'] as const;
+export type ViewToggleRowId = (typeof VIEW_TOGGLE_ROWS)[number];
+
+export function isToggleRow(row: ViewRowId): row is ViewToggleRowId {
+  return (VIEW_TOGGLE_ROWS as readonly string[]).includes(row);
+}
+
+export type ViewControlId = `${ViewRowId}-less` | `${ViewRowId}-more` | ViewToggleRowId | 'close';
 
 /** Id of the `-` or `+` control of a row, and the other way round. */
 export function rowControlId(row: ViewRowId, direction: 'less' | 'more'): ViewControlId {
@@ -40,11 +48,17 @@ export function viewControlStableId(id: ViewControlId): string {
   return `ui:view-${id}`;
 }
 
-/** Every control id of the panel, `close` last. */
+/** Every control id of the panel: the `-` and `+` of each row, the value of the two switches, then `close`. */
 export const VIEW_CONTROL_IDS: readonly ViewControlId[] = [
   ...VIEW_ROWS.flatMap((row) => [rowControlId(row, 'less'), rowControlId(row, 'more')]),
+  ...VIEW_TOGGLE_ROWS,
   'close',
 ];
+
+/** The switch row a control id flips (the value cell of a switch row), or null. */
+export function toggleOfControl(id: string): ViewToggleRowId | null {
+  return (VIEW_TOGGLE_ROWS as readonly string[]).includes(id) ? (id as ViewToggleRowId) : null;
+}
 
 /** Why the panel closed (the `via=` of the `view panel closed` line). */
 export type ViewPanelCloseVia = 'button' | 'close' | 'menu' | 'panel' | 'suspend' | 'view';
@@ -108,6 +122,7 @@ export const VIEW_CONTROL_SLOTS: Readonly<Record<ViewControlId, ViewControlSlot>
     [rowControlId(row, 'less'), slot(rowControlId(row, 'less'), VIEW_LESS_CENTRE_X, rowCentreY(index), VIEW_BUTTON_WIDTH, VIEW_ROW_HEIGHT)],
     [rowControlId(row, 'more'), slot(rowControlId(row, 'more'), VIEW_MORE_CENTRE_X, rowCentreY(index), VIEW_BUTTON_WIDTH, VIEW_ROW_HEIGHT)],
   ]),
+  ...VIEW_TOGGLE_ROWS.map((row) => [row, slot(row, VIEW_VALUE_CENTRE_X, rowCentreY(VIEW_ROWS.indexOf(row)), VIEW_VALUE_WIDTH, VIEW_ROW_HEIGHT)]),
   ['close', slot('close', (VIEW_PANEL.width / 2 - ISSUE_BAR_BUTTON_WIDTH / 2), VIEW_BAR_HEIGHT / 2, ISSUE_BAR_BUTTON_WIDTH, VIEW_BAR_HEIGHT)],
 ]) as Record<ViewControlId, ViewControlSlot>;
 
@@ -125,6 +140,8 @@ export interface ViewTexts {
   readonly sunDown: string;
   /** `15°` or `15 deg`. */
   readonly turn: (degrees: string) => string;
+  /** The values of the two switches. */
+  readonly switches: { readonly on: string; readonly off: string; readonly normal: string; readonly large: string };
 }
 
 export interface ViewRowModel {
@@ -145,6 +162,9 @@ export interface ViewInputs {
   readonly sunTime: string;
   readonly lat: number;
   readonly lon: number;
+  /** The accessibility preferences (T5.11); absent means off. */
+  readonly contrast?: boolean;
+  readonly largeText?: boolean;
 }
 
 /** The line that says where the sun is: `Sun 14° SE` (altitude rounded down to whole degrees), or that it is below the horizon. */
@@ -168,6 +188,10 @@ export function buildViewModel(inputs: Readonly<ViewInputs>, texts: ViewTexts): 
         return monthLabel(inputs.sunTime);
       case 'hour':
         return hourLabel(inputs.sunTime);
+      case 'contrast':
+        return inputs.contrast === true ? texts.switches.on : texts.switches.off;
+      case 'text':
+        return inputs.largeText === true ? texts.switches.large : texts.switches.normal;
     }
   };
   return {
@@ -185,12 +209,26 @@ export interface ViewStep {
   readonly extra: string;
 }
 
+/** The step that sets a switch row on or off; `value` is what the `view step` line says (`on`, `off`, `large`, `normal`). */
+function switchStep(row: ViewToggleRowId, on: boolean): ViewStep {
+  return row === 'contrast'
+    ? { action: setContrast(on), value: on ? 'on' : 'off', extra: '' }
+    : { action: setLargeText(on), value: on ? 'large' : 'normal', extra: '' };
+}
+
 /**
  * The step a press on a row makes, from the state before it. `hour` and `month` step the sun time (hour wraps on the same day, month
  * wraps in the same year), `zoom` goes one rung of the ladder and `turn` 15 degrees. The `value` is what the row will show after it.
  */
-export function viewStepFor(state: Pick<AppState, 'miniature' | 'sunTime'>, row: ViewRowId, delta: -1 | 1): ViewStep {
+export function viewStepFor(
+  state: Pick<AppState, 'miniature' | 'sunTime'> & { readonly prefs?: Pick<AppState['prefs'], 'contrast' | 'largeText'> },
+  row: ViewRowId,
+  delta: -1 | 1,
+): ViewStep {
   switch (row) {
+    case 'contrast':
+    case 'text':
+      return switchStep(row, delta > 0);
     case 'hour': {
       const action = stepSunTime('hour', delta);
       return { action, value: hourLabel(stepHour(state.sunTime, delta)), extra: '' };
@@ -212,6 +250,15 @@ export function viewStepFor(state: Pick<AppState, 'miniature' | 'sunTime'>, row:
       return { action: setMiniature(state.miniature.scale, yaw), value: formatTurn(yaw), extra: '' };
     }
   }
+}
+
+/** A press on the value of a switch row flips it: the same step as `-` or `+`, whichever is the other way. */
+export function viewToggleFor(
+  state: { readonly prefs?: Pick<AppState['prefs'], 'contrast' | 'largeText'> },
+  row: ViewToggleRowId,
+): ViewStep {
+  const on = row === 'contrast' ? state.prefs?.contrast === true : state.prefs?.largeText === true;
+  return switchStep(row, !on);
 }
 
 // --- Log lines ----------------------------------------------------------------------------------------------------------

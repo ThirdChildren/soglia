@@ -41,6 +41,8 @@ describe('parseParams defaults', () => {
       failmy: false,
       failcatalog: false,
       pinch: 'auto',
+      contrast: false,
+      text: 'normal',
     });
   });
 
@@ -250,7 +252,7 @@ describe('parseParams time', () => {
 
 describe('parseParams multiple keys', () => {
   it('parses every key in one query string', () => {
-    const r = parseParams('house=apartment-b&role=landlord&reset=1&seed=7&time=2026-12-21T10:00&debug=1&mr=1&glyphs=1&furnish=scandinavian&failmodels=1&failmy=1&failcatalog=1&pinch=grip');
+    const r = parseParams('house=apartment-b&role=landlord&reset=1&seed=7&time=2026-12-21T10:00&debug=1&mr=1&glyphs=1&furnish=scandinavian&failmodels=1&failmy=1&failcatalog=1&pinch=grip&contrast=1&text=large');
     expect(r.params).toEqual({
       house: 'apartment-b',
       role: 'landlord',
@@ -265,8 +267,10 @@ describe('parseParams multiple keys', () => {
       failmy: true,
       failcatalog: true,
       pinch: 'grip',
+      contrast: true,
+      text: 'large',
     });
-    expect([...r.present].sort()).toEqual(['debug', 'failcatalog', 'failmodels', 'failmy', 'furnish', 'glyphs', 'house', 'mr', 'pinch', 'reset', 'role', 'seed', 'time']);
+    expect([...r.present].sort()).toEqual(['contrast', 'debug', 'failcatalog', 'failmodels', 'failmy', 'furnish', 'glyphs', 'house', 'mr', 'pinch', 'reset', 'role', 'seed', 'text', 'time']);
     expect(r.warnings).toEqual([]);
   });
 
@@ -295,7 +299,7 @@ describe('parseParams multiple keys', () => {
     expect(r.params.house).toBe('apartment-b');
     expect(r.present).toEqual(['house']);
     expect(r.warnings).toEqual([]);
-    expect(Object.keys(r.params).sort()).toEqual(['debug', 'failcatalog', 'failmodels', 'failmy', 'furnish', 'glyphs', 'house', 'mr', 'pinch', 'reset', 'role', 'seed', 'time']);
+    expect(Object.keys(r.params).sort()).toEqual(['contrast', 'debug', 'failcatalog', 'failmodels', 'failmy', 'furnish', 'glyphs', 'house', 'mr', 'pinch', 'reset', 'role', 'seed', 'text', 'time']);
   });
 
   it('ignores key names that differ only by case', () => {
@@ -461,6 +465,39 @@ describe('mergeParams', () => {
     const m = mergeParams(none, parseParams(query));
     expect(m.params[key]).toEqual(parseParams(query).params[key]);
     expect(m.params[key]).not.toEqual(DEFAULT_PARAMS[key]);
+  });
+});
+
+describe('contrast and text (T5.11, D58)', () => {
+  it('reads 1 and 0 for contrast and normal and large for text', () => {
+    expect(parseParams('contrast=1').params.contrast).toBe(true);
+    expect(parseParams('contrast=0').params.contrast).toBe(false);
+    expect(parseParams('text=large').params.text).toBe('large');
+    expect(parseParams('text=normal').params.text).toBe('normal');
+  });
+
+  it('ignores a bad value with one warning and keeps the default', () => {
+    for (const query of ['contrast=on', 'contrast=2', 'text=huge', 'text=']) {
+      const r = parseParams(query);
+      expect(r.warnings, query).toHaveLength(1);
+      expect(r.present, query).toEqual([]);
+    }
+    expect(parseParams('text=huge').params.text).toBe('normal');
+  });
+
+  it('counts an explicit 0 and normal as named (they beat the saved value), also from the dev file', () => {
+    const m = mergeParams(parseParams(''), parseParams('contrast=0&text=normal'));
+    expect(m.explicit).toEqual(expect.arrayContaining(['contrast', 'text']));
+    expect(m.params.contrast).toBe(false);
+    expect(m.params.text).toBe('normal');
+    expect(mergeParams(parseParams('text=large'), parseParams('text=normal')).params.text).toBe('large');
+  });
+
+  it('adds contrast=1 and text=large to the log line only when they are on', () => {
+    const base = { ...DEFAULT_PARAMS };
+    expect(formatParamsLine('url', base)).not.toContain('contrast');
+    expect(formatParamsLine('url', base)).not.toContain('text=');
+    expect(formatParamsLine('url', { ...base, contrast: true, text: 'large' })).toMatch(/ contrast=1 text=large$/);
   });
 });
 

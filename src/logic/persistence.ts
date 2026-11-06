@@ -3,7 +3,7 @@
 // is `src/data/storage.ts`, the wiring is `src/systems/persistence.ts`.
 
 import { serialize, deserializeWithReport, SCALE, TABLETOP_VIEW } from './state';
-import type { AppState, DiscardedIssue, FurnitureSnapshot, StoredIssue, ViewState } from './state';
+import type { AppState, DiscardedIssue, FurnitureSnapshot, RestorePrefs, StoredIssue, ViewState } from './state';
 import { MAX_PIECES, type PlacedPiece } from './placement-rules';
 import type { Role } from './params';
 
@@ -52,6 +52,10 @@ export interface RestoreContext {
   roleExplicit?: boolean;
   /** True when `time=` was named in the URL or the dev file: it beats the saved sun time (D54, D62). */
   timeExplicit?: boolean;
+  /** True when `contrast=` was named in the URL or the dev file: it beats the saved preference (D58). */
+  contrastExplicit?: boolean;
+  /** True when `text=` was named in the URL or the dev file: it beats the saved preference (D58). */
+  textExplicit?: boolean;
 }
 
 /** The part of a saved state that is put back (the whitelist of D29). */
@@ -59,7 +63,7 @@ export interface Restorable {
   furniture: PlacedPiece[];
   nextInstance: Record<string, number>;
   history: FurnitureSnapshot[];
-  prefs: AppState['prefs'];
+  prefs: RestorePrefs;
   /** The saved view if its viewpoint exists in the open house, else the tabletop. */
   view: ViewState;
   /** The saved role, or null when `roleExplicit` (the session keeps the role the URL named, D41). */
@@ -92,7 +96,7 @@ function dropReasonOf(piece: PlacedPiece, ctx: RestoreContext): DropReason | nul
 
 /**
  * Reads a saved state (the JSON text) and returns only what may be restored: `furniture`, `nextInstance`,
- * `history`, `prefs` (`onboardingStep`, `menuOpened`, `moveInVisible`) and `view` (only a viewpoint that exists in
+ * `history`, `prefs` (`onboardingStep`, `menuOpened`, `moveInVisible`, and since M5 `contrast`, `largeText`: not when named in the URL) and `view` (only a viewpoint that exists in
  * the open house, `ctx.viewpointIds`; any other saved view becomes the tabletop), and, since M4 (D41, D44), `role`
  * (null when `ctx.roleExplicit`: the URL wins), `issues` (a malformed one goes away alone), `nextIssue` and
  * `issuesSeeded`, and, since M5 (D54, D62), `sunTime` (null when none was saved or `ctx.timeExplicit`). NOT `selectedRoomId` (its label would not exist), `miniature` (the model is placed again every
@@ -115,6 +119,14 @@ export function pickRestorable(saved: string, ctx: RestoreContext): Restorable |
     discardedIssues,
   };
 
+  // `contrast` and `text` named in the URL win over the saved ones (D58): left out here, the session keeps its own.
+  const { contrast, largeText, ...otherPrefs } = state.prefs;
+  const prefs: RestorePrefs = {
+    ...otherPrefs,
+    ...(ctx.contrastExplicit === true ? {} : { contrast }),
+    ...(ctx.textExplicit === true ? {} : { largeText }),
+  };
+
   const dropped: DroppedPiece[] = [];
   const parked: PlacedPiece[] = [];
   const nextInstance: Record<string, number> = { ...state.nextInstance };
@@ -123,7 +135,7 @@ export function pickRestorable(saved: string, ctx: RestoreContext): Restorable |
       ? { kind: 'viewpoint', id: state.view.id }
       : TABLETOP_VIEW;
   if (ctx.ignoreFurniture === true) {
-    return { furniture: [], nextInstance: {}, history: [], prefs: { ...state.prefs }, view, dropped, parked, ...m4 };
+    return { furniture: [], nextInstance: {}, history: [], prefs, view, dropped, parked, ...m4 };
   }
 
   const furniture: PlacedPiece[] = [];
@@ -152,7 +164,7 @@ export function pickRestorable(saved: string, ctx: RestoreContext): Restorable |
     });
   }
 
-  return { furniture, nextInstance, history, prefs: { ...state.prefs }, view, dropped, parked, ...m4 };
+  return { furniture, nextInstance, history, prefs, view, dropped, parked, ...m4 };
 }
 
 /**

@@ -110,6 +110,10 @@ export interface AppState {
     readonly menuOpened: boolean;
     /** Show the move-in (`baseline`) pins on the model (D48). Saved. */
     readonly moveInVisible: boolean;
+    /** High-contrast colours for the panels and the model (M5, D58). Saved; `contrast=` in the URL wins over the saved value. */
+    readonly contrast: boolean;
+    /** Large text (3.0 cm instead of 2.4) in the panels and the labels (M5, D58). Saved; `text=` in the URL wins. */
+    readonly largeText: boolean;
   };
   /** Furniture placed in the house, in order of last placement or move (the evaluation order of collisions). */
   readonly furniture: readonly PlacedPiece[];
@@ -132,7 +136,12 @@ export interface AppState {
 }
 
 /** The saved preferences as a restore may give them: `moveInVisible` can be absent (an older state). */
-export type RestorePrefs = Pick<AppState['prefs'], 'onboardingStep' | 'menuOpened'> & { readonly moveInVisible?: boolean };
+export type RestorePrefs = Pick<AppState['prefs'], 'onboardingStep' | 'menuOpened'> & {
+  readonly moveInVisible?: boolean;
+  /** Absent: the preference stays as the session has it (an older state, or the URL named it: `contrast=`, D58). */
+  readonly contrast?: boolean;
+  readonly largeText?: boolean;
+};
 
 export type Action =
   | { readonly type: 'setMiniature'; readonly scale: number; readonly yawDeg: number }
@@ -154,6 +163,8 @@ export type Action =
       readonly note?: string;
     }
   | { readonly type: 'setMoveIn'; readonly visible: boolean }
+  | { readonly type: 'setContrast'; readonly on: boolean }
+  | { readonly type: 'setLargeText'; readonly on: boolean }
   | { readonly type: 'setSunTime'; readonly sunTime: string }
   | { readonly type: 'stepSunTime'; readonly unit: SunStepUnit; readonly delta: number }
   | {
@@ -268,6 +279,14 @@ export function setSunTime(sunTime: string): Action {
 export function stepSunTime(unit: SunStepUnit, delta: number): Action {
   return { type: 'stepSunTime', unit, delta };
 }
+/** High contrast on or off (D58). Not a boolean: ignored. */
+export function setContrast(on: boolean): Action {
+  return { type: 'setContrast', on };
+}
+/** Large text on or off (D58). Not a boolean: ignored. */
+export function setLargeText(on: boolean): Action {
+  return { type: 'setLargeText', on };
+}
 /** Show or hide the move-in pins on the model (D48). Not a boolean: ignored. */
 export function setMoveIn(visible: boolean): Action {
   return { type: 'setMoveIn', visible };
@@ -335,7 +354,13 @@ export function createInitialState(params: Params): AppState {
     role: params.role,
     miniature: { scale: SCALE, yawDeg: 0, offset: [0, 0] },
     selectedRoomId: null,
-    prefs: { onboardingStep: 'pinch', menuOpened: false, moveInVisible: false },
+    prefs: {
+      onboardingStep: 'pinch',
+      menuOpened: false,
+      moveInVisible: false,
+      contrast: params.contrast,
+      largeText: params.text === 'large',
+    },
     furniture: [],
     nextInstance: {},
     history: [],
@@ -586,6 +611,14 @@ export function reduce(state: AppState, action: Action): AppState {
       if (typeof action.visible !== 'boolean' || action.visible === state.prefs.moveInVisible) return state;
       return { ...state, prefs: { ...state.prefs, moveInVisible: action.visible } };
     }
+    case 'setContrast': {
+      if (typeof action.on !== 'boolean' || action.on === state.prefs.contrast) return state;
+      return { ...state, prefs: { ...state.prefs, contrast: action.on } };
+    }
+    case 'setLargeText': {
+      if (typeof action.on !== 'boolean' || action.on === state.prefs.largeText) return state;
+      return { ...state, prefs: { ...state.prefs, largeText: action.on } };
+    }
     case 'setSunTime': {
       const sunTime = parseSunTime(action.sunTime);
       if (sunTime === null || sunTime === state.sunTime) return state;
@@ -705,7 +738,13 @@ export function reduce(state: AppState, action: Action): AppState {
         furniture,
         nextInstance,
         history,
-        prefs: { onboardingStep: prefs.onboardingStep, menuOpened: prefs.menuOpened, moveInVisible },
+        prefs: {
+          onboardingStep: prefs.onboardingStep,
+          menuOpened: prefs.menuOpened,
+          moveInVisible,
+          contrast: typeof prefs.contrast === 'boolean' ? prefs.contrast : state.prefs.contrast,
+          largeText: typeof prefs.largeText === 'boolean' ? prefs.largeText : state.prefs.largeText,
+        },
         view,
         issues,
         nextIssue: nextIssueFor(counter, issues),
@@ -829,6 +868,9 @@ export function deserializeWithReport(
   }
   // Added in M4: absent means hidden; a broken value also means hidden (a convenience, not worth the whole state).
   const moveInVisible = prefs.moveInVisible === true;
+  // Added in M5 (D58): absent or broken means off (a convenience, not worth the whole state).
+  const contrast = prefs.contrast === true;
+  const largeText = prefs.largeText === true;
 
   let furniture: PlacedPiece[] = [];
   if ('furniture' in data) {
@@ -891,7 +933,7 @@ export function deserializeWithReport(
       role: role as Role,
       miniature: { scale: clampScale(scale), yawDeg: yawDeg + 0, offset },
       selectedRoomId,
-      prefs: { onboardingStep: step as OnboardingStep, menuOpened, moveInVisible },
+      prefs: { onboardingStep: step as OnboardingStep, menuOpened, moveInVisible, contrast, largeText },
       furniture,
       nextInstance,
       history,

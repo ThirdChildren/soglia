@@ -74,7 +74,9 @@ export const strings = {
     button: 'View',
     title: 'View',
     close: 'Close',
-    rows: { zoom: 'Zoom', turn: 'Turn', month: 'Month', hour: 'Hour' },
+    rows: { zoom: 'Zoom', turn: 'Turn', month: 'Month', hour: 'Hour', contrast: 'Contrast', text: 'Text' },
+    /** The values of the two switches (D58). */
+    switches: { on: 'On', off: 'Off', normal: 'Normal', large: 'Large' },
     less: '-',
     more: '+',
     /** `Sun 14° SE` (`deg` when the local panel font has no degree sign). */
