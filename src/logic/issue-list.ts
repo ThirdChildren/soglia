@@ -376,11 +376,6 @@ export function formatListLine(page: Pick<ListPage, 'page' | 'pageCount' | 'rows
   return `issues screen=list page=${page.page + 1}/${page.pageCount} items=${listItems(page)}`;
 }
 
-/** `issues row selected id=issue-014`. */
-export function formatRowSelected(id: string): string {
-  return `issues row selected id=${id}`;
-}
-
 /** `issues list denied role=visitor`. */
 export function formatListDenied(role: Role): string {
   return `issues list denied role=${role}`;

@@ -24,7 +24,6 @@ import {
   clampPage,
   formatListDenied,
   formatListLine,
-  formatRowSelected,
   headingRow,
   listBarWidth,
   listContentBottom,
@@ -349,7 +348,6 @@ describe('the log lines', () => {
     const many = Array.from({ length: 6 }, (_, i) => mine(20 + i, 'low', `Issue ${i}`));
     expect(formatListLine(page(many, 'tenant', 1))).toBe('issues screen=list page=2/2 items=issue-021,issue-020');
     expect(listItems(page(many, 'tenant', 0)).split(',')).toHaveLength(4);
-    expect(formatRowSelected('issue-014')).toBe('issues row selected id=issue-014');
     expect(formatListDenied('visitor')).toBe('issues list denied role=visitor');
   });
 });

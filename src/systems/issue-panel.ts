@@ -9,7 +9,7 @@
 // `issue draft cancelled reason=role`, T4.5-T4.7). The buttons lead to `list` and `movein`.
 //
 // The move-in report (T4.10, D48): `Move-in report` shows the `baseline` entries and the switch `Show on model`
-// (`ui:issue-movein-toggle`, `setMoveIn`, saved); a press on a row selects it and a second press opens its detail (read-only, no
+// (`ui:issue-movein-toggle`, `setMoveIn`, saved); a press on a row opens its detail at once (read-only, no
 // buttons); `Back` from that detail returns to the report, not to the list.
 //
 // It opens with a pinch of one hand on an "Issues" button (src/systems/menu-button.ts calls `openIssuePanel`/`closeIssuePanel`)
@@ -23,8 +23,8 @@
 // free hand inside the rectangle of one claims that hand as `menu` (the highest priority: it never grabs a piece, selects a
 // room or starts a gesture). With a piece in a hand they do not react (the pinch of the other hand rotates the piece).
 //
-// The detail (T4.9, D43, D48): a SECOND press on the row that is already selected (the first selects and puts the ring on the pin)
-// or a short pinch on a pin of the model opens `detail` for that issue. Its action buttons (`ui:issue-action-take-on|resolved|
+// The detail (T4.9, D43, D48): ONE press on a row of the list (T5.R5; it was two) or a short pinch on a pin of the model opens `detail`
+// for that issue, and the pin gets the ring there. Its action buttons (`ui:issue-action-take-on|resolved|
 // confirm|reopen`) are exactly the ones the role may press on the issue now (`availableActions`); a press asks `planTransition`
 // with the role of the store, takes ONE instant from the clock and dispatches `transitionIssue` (the pin changes colour, the
 // detail redraws with the new buttons and history, the state is saved). `Confirm` archives the issue (its pin leaves the model)
@@ -100,7 +100,6 @@ import {
   buildListPage,
   formatListDenied,
   formatListLine,
-  formatRowSelected,
   listSlots,
   listVisibleTo,
   movePage,
@@ -187,9 +186,6 @@ let formHandlers: IssueFormHandlers | null = null;
 type RoleListener = (change: RoleChange) => void;
 const roleListeners = new Set<RoleListener>();
 
-type IssueSelectedListener = (id: string) => void;
-const selectedListeners = new Set<IssueSelectedListener>();
-
 // Shared with the system, which has no constructor arguments: set by `createIssuePanel`.
 let context: IssuePanelContext | null = null;
 // The running system, for the buttons and the life cycle: set by `init`, cleared on teardown.
@@ -233,18 +229,7 @@ export function onRoleChanged(listener: RoleListener): () => void {
   };
 }
 
-/**
- * Calls `listener` with the id of the issue whose row of the list was pinched (`issues row selected id=…`, also when the row was
- * already selected: that second press opens the detail, T4.9). Returns the unsubscribe function.
- */
-export function onIssueSelected(listener: IssueSelectedListener): () => void {
-  selectedListeners.add(listener);
-  return () => {
-    selectedListeners.delete(listener);
-  };
-}
-
-/** The issue selected in the list or shown in the detail (its row is drawn dark and its pin has the ring), or null. It is cleared when both are left. */
+/** The issue shown in the detail, or the one whose row is drawn dark after `Back` (its pin has the ring), or null. It is cleared when both are left. */
 export function getSelectedIssue(): string | null {
   return context?.selectedId ?? null;
 }
@@ -530,7 +515,7 @@ export class IssuePanelSystem extends createSystem({}) {
   }
 
   /**
-   * Opens the detail of issue `id` (a second press on its row, or a pinch on its pin): the issue is the selected one (the ring is on
+   * Opens the detail of issue `id` (a press on its row, or a pinch on its pin): the issue is the selected one (the ring is on
    * its pin), the panel shows `detail` and the log says `issues screen=detail id=…`.
    */
   private openDetail(ctx: IssuePanelContext, id: string): void {
@@ -574,18 +559,9 @@ export class IssuePanelSystem extends createSystem({}) {
     }
   }
 
-  /** A row of the list was pinched: it becomes the selected one, its pin gets the ring, the listeners hear of it; pinched again, it opens. */
-  private selectRow(ctx: IssuePanelContext, id: string): void {
-    // The second press on the selected row opens its detail (T4.9): the first selects and rings the pin, the second goes in.
-    const already = ctx.selectedId === id;
-    if (!already) {
-      ctx.selectedId = id;
-      setPinRing(id);
-      this.syncList(ctx);
-      slog(formatRowSelected(id));
-    }
-    for (const listener of [...selectedListeners]) listener(id);
-    if (already) this.openDetail(ctx, id);
+  /** A row of the list (or of the move-in report) was pinched: its detail opens at once, with the ring on its pin (T5.R5). */
+  private pressRow(ctx: IssuePanelContext, id: string): void {
+    this.openDetail(ctx, id);
   }
 
   /** The form of `new` (the long pinch has just made the draft): set it, log its step. */
@@ -725,7 +701,7 @@ export class IssuePanelSystem extends createSystem({}) {
       const row = rowOfControl(hit.id);
       if (row !== null) {
         const id = rowIssueId(list, row);
-        if (id !== null) this.selectRow(ctx, id);
+        if (id !== null) this.pressRow(ctx, id);
         return;
       }
       if (hit.id === 'page-prev' || hit.id === 'page-next') {
@@ -747,7 +723,7 @@ export class IssuePanelSystem extends createSystem({}) {
       const row = rowOfControl(hit.id);
       if (row !== null) {
         const id = moveInRowId(ctx.moveInModel, row);
-        if (id !== null) this.selectRow(ctx, id);
+        if (id !== null) this.pressRow(ctx, id);
         return;
       }
     }
