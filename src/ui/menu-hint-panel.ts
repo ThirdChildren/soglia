@@ -9,7 +9,7 @@ import { swarn } from '../log';
 import { stableId } from '../logic/ids';
 import { yawTowardHead } from '../logic/view-fit';
 import { applyPanelLook } from './panel-theme';
-import { getUiColors } from './theme';
+import { getUiColors, panelScale } from './theme';
 import { HINT_ICON } from './menu-icons';
 import { disposePanelEntity } from './panel-lifecycle';
 
@@ -78,7 +78,7 @@ export class MenuHintPanel {
     const doc = entity.getValue(PanelDocument, 'document') as UiDocument | undefined;
     const text = doc?.getElementById<UIKit.Text>(TEXT_ELEMENT);
     if (!doc || !text) return;
-    applyPanelLook(doc, ROOT_ELEMENT, 'font');
+    applyPanelLook(doc, ROOT_ELEMENT, 'scale');
     doc.getElementById<UIKit.Container>(ROOT_ELEMENT)?.setProperties({
       depthTest: false,
       renderOrder: HINT_RENDER_ORDER,
@@ -89,8 +89,8 @@ export class MenuHintPanel {
       try {
         slot.add(
           new HINT_ICON({
-            width: ICON_SIZE,
-            height: ICON_SIZE,
+            width: ICON_SIZE * panelScale(),
+            height: ICON_SIZE * panelScale(),
             color: getUiColors().ink,
             depthTest: false,
             renderOrder: HINT_RENDER_ORDER,

@@ -102,7 +102,7 @@ export class RoomLabelPanel {
       const element = doc?.getElementById<UIKit.Text>(TEXT_ELEMENT);
       if (element) {
         if (!this.fontApplied) {
-          applyPanelLook(doc, ROOT_ELEMENT, 'font');
+          applyPanelLook(doc, ROOT_ELEMENT, 'scale');
           this.fontApplied = true;
         }
         doc?.getElementById<UIKit.Container>(ROOT_ELEMENT)?.setProperties({

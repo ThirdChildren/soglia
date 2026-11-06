@@ -85,7 +85,7 @@ export class FitLabelPanel {
     const note = doc?.getElementById<UIKit.Text>(NOTE_ELEMENT);
     if (!doc || !text || !note) return;
     if (!this.fontApplied) {
-      applyPanelLook(doc, ROOT_ELEMENT, 'font');
+      applyPanelLook(doc, ROOT_ELEMENT, 'scale');
       this.fontApplied = true;
     }
     doc.getElementById<UIKit.Container>(ROOT_ELEMENT)?.setProperties({

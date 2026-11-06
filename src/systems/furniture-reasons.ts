@@ -10,7 +10,8 @@ import { createSystem, Quaternion, Vector3, type Entity, type Object3D, type Wor
 import { Furniture } from '../components/furniture';
 import { slog } from '../log';
 import type { CatalogItem } from '../logic/catalog';
-import { catalogIdOf, pickReasonLabels, REASON_LABEL_EXTENT } from '../logic/furniture-label';
+import { labelFit } from '../logic/label-scale';
+import { catalogIdOf, pickReasonLabels, reasonLabelExtent } from '../logic/furniture-label';
 import { REASON_LABEL_MIN_DISTANCE, VIEW_CONE_HALF_ANGLE_DEG } from '../logic/menu-thresholds';
 import type { LabelRect } from '../logic/fit-label';
 import { anchorInCone, yawTowardHead, type ConeFit } from '../logic/view-fit';
@@ -58,15 +59,16 @@ export function getReasonLabelRects(out: LabelRect[], objects: Object3D[]): numb
     const object = labels[i].panel.object;
     if (!object || !object.visible) continue;
     if (count >= out.length) {
-      out.push({ x: 0, y: 0, z: 0, halfWidth: REASON_LABEL_EXTENT.halfWidth, halfHeight: 0 });
+      out.push({ x: 0, y: 0, z: 0, halfWidth: reasonLabelExtent().halfWidth, halfHeight: 0 });
     }
     objects[count] = object;
     const rect = out[count];
     rect.x = object.position.x;
     rect.y = object.position.y;
     rect.z = object.position.z;
-    rect.halfWidth = REASON_LABEL_EXTENT.halfWidth;
-    rect.halfHeight = (REASON_LABEL_EXTENT.top - REASON_LABEL_EXTENT.bottom) / 2;
+    const extent = reasonLabelExtent();
+    rect.halfWidth = extent.halfWidth;
+    rect.halfHeight = (extent.top - extent.bottom) / 2;
     count += 1;
   }
   return count;
@@ -145,7 +147,7 @@ export class FurnitureReasonsSystem extends createSystem({
       this.target.y += label.height * this.pieceScale.x + REASON_LABEL_LIFT;
       // Along the line from the head, so the label stays above the piece as seen from the head, and inside the
       // view cone: a piece far outside it (outside the house) gets its label on the edge of the cone, on that line.
-      anchorInCone(this.target, this.headPosition, this.headForward, REASON_LABEL_EXTENT, LABEL_FIT, this.target);
+      anchorInCone(this.target, this.headPosition, this.headForward, reasonLabelExtent(), labelFit(LABEL_FIT), this.target);
       object.position.copy(this.target);
       // Turned toward the head about the vertical axis only (no tilt, so the text never looks slanted).
       object.rotation.set(0, yawTowardHead(this.target, this.headPosition), 0);

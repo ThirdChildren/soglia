@@ -6,7 +6,8 @@
 
 import { HINT_LABEL_GAP, HINT_LIFT, HINT_MIN_DISTANCE, MENU_MAX_DISTANCE, VIEW_CONE_HALF_ANGLE_DEG } from './menu-thresholds';
 import type { PanelExtent } from './menu';
-import { ROOM_LABEL_EXTENT } from './room-label';
+import { currentExtent, extentPair } from './label-scale';
+import { ROOM_LABEL_EXTENT, roomLabelExtent } from './room-label';
 import type { OnboardingStep } from './state';
 import { clampDistanceFromHead, fitPanelToCone, panelConeAngleDeg, type ConeFit, type Point3Like } from './view-fit';
 
@@ -23,6 +24,11 @@ export function shouldShowMenuHint(
 
 /** The hint panel (38 x about 5.6 cm, `public/ui/menu-hint.uikitml`) around its centre, in metres. */
 export const HINT_EXTENT: PanelExtent = { halfWidth: 0.19, bottom: -0.03, top: 0.03 };
+const HINT_EXTENTS = extentPair(HINT_EXTENT);
+/** The rectangle of the hint now: `HINT_EXTENT`, or 1.25 times that at large text. */
+export function hintExtent(): PanelExtent {
+  return currentExtent(HINT_EXTENTS);
+}
 export { ROOM_LABEL_EXTENT };
 
 const HINT_FIT: ConeFit = {
@@ -79,23 +85,23 @@ export function placeHint(
   scratch.x = modelAnchor.x;
   scratch.y = modelAnchor.y + HINT_LIFT;
   scratch.z = modelAnchor.z;
-  fitPanelToCone(scratch, head, forward, HINT_EXTENT, HINT_FIT, out);
-  if (label === null || !panelsOverlap(out, HINT_EXTENT, label, ROOM_LABEL_EXTENT, head, forward, HINT_LABEL_GAP)) {
+  fitPanelToCone(scratch, head, forward, hintExtent(), HINT_FIT, out);
+  if (label === null || !panelsOverlap(out, hintExtent(), label, roomLabelExtent(), head, forward, HINT_LABEL_GAP)) {
     return true;
   }
 
   const baseX = out.x;
   const baseZ = out.z;
-  const above = label.y + ROOM_LABEL_EXTENT.top + HINT_LABEL_GAP - HINT_EXTENT.bottom;
-  const below = label.y + ROOM_LABEL_EXTENT.bottom - HINT_LABEL_GAP - HINT_EXTENT.top;
+  const above = label.y + roomLabelExtent().top + HINT_LABEL_GAP - hintExtent().bottom;
+  const below = label.y + roomLabelExtent().bottom - HINT_LABEL_GAP - hintExtent().top;
   for (let i = 0; i < 2; i += 1) {
     scratch.x = baseX;
     scratch.y = i === 0 ? above : below;
     scratch.z = baseZ;
     // Moving up or down changes the distance to the head: keep it at HINT_MIN_DISTANCE or more.
     clampDistanceFromHead(scratch, head, HINT_FIT.minDistance, Infinity, forward, scratch);
-    if (panelConeAngleDeg(scratch, head, forward, HINT_EXTENT) > HINT_FIT.halfAngleDeg) continue;
-    if (panelsOverlap(scratch, HINT_EXTENT, label, ROOM_LABEL_EXTENT, head, forward, 0)) continue;
+    if (panelConeAngleDeg(scratch, head, forward, hintExtent()) > HINT_FIT.halfAngleDeg) continue;
+    if (panelsOverlap(scratch, hintExtent(), label, roomLabelExtent(), head, forward, 0)) continue;
     out.x = scratch.x;
     out.y = scratch.y;
     out.z = scratch.z;

@@ -55,7 +55,7 @@ export class MeasureLabelPanel {
     const element = doc?.getElementById<UIKit.Text>(TEXT_ELEMENT);
     if (!doc || !element) return;
     if (!this.fontApplied) {
-      applyPanelLook(doc, ROOT_ELEMENT, 'layout');
+      applyPanelLook(doc, ROOT_ELEMENT, 'scale');
       doc.getElementById<UIKit.Container>(ROOT_ELEMENT)?.setProperties({
         depthTest: false,
         renderOrder: MEASURE_LABEL_RENDER_ORDER,

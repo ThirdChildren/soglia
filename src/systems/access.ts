@@ -9,15 +9,19 @@
 import { slog } from '../log';
 import { formatAccessApplied } from '../logic/access';
 import type { Store } from '../logic/state';
-import { notifyAccessChange, setAccessibility } from '../ui/theme';
+import { setLabelScale } from '../logic/label-scale';
+import { notifyAccessChange, panelScale, setAccessibility } from '../ui/theme';
 
 /** Starts following the store. Returns the function that stops it. */
 export function installAccess(store: Store): () => void {
   const start = store.get().prefs;
   setAccessibility({ contrast: start.contrast, largeText: start.largeText });
+  setLabelScale(panelScale());
   return store.subscribe((state) => {
     const { contrast, largeText } = state.prefs;
     if (!setAccessibility({ contrast, largeText })) return;
+    // The labels and the hints are 1.25 times bigger at large text, and so is the rectangle that keeps them in the cone.
+    setLabelScale(panelScale());
     slog(formatAccessApplied(notifyAccessChange()));
   });
 }

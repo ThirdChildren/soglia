@@ -7,6 +7,7 @@
 // The piece in the hand wins; while a piece is in a hand the last-placed one is not shown (the clock of the injected
 // time is milliseconds, so the tests and the app share one rule).
 
+import { currentExtent, extentPair, labelFit, labelMinDistance } from './label-scale';
 import type { PanelExtent } from './menu';
 import { ROOM_LABEL_MIN_DISTANCE, VIEW_CONE_HALF_ANGLE_DEG } from './menu-thresholds';
 import { clampDistanceFromHead, anchorInCone, panelConeAngleDeg, type ConeFit, type Point3Like } from './view-fit';
@@ -103,6 +104,11 @@ export function formatLabelHiddenLine(id: string): string {
  * centre, in metres. Checked against the real panel with `ui_inspect` (see the Esito of T3.9 in docs/plans/M3.md).
  */
 export const FIT_LABEL_EXTENT: PanelExtent = { halfWidth: 0.22, bottom: -0.09, top: 0.09 };
+const FIT_LABEL_EXTENTS = extentPair(FIT_LABEL_EXTENT);
+/** The rectangle of the FitCheck label now: `FIT_LABEL_EXTENT`, or 1.25 times that at large text. */
+export function fitLabelExtent(): PanelExtent {
+  return currentExtent(FIT_LABEL_EXTENTS);
+}
 /** The label is never nearer to the head than this (rule 8: panels at 0.5-0.8 m, with the usual margin), metres. */
 export const FIT_LABEL_MIN_DISTANCE = ROOM_LABEL_MIN_DISTANCE;
 /** The label is never farther from the head than this, metres. */
@@ -124,7 +130,7 @@ const scratch: Point3Like = { x: 0, y: 0, z: 0 };
 const scratchExtent = { halfWidth: 0, bottom: 0, top: 0 };
 
 function fitsCone(p: Readonly<Point3Like>, head: Readonly<Point3Like>, forward: Readonly<Point3Like>): boolean {
-  return panelConeAngleDeg(p, head, forward, FIT_LABEL_EXTENT, true) <= FIT_LABEL_FIT.halfAngleDeg;
+  return panelConeAngleDeg(p, head, forward, fitLabelExtent(), true) <= FIT_LABEL_FIT.halfAngleDeg;
 }
 
 /**
@@ -145,14 +151,20 @@ export function placeFitLabel(
     scratch.x = door.x;
     scratch.y = door.y + FIT_LABEL_CENTER_LIFT;
     scratch.z = door.z;
-    clampDistanceFromHead(scratch, head, FIT_LABEL_MIN_DISTANCE, FIT_LABEL_MAX_DISTANCE, forward, out);
+    clampDistanceFromHead(scratch, head, labelMinDistance(FIT_LABEL_MIN_DISTANCE), FIT_LABEL_MAX_DISTANCE, forward, out);
     if (fitsCone(out, head, forward)) return 'door';
   }
   scratch.x = pieceTop.x;
   scratch.y = pieceTop.y + FIT_LABEL_CENTER_LIFT;
   scratch.z = pieceTop.z;
-  anchorInCone(scratch, head, forward, FIT_LABEL_EXTENT, FIT_LABEL_FIT, out, true);
+  anchorInCone(scratch, head, forward, fitLabelExtent(), labelFit(FIT_LABEL_FIT), out, true);
   return 'piece';
+}
+
+/** Half the height of the FitCheck label now, metres. */
+function fitHalfHeight(): number {
+  const extent = fitLabelExtent();
+  return (extent.top - extent.bottom) / 2;
 }
 
 /** A label that must not be covered: its centre and half size in world metres (a panel turned toward the head). */
@@ -164,8 +176,6 @@ export interface LabelRect {
   halfHeight: number;
 }
 
-const FIT_HALF_WIDTH = FIT_LABEL_EXTENT.halfWidth;
-const FIT_HALF_HEIGHT = (FIT_LABEL_EXTENT.top - FIT_LABEL_EXTENT.bottom) / 2;
 
 /** True when the label centred at `p` overlaps `other` as seen from `head` (both are vertical panels turned toward it). */
 export function labelsOverlap(
@@ -181,7 +191,8 @@ export function labelsOverlap(
   const rz = h > 1e-9 ? -hx / h : 0;
   const across = (other.x - p.x) * rx + (other.z - p.z) * rz;
   const up = other.y - p.y;
-  return Math.abs(across) < FIT_HALF_WIDTH + other.halfWidth && Math.abs(up) < FIT_HALF_HEIGHT + other.halfHeight;
+  const extent = fitLabelExtent();
+  return Math.abs(across) < extent.halfWidth + other.halfWidth && Math.abs(up) < (extent.top - extent.bottom) / 2 + other.halfHeight;
 }
 
 /**
@@ -213,13 +224,13 @@ export function separateFitLabel(
       for (let i = 0; i < count; i += 1) {
         const other = others[i];
         if (!labelsOverlap(pos, head, other)) continue;
-        pos.y = other.y + direction * (other.halfHeight + FIT_HALF_HEIGHT + FIT_LABEL_GAP);
+        pos.y = other.y + direction * (other.halfHeight + fitHalfHeight() + FIT_LABEL_GAP);
         moved = true;
       }
       if (!moved) break;
     }
     // Back into the distance range along the line from the head (a label above the eyes could end up too near).
-    clampDistanceFromHead(pos, head, FIT_LABEL_MIN_DISTANCE, FIT_LABEL_MAX_DISTANCE, forward, pos);
+    clampDistanceFromHead(pos, head, labelMinDistance(FIT_LABEL_MIN_DISTANCE), FIT_LABEL_MAX_DISTANCE, forward, pos);
     if (fitsCone(pos, head, forward) && !overlapsAny(pos, head, others, count)) return true;
   }
   pos.x = startX;
@@ -271,7 +282,7 @@ export function lowerLabelsUnder(
       fitPos.y = head.y + (by - head.y) * k + shift;
       fitPos.z = head.z + (bz - head.z) * k;
       if (!fitPlacementOk(fitPos, head, forward)) continue;
-      let bottom = fitPos.y - FIT_HALF_HEIGHT;
+      let bottom = fitPos.y - fitHalfHeight();
       let ok = true;
       let moved = false;
       for (let i = 0; i < count && ok; i += 1) {
@@ -288,7 +299,7 @@ export function lowerLabelsUnder(
         scratchExtent.top = rect.halfHeight;
         const distance = Math.hypot(scratch.x - head.x, scratch.y - head.y, scratch.z - head.z);
         if (
-          distance < FIT_LABEL_MIN_DISTANCE ||
+          distance < labelMinDistance(FIT_LABEL_MIN_DISTANCE) ||
           distance > LOWER_MAX_DISTANCE + 1e-9 ||
           panelConeAngleDeg(scratch, head, forward, scratchExtent, true) > FIT_LABEL_FIT.halfAngleDeg
         ) {
@@ -298,7 +309,7 @@ export function lowerLabelsUnder(
         moved = true;
       }
       if (!ok || !moved) continue;
-      bottom = fitPos.y - FIT_HALF_HEIGHT;
+      bottom = fitPos.y - fitHalfHeight();
       for (let i = 0; i < count; i += 1) {
         const rect = rects[i];
         if (!labelsOverlap(fitPos, head, rect)) continue;
@@ -320,5 +331,5 @@ export function lowerLabelsUnder(
 
 function fitPlacementOk(p: Readonly<Point3Like>, head: Readonly<Point3Like>, forward: Readonly<Point3Like>): boolean {
   const d = Math.hypot(p.x - head.x, p.y - head.y, p.z - head.z);
-  return d >= FIT_LABEL_MIN_DISTANCE && d <= FIT_LABEL_MAX_DISTANCE + 0.05 && fitsCone(p, head, forward);
+  return d >= labelMinDistance(FIT_LABEL_MIN_DISTANCE) && d <= FIT_LABEL_MAX_DISTANCE + 0.05 && fitsCone(p, head, forward);
 }
