@@ -8,7 +8,7 @@ Prerequisiti di implementazione: T4.4, T4.6a, T4.R1, T4.12 e tutti i task che ag
 ## Precondizioni
 - Esecuzioni consecutive (`dev-params.local.txt`, `browser_reload_page`, `xr_accept_session`, `xr_set_input_mode hand`, attesa 7 s, testa (0; 1,6; 0)):
   - **E1–E5**: come `qa/scenarios/M3-budget.md` (ruolo `visitor`).
-  - **E6** (inquilino, 14 pezzi, segnaposto del seme + 1): `house=apartment-a&role=tenant&reset=1&seed=1&debug=1&pinch=grip&furnish=scandinavian&time=2026-11-04T10:00`; creare `issue-014` sulla lavatrice (S4.1 passi 2–4) e accendere il verbale (S4.5 passo 2): 5 segnaposto, 4 rossi/arancioni/verdi e 1 blu.
+  - **E6** (inquilino, 14 pezzi, segnaposto del seme + 1): `house=apartment-a&role=tenant&reset=1&seed=1&debug=1&pinch=grip&furnish=scandinavian&time=2026-11-04T10:00`; creare `issue-014` sulla lavatrice (S4.1 passi 2–4) e accendere il verbale (S4.5 passo 2): 5 segnaposto, 4 rossi/arancioni/verdi e 1 viola (il verbale era blu fino a T5.R4; correzione 2026-11-06).
 - **Casi**:
   - `K1`–`K8`: come M3 (E1–E5), ora con i pulsanti "Issues" (+2 stimati).
   - `K9` E6, menu e pannello chiusi, scala 0,05. `K10` E6 con il pannello Issues aperto sull'elenco (`ui:issue-button-right`, `ui:issue-open-list`), attesa 3 s.
