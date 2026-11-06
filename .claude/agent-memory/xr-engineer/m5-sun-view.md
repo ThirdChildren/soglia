@@ -1,0 +1,20 @@
+---
+name: m5-sun-view
+description: M5 T5.1-T5.7 (sun, light patches, dial, View buttons and panel) - decisions, verified numbers, IWER pinch calibration, traps
+metadata:
+  type: project
+---
+
+Built 2026-11-06 on branch `claude/charming-cori-mccw6h` (plan `docs/plans/M5.md`, which I was not allowed to edit: the numbers below are the "Esiti").
+
+- Sun: own algorithm (Meeus/NOAA series) in `src/logic/sun.ts`; checked against an independent USNO script (Turin 21 Dec 10:00 -> az 145.5 el 13.7; 21 Jun 14:00 -> 197.6 / 67.6). Local time = Italy EU rule (`euUtcOffsetMinutes`, `localToUtcMs`). `sunTime` is `YYYY-MM-DDTHH:MM` in the store, minutes are kept if `time=` has them (steps keep them); `time=` explicit beats saved (`timeExplicit` in `RestoreContext`, `restoreSavedState(..., timeExplicit)` -> `sunRestored`).
+- Light patches (`src/logic/sun-light.ts`): window aperture = width - T|tan(theta)| horizontally AND height - T tan(alt)/cos(theta) vertically (the plan only said horizontal; vertical makes a high summer sun give 0 m2 in the living room, which is physically right). Union area per room by inclusion-exclusion on convex clips (exact). Patches < 1 dm2 dropped (`MIN_PATCH_AREA_M2`). Golden: A living 21 Dec 10:00 = 2.3029 m2; A study 21 Jun 18:00 = 1.1616; B bedroom 21 Dec 12:00 = 2.4284. A at 21 Dec 15:00 has NO patch at all (low sun + 0.9 m sill: the patch falls in the next room, clipped away). All rooms with windows in A and B are convex.
+- Rendering: `sun:dial` = ring + north tick + icosahedron disc in ONE mesh (vertex colours, disc rewritten in place), `light:patches` one merged mesh (DoubleSide, polygonOffset, y = 0.03 m real); anchors `sun:marker`, `light:<win>`. Dial hidden at real scale (patches stay). `sun:light` directional light NOT done (materials are MeshStandard, so it would work; skipped to keep the look and fps).
+- `draw-groups`: new group `sun` (`sun:*`, `light:*`), the stats groups line now has `sun=`.
+- View buttons: third floor, +0.07 m over Issues (Issues +0.07 over Menu). Real numbers equal the plan: centre (+-0.4347, 1.635, -0.5665); worst button 0.715 m / 37.6 deg (symmetric with Issues around eye height 1.6). View panel: 36 x 37.6 cm like the menu, `view panel view maxAngleDeg=26.1 distance=0.59`. Rows 3.3 cm, gap 0.3, `-`/`+` 6 cm wide; 4 rows now, room for 6 (test checks it) - T5.11 appends `contrast`, `text` to `VIEW_ROWS` + uikitml rows.
+- View panel never together with menu/Issues: closes on `onMenuOpening`, polls `isIssuePanelOpen()`/`getMenuMode()` in update (avoids a circular import with issue-panel). `IssuePanelCloseVia` got `'panel'`. `menu-hint` must also hide while it is open (was overlapping the Close button).
+- Turn/zoom from the store: `syncMiniature(root, scale, offset, yawDeg)` now also sets `rotation.y`; index.ts passes the store yaw. Turn is the ABSOLUTE yaw of the root (starts at the head yaw of the placement).
+- Strings with a function need a row in `tests/unit/font-glyphs.test.ts` SAMPLE_CALLS (keyed by the last path segment).
+- IWER pinch calibration (hands via `xr set-transform`, identity orientation, joints source): pinch point = set + (0, -0.0245, -0.012). So to pinch at T set the hand to T + (0, 0.0245, 0.012). `[soglia:hands] ... point=` at `event=pinch-start` prints the real point: use it to calibrate. Rows of 3.3 cm need this; 8x6 cm buttons tolerate raw coordinates.
+- Page reloads on HMR when a uikitml / system file changes during a session: the XR session is lost, re-enter (reload -> xr enter -> set-input-mode). Scripts in the scratchpad (enter/pinch/ctl/stats/warm) did the dance; ecs entity positions of anchors are world positions (parent LevelRoot).
+- Measured draw calls (IWER, per view, A, `time=2026-12-21T10:00`, hint off): K1 47 (pred 44), K2 14 pieces 61 (62), K3 menu pinned open 69 (70), K10 Issues open 64 (65), K17 View open 64 (65), worst case = menu open + sofa held over coffee table (invalid, reason + fit label + 2 markers) 76 (pred 82), K12 real scale + 14 pieces 29 (26). Groups: house 24, ui 12 (6 buttons), sun 2 (1 at real scale), markers 1. Max 76 < 85: T5.RA not needed.
