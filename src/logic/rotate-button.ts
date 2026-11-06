@@ -11,7 +11,9 @@
 // It is also never shown on top of a menu or a panel (M5 gate finding F-D-2): the pinned menu, the palm menu, the Issues panel and the
 // View panel are drawn at about the same distance and height as the button, so a pinch meant for one of their controls (Undo, 3 cm
 // from the button) could fire the button, or the other way round. While one of them is open the button is hidden and takes no
-// pinch; the 12 seconds keep running, and it comes back when the surface closes if the window is still open.
+// pinch. The 12 seconds do not run while a surface covers it (review warning 6: a pinned menu stays open after a piece is put down,
+// and a window that ran out behind it would leave the user no Rotate at all): they start again, from zero, when the last surface
+// that covered the button closes (`rotateResumedWindow`).
 
 import { ROOM_LABEL_MIN_DISTANCE, VIEW_CONE_HALF_ANGLE_DEG } from './menu-thresholds';
 import type { PanelExtent } from './menu';
@@ -103,7 +105,8 @@ export interface RotateDecision {
  * The state of the window at `inputs.now`. A piece in a hand ends it (the other hand has the tap and the wrist: `grab`), so does
  * a piece that is gone (`removed`) and the time (`timeout`, strictly after ROTATE_WINDOW_SECONDS). A clock that is not finite
  * or went back before the start ends nothing and shows nothing. No window: nothing to show. An open menu or panel (`covered`) hides
- * the button without ending the window: the time keeps running and the button is back when the surface closes.
+ * the button without ending the window and without running its clock out (the caller restarts it when the surface closes, see
+ * `rotateResumedWindow`).
  */
 export function rotateDecision(window: RotateWindow, inputs: Readonly<RotateInputs>): RotateDecision {
   if (window.pieceId === null) return { end: null, visible: false };
@@ -111,8 +114,20 @@ export function rotateDecision(window: RotateWindow, inputs: Readonly<RotateInpu
   if (!inputs.pieceExists) return { end: 'removed', visible: false };
   const elapsed = inputs.now - window.startedAt;
   if (!Number.isFinite(elapsed) || elapsed < 0) return { end: null, visible: false };
+  if (inputs.covered) return { end: null, visible: false };
   if (elapsed > ROTATE_WINDOW_SECONDS) return { end: 'timeout', visible: false };
-  return { end: null, visible: !inputs.covered };
+  return { end: null, visible: true };
+}
+
+/**
+ * The window after a frame: when the surface that covered the button has just closed (`wasCovered` and no longer `covered`) the 12
+ * seconds start again at `now`, so the button is there for a full window; otherwise the window is as it was. No window (or a clock
+ * that is not finite) stays as it is.
+ */
+export function rotateResumedWindow(window: RotateWindow, wasCovered: boolean, covered: boolean, now: number): RotateWindow {
+  if (window.pieceId === null || !wasCovered || covered) return window;
+  const restarted = openRotateWindow(window.pieceId, now);
+  return restarted.pieceId === null ? window : restarted;
 }
 
 /** The action of a press: the piece turned a quarter turn clockwise where it stands (same place, same room). */

@@ -33,6 +33,7 @@ import {
   rotateButtonLift,
   rotateCoveredBy,
   rotateDecision,
+  rotateResumedWindow,
   rotatePieceAction,
   type RotateCover,
   type RotateWindow,
@@ -138,6 +139,8 @@ export class RotateButtonSystem extends createSystem({ pieces: { required: [Furn
     }
     const presenting = this.world.renderer.xr.isPresenting;
     const cover = this.cover();
+    // The 12 seconds start again when the last surface that covered the button has closed.
+    this.window = rotateResumedWindow(this.window, this.coveredBy !== null, cover !== null, clock());
     const decision = rotateDecision(this.window, {
       now: clock(),
       holding: pinchClaims.anyClaimed('furniture'),
