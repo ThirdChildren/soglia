@@ -1,6 +1,6 @@
 # S5.10 · Regressione rapida dopo M5
 
-> **Changelog 2026-11-06**: scenario creato dal piano M5; ricalca `qa/scenarios/M4-regression.md`. Usa gli scenari esistenti **con i punti di partenza corretti** (S1.2, S2.6, S2.9, S3.0, S3.2, S3.3) e, **solo se l'utente ha approvato** le correzioni proposte nel piano M5 ("Riporti: correzioni proposte"), anche quelle di S3.0 (verifica 4 e fase 2), S3.5 (passo 3), S4.3 (passo 4) e S4.5 (passi 2 e 5).
+> **Changelog 2026-11-06**: scenario creato dal piano M5; ricalca `qa/scenarios/M4-regression.md`. Usa gli scenari esistenti **con i punti di partenza corretti** (S1.2, S2.6, S2.9, S3.0, S3.2, S3.3) e le correzioni del riporto 6 **approvate dall'utente e applicate il 2026-11-06** (piano M5, "Riporti: correzioni agli scenari"): S3.0 (verifica 4 e fase 2), S3.5 (passo 3), S4.3 (passo 4) e S4.5 (passi 2 e 5, verbale viola).
 
 **Milestone**: M5 · **Tipo**: PC (emulatore IWER via MCP `iwsdk-runtime`) · **Regole di `CLAUDE.md`**: tutte · Vedi `docs/plans/M5.md`.
 
