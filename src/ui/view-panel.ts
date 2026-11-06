@@ -163,6 +163,7 @@ export class ViewPanel {
     title.setProperties({ text: strings.view.title });
     this.summary = doc.getElementById<UIKit.Text>('view-panel-summary');
     doc.getElementById<UIKit.Text>('view-panel-close-label')?.setProperties({ text: strings.view.close });
+    doc.getElementById<UIKit.Text>('view-panel-note')?.setProperties({ text: strings.view.light });
     for (const row of VIEW_ROWS) {
       const label = doc.getElementById<UIKit.Text>(`view-panel-${row}-label`);
       const value = doc.getElementById<UIKit.Text>(`view-panel-${row}-value`);

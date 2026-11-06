@@ -164,6 +164,8 @@ export interface ViewLayout {
   readonly valueWidth: number;
   readonly cellGap: number;
   readonly closeWidth: number;
+  /** Width of the note left of Close (the bar minus Close minus a small gap). */
+  readonly noteWidth: number;
 }
 
 export const VIEW_LAYOUT_NORMAL: ViewLayout = {
@@ -188,6 +190,7 @@ export const VIEW_LAYOUT_NORMAL: ViewLayout = {
   valueWidth: VIEW_VALUE_WIDTH,
   cellGap: VIEW_CELL_GAP,
   closeWidth: ISSUE_BAR_BUTTON_WIDTH,
+  noteWidth: 26.6,
 };
 
 /** Text of 3.0 cm. A line of it is 3.3 cm, so the rows are 3.8 cm: still one pinch target each, and six of them fit. */
@@ -215,6 +218,7 @@ export const VIEW_LAYOUT_LARGE: ViewLayout = {
   valueWidth: 12,
   cellGap: 0.4,
   closeWidth: 10,
+  noteWidth: 29.6,
 };
 
 export function viewLayout(large: boolean): ViewLayout {

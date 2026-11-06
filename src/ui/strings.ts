@@ -91,6 +91,8 @@ export const strings = {
     /** `Sun 14° SE` (`deg` when the local panel font has no degree sign). */
     sun: (altitudeDeg: number, compass: string, ascii = false): string => `Sun ${altitudeDeg}${ascii ? ' deg' : '\u00b0'} ${compass}`,
     sunDown: 'Sun below the horizon',
+    /** Left of Close: the sun patches are a simplified light (D55): only the floor, only through windows, no shadows. */
+    light: 'Simplified light',
     /** `15°`. */
     turn: (degrees: string, ascii = false): string => `${degrees}${ascii ? ' deg' : '\u00b0'}`,
   },

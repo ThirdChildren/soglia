@@ -171,6 +171,10 @@ describe('the layouts of the View panel', () => {
       expect(num(styleOf(source, 'view-panel-body'), 'height')).toBeCloseTo(l.bodyHeight, 9);
       expect(num(styleOf(source, 'view-panel-bar'), 'height')).toBeCloseTo(l.barHeight, 9);
       expect(num(styleOf(source, 'view-panel-close'), 'width')).toBeCloseTo(l.closeWidth, 9);
+      expect(num(styleOf(source, 'view-panel-note-box'), 'width')).toBeCloseTo(l.noteWidth, 9);
+      expect(num(styleOf(source, 'view-panel-note-box'), 'height')).toBeCloseTo(l.barHeight, 9);
+      // Note and Close fill the bar without overlapping.
+      expect(l.noteWidth + l.closeWidth).toBeLessThanOrEqual(l.width + 1e-9);
       expect(num(styleOf(source, 'view-panel-summary-box'), 'height')).toBeCloseTo(l.summaryHeight, 9);
       // The parts add up to the panel.
       expect(l.headerHeight + l.bodyHeight + l.barHeight + 2 * l.sectionGap).toBeCloseTo(l.height, 9);
@@ -185,7 +189,7 @@ describe('the layouts of the View panel', () => {
 
     it('every text of the file is the size of the layout (the title a little more)', () => {
       const sizes = [...source.matchAll(/id="([^"]+)"[^>]*font-size: ([0-9.]+)/g)];
-      expect(sizes.length).toBe(1 + 1 + 6 * 4 + 1);
+      expect(sizes.length).toBe(1 + 1 + 6 * 4 + 1 + 1);
       for (const [, id, size] of sizes) expect(Number.parseFloat(size), id).toBeCloseTo(id === 'view-panel-title' ? l.titleSize : l.textSize, 9);
       expect(l.textSize).toBeGreaterThanOrEqual(l.large ? 3 : 2.4);
     });
@@ -210,6 +214,9 @@ describe('the layouts of the View panel', () => {
       }
       expect(width(strings.view.title, l.titleSize, BOLD)).toBeLessThanOrEqual(l.width - 0.8);
       expect(width(strings.view.close, l.textSize, BOLD)).toBeLessThanOrEqual(l.closeWidth - 0.8);
+      // The note on the honesty of the light (D55) sits left of Close in the bar, on one line.
+      expect(width(strings.view.light, l.textSize, REGULAR)).toBeLessThanOrEqual(l.noteWidth - VIEW_LABEL_PADDING - 0.2);
+      expect(l.textSize * 1.1).toBeLessThanOrEqual(l.barHeight);
       expect(width('−', l.textSize, BOLD)).toBeLessThanOrEqual(l.buttonWidth - 0.8);
       expect(width('+', l.textSize, BOLD)).toBeLessThanOrEqual(l.buttonWidth - 0.8);
     });

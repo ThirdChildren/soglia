@@ -6,7 +6,7 @@
 // (the thickness of the wall) cuts grazing light: a ray that enters the outer face at u and leaves the inner face
 // at u - T tan(theta) must be inside the opening at both faces, so the usable width is width - T |tan(theta)|
 // (horizontally) and the usable height is height - T tan(altitude) / cos(theta) (vertically, from the top edge).
-// Limits, stated in the app as "simplified light": only the floor, only windows, only the room of the window, no
+// Limits, stated in the app as "Simplified light" (strings.view.light, the note beside Close in the View panel): only the floor, only windows, only the room of the window, no
 // obstacle outside, no light that comes in through an open door, no light bounced on the walls.
 //
 // Plan coordinates as everywhere: [x, z] in metres, y up. A direction "to the sun" is a plan angle clockwise from
