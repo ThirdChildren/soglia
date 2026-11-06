@@ -39,7 +39,7 @@ import { MOVEIN_MAX_ROWS, type MoveInPage } from '../logic/issue-movein';
 import { INFO_TEXT_LINES, type InfoModel } from '../logic/info-panel';
 import { ISSUE_URGENCIES } from '../logic/issues';
 import { ROLES, type Role } from '../logic/params';
-import { PANEL_CENTER } from '../logic/menu';
+import { PANEL_CENTER, scaleExtent } from '../logic/menu';
 import { pinnedAnchorPitchRad, pinnedConeAngleDeg, pinnedMenuAnchor, pitchOfForward, yawOfForward } from '../logic/menu-anchor';
 import type { Vec3Like } from '../logic/palm';
 import { slog } from '../log';
@@ -47,7 +47,7 @@ import { panelFontSupports } from './fonts';
 import { applyPanelLook } from './panel-theme';
 import { disposePanelEntity } from './panel-lifecycle';
 import { strings } from './strings';
-import { chipLook as themeChipLook } from './theme';
+import { chipLook as themeChipLook, isLargeText, panelScale } from './theme';
 
 const PANEL_ASSET = 'issue-panel';
 const ROOT_ELEMENT = 'issue-panel-root';
@@ -242,6 +242,13 @@ export class IssuePanel {
   private yaw = 0;
   /** Bottom centre of the panel and its yaw: where the controls are (valid once `hasFrame`). */
   readonly framePosition = new Vector3();
+  /** The scale the open panel was made with: 1, or 1.25 for large text (fixed at `open`). */
+  private panelScaleValue = 1;
+
+  /** The scale of the open panel: its controls, its centre and its extent grow with it. */
+  get scale(): number {
+    return this.panelScaleValue;
+  }
   /** Yaw of the panel, radians (rotation about +Y; the panel faces +Z, so +Z points back at the user). */
   get frameYaw(): number {
     return this.yaw;
@@ -274,7 +281,9 @@ export class IssuePanel {
     this.headForward.set(0, 0, -1).applyQuaternion(this.headQuaternion);
     this.yaw = yawOfForward(this.headForward.x, this.headForward.z);
     const pitch = pitchOfForward(this.headForward.x, this.headForward.y, this.headForward.z);
-    pinnedMenuAnchor(this.headPosition, this.yaw, this.anchor, pitch);
+    // With large text the whole panel is 1.25 times bigger (3.0 cm text, same layout) and hangs a little farther, centred on the eyes.
+    this.panelScaleValue = panelScale();
+    pinnedMenuAnchor(this.headPosition, this.yaw, this.anchor, pitch, isLargeText());
     slog(`issues panel pitchDeg=${degrees1(pitch)} anchorPitchDeg=${degrees1(pinnedAnchorPitchRad(pitch))}`);
     const entity = this.world.createTransformEntity();
     tagEntity(entity, stableId.ui('issue-panel'));
@@ -403,7 +412,7 @@ export class IssuePanel {
     object.rotation.set(0, this.yaw, 0);
     object.position.set(this.anchor.x, this.anchor.y, this.anchor.z);
     this.framePosition.copy(object.position);
-    this.centerOffset.set(PANEL_CENTER.dx, PANEL_CENTER.dy, 0).applyQuaternion(object.quaternion);
+    this.centerOffset.set(PANEL_CENTER.dx * this.panelScaleValue, PANEL_CENTER.dy * this.panelScaleValue, 0).applyQuaternion(object.quaternion);
     object.position.add(this.centerOffset);
     object.updateMatrixWorld(true);
     object.visible = true;
@@ -416,7 +425,7 @@ export class IssuePanel {
     head.getWorldPosition(this.headPosition);
     head.getWorldQuaternion(this.headQuaternion);
     this.headForward.set(0, 0, -1).applyQuaternion(this.headQuaternion);
-    const angle = pinnedConeAngleDeg(this.anchor, this.yaw, this.headPosition, this.headForward, ISSUE_PANEL_EXTENT);
+    const angle = pinnedConeAngleDeg(this.anchor, this.yaw, this.headPosition, this.headForward, scaleExtent(ISSUE_PANEL_EXTENT, this.panelScaleValue));
     slog(`issues panel view maxAngleDeg=${angle.toFixed(1)} distance=${this.headPosition.distanceTo(this.framePosition).toFixed(2)}`);
   }
 
@@ -424,7 +433,7 @@ export class IssuePanel {
     const doc = entity.getValue(PanelDocument, 'document') as UiDocument | undefined;
     const title = doc?.getElementById<UIKit.Text>(TITLE_ELEMENT);
     if (!doc || !title) return;
-    applyPanelLook(doc, ROOT_ELEMENT);
+    applyPanelLook(doc, ROOT_ELEMENT, 'scale');
     // Never hidden by the model or the table that happen to be in front of it (the menu does the same).
     doc.getElementById<UIKit.Container>(ROOT_ELEMENT)?.setProperties({ depthTest: false, renderOrder: PANEL_RENDER_ORDER });
     this.title = title;
@@ -629,15 +638,15 @@ export class IssuePanel {
     if (!form) {
       // The list has `Prev` and `Next` between `Back` and `Close` when there is more than one page (four narrower buttons).
       const paged = list?.paged === true;
-      const width = list ? listBarWidth(paged) : ISSUE_BAR_BUTTON_WIDTH;
+      const width = (list ? listBarWidth(paged) : ISSUE_BAR_BUTTON_WIDTH) * this.panelScaleValue;
       this.back?.setProperties({ width, opacity: backVisible(screen) ? undefined : 0 });
       this.backLabel?.setProperties({ text: strings.issues.back });
       this.closeBox?.setProperties({ display: 'flex', width, opacity: undefined });
       this.closeLabel?.setProperties({ text: strings.issues.close });
       if (list && paged) {
-        this.mid.box?.setProperties({ display: 'flex', width: LIST_BAR_BUTTON_WIDTH });
+        this.mid.box?.setProperties({ display: 'flex', width: LIST_BAR_BUTTON_WIDTH * this.panelScaleValue });
         this.mid.label?.setProperties({ text: list.prevText });
-        this.mid2.box?.setProperties({ display: 'flex', width: LIST_BAR_BUTTON_WIDTH });
+        this.mid2.box?.setProperties({ display: 'flex', width: LIST_BAR_BUTTON_WIDTH * this.panelScaleValue });
         this.mid2.label?.setProperties({ text: list.nextText });
       } else {
         this.mid.box?.setProperties({ display: 'none' });
@@ -648,15 +657,15 @@ export class IssuePanel {
     const cancel = layout.cells.find((cell) => cell.kind === 'cancel');
     const report = layout.cells.find((cell) => cell.kind === 'report');
     const back = layout.cells.find((cell) => cell.kind === 'back');
-    this.back?.setProperties({ width: cancel?.width ?? ISSUE_BAR_BUTTON_WIDTH, opacity: undefined });
+    this.back?.setProperties({ width: (cancel?.width ?? ISSUE_BAR_BUTTON_WIDTH) * this.panelScaleValue, opacity: undefined });
     this.backLabel?.setProperties({ text: strings.issues.form.cancel });
     this.closeBox?.setProperties({
       display: report ? 'flex' : 'none',
-      width: report?.width ?? ISSUE_BAR_BUTTON_WIDTH,
+      width: (report?.width ?? ISSUE_BAR_BUTTON_WIDTH) * this.panelScaleValue,
       opacity: report && !report.enabled ? FAINT_OPACITY : undefined,
     });
     this.closeLabel?.setProperties({ text: strings.issues.form.report });
-    this.mid.box?.setProperties({ display: back ? 'flex' : 'none', width: back?.width ?? ISSUE_BAR_BUTTON_WIDTH });
+    this.mid.box?.setProperties({ display: back ? 'flex' : 'none', width: (back?.width ?? ISSUE_BAR_BUTTON_WIDTH) * this.panelScaleValue });
     this.mid.label?.setProperties({ text: strings.issues.form.back });
   }
 
@@ -688,7 +697,7 @@ export class IssuePanel {
     d.actionsBox?.setProperties({ display: detail.actions.length > 0 ? 'flex' : 'none' });
     for (let i = 0; i < DETAIL_ACTION_SLOTS; i += 1) {
       const action = detail.actions[i];
-      d.actions[i]?.box?.setProperties({ display: action === undefined ? 'none' : 'flex', width: action?.width });
+      d.actions[i]?.box?.setProperties({ display: action === undefined ? 'none' : 'flex', width: action === undefined ? undefined : action.width * this.panelScaleValue });
       if (action !== undefined) d.actions[i]?.label?.setProperties({ text: action.label });
     }
   }
@@ -778,7 +787,7 @@ export class IssuePanel {
   private writeCell(elements: ChipElements | undefined, cell: FormCell, sized: boolean): void {
     if (!elements) return;
     const look = chipLook(cell.selected);
-    if (sized) elements.box?.setProperties({ display: 'flex', width: cell.width, backgroundColor: look.backgroundColor });
+    if (sized) elements.box?.setProperties({ display: 'flex', width: cell.width * this.panelScaleValue, backgroundColor: look.backgroundColor });
     else elements.box?.setProperties({ backgroundColor: look.backgroundColor });
     elements.label?.setProperties({ text: cell.label, color: look.color });
   }

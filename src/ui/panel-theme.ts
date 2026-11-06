@@ -6,8 +6,9 @@
 // files: the code asks `getUiColors()` when it draws them.
 //
 // The text size has three modes: `none` (the panel has its own layout for large text or does not follow it yet), `font` (only the
-// size of the text grows: 2.4 becomes 3.0, the boxes stay) and `layout` (the size of the text, the widths and the paddings grow
-// together, for a box that has to hold its text on one line).
+// size of the text grows: 2.4 becomes 3.0, the boxes stay), `layout` (the size of the text, the widths and the paddings grow
+// together, for a box that has to hold its text on one line) and `scale` (every length grows: the whole panel is 1.25 times bigger,
+// with the same layout, for the panels whose six screens are packed to the millimetre: the Issues panel and the menu).
 
 import { applyPanelFont } from './fonts';
 import { LARGE_TEXT_FACTOR, isLargeText, onAccessChange, themedColor, type UiColorProperty } from './theme';
@@ -19,7 +20,7 @@ interface Walkable {
 }
 
 /** How the text size of a panel follows the large-text preference. */
-export type TextMode = 'none' | 'font' | 'layout';
+export type TextMode = 'none' | 'font' | 'layout' | 'scale';
 
 interface Node {
   properties?: { peek?: () => Record<string, unknown> };
@@ -30,10 +31,23 @@ interface Node {
 const PROPERTIES: readonly UiColorProperty[] = ['backgroundColor', 'borderColor', 'color'];
 /** The lengths that the `layout` mode grows with the text (the root `width` and the paddings), by the name UIKit has for them. */
 const LAYOUT_LENGTHS = ['width', 'paddingTop', 'paddingBottom', 'paddingLeft', 'paddingRight'] as const;
+/** Every length of a box, for the `scale` mode. */
+const SCALE_LENGTHS = [
+  ...LAYOUT_LENGTHS,
+  'height',
+  'borderWidth',
+  'borderRadius',
+  'marginTop',
+  'marginBottom',
+  'marginLeft',
+  'marginRight',
+  'gap',
+] as const;
+type LengthName = (typeof SCALE_LENGTHS)[number];
 interface Original {
   colors: Partial<Record<UiColorProperty, string>>;
   fontSize?: number;
-  lengths: Partial<Record<(typeof LAYOUT_LENGTHS)[number], number>>;
+  lengths: Partial<Record<LengthName, number>>;
 }
 const originals = new WeakMap<object, Original>();
 
@@ -59,25 +73,32 @@ export function applyPanelTheme(doc: Walkable | undefined, rootId: string, mode:
   const root = doc?.getElementById<Node>(rootId);
   if (!root?.traverse) return 0;
   const factor = isLargeText() && mode !== 'none' ? LARGE_TEXT_FACTOR : 1;
+  // Pass 1 records what every element carries BEFORE anything is changed: an element that has no size of its own reads the size of its
+  // parent, and a parent that was already changed would give a child the changed size as its "original" (it would grow twice).
+  root.traverse((node) => {
+    const peek = node.properties?.peek;
+    if (typeof peek !== 'function' || originals.has(node)) return;
+    const current = peek.call(node.properties);
+    const first: Original = { colors: {}, lengths: {} };
+    for (const property of PROPERTIES) {
+      const hex = hexOfColor(current[property]);
+      if (hex !== null) first.colors[property] = hex;
+    }
+    const fontSize = lengthOf(current.fontSize);
+    // A box inherits the default size of the kit (20) when it has none of its own: only real text sizes are remembered.
+    if (fontSize !== null && fontSize < 10) first.fontSize = fontSize;
+    for (const name of SCALE_LENGTHS) {
+      const value = lengthOf(current[name]);
+      if (value !== null && value > 0) first.lengths[name] = value;
+    }
+    originals.set(node, first);
+  });
   let changed = 0;
   root.traverse((node) => {
     const peek = node.properties?.peek;
-    if (typeof peek !== 'function' || typeof node.setProperties !== 'function') return;
+    const first = originals.get(node);
+    if (typeof peek !== 'function' || typeof node.setProperties !== 'function' || !first) return;
     const current = peek.call(node.properties);
-    let first = originals.get(node);
-    if (!first) {
-      first = { colors: {}, lengths: {} };
-      for (const property of PROPERTIES) {
-        const hex = hexOfColor(current[property]);
-        if (hex !== null) first.colors[property] = hex;
-      }
-      if (typeof current.fontSize === 'number' && Number.isFinite(current.fontSize)) first.fontSize = current.fontSize;
-      for (const name of LAYOUT_LENGTHS) {
-        const value = current[name];
-        if (typeof value === 'number' && Number.isFinite(value) && value > 0) first.lengths[name] = value;
-      }
-      originals.set(node, first);
-    }
     let patch: Record<string, unknown> | null = null;
     for (const property of PROPERTIES) {
       const original = first.colors[property];
@@ -89,15 +110,18 @@ export function applyPanelTheme(doc: Walkable | undefined, rootId: string, mode:
     }
     if (mode !== 'none') {
       if (first.fontSize !== undefined) {
-        const wanted = largeFontSize(first.fontSize, factor);
-        if (current.fontSize !== wanted) (patch ??= {}).fontSize = wanted;
+        const wanted = mode === 'scale' ? Math.round(first.fontSize * factor * 1000) / 1000 : largeFontSize(first.fontSize, factor);
+        if (lengthOf(current.fontSize) !== wanted) (patch ??= {}).fontSize = wanted;
       }
-      if (mode === 'layout') {
-        for (const name of LAYOUT_LENGTHS) {
+      if (mode === 'layout' || mode === 'scale') {
+        for (const name of mode === 'scale' ? SCALE_LENGTHS : LAYOUT_LENGTHS) {
           const original = first.lengths[name];
           if (original === undefined) continue;
-          const wanted = Math.round(original * factor * 1000) / 1000;
-          if (current[name] !== wanted) (patch ??= {})[name] = wanted;
+          // A text that fills its box to the hair (the hint of `home` does) must not wrap differently once everything is 1.25 times
+          // bigger: the width of a text gets 2 % of air, the other lengths scale exactly.
+          const air = name === 'width' && first.fontSize !== undefined && factor !== 1 ? TEXT_AIR : 1;
+          const wanted = Math.round(original * factor * air * 1000) / 1000;
+          if (lengthOf(current[name]) !== wanted) (patch ??= {})[name] = wanted;
         }
       }
     }
@@ -109,11 +133,21 @@ export function applyPanelTheme(doc: Walkable | undefined, rootId: string, mode:
   return changed;
 }
 
+/** A length as UIKit may hold it: a number, or (from a UIKitML file) a string of a number (`'34.4'`); else null. */
+function lengthOf(value: unknown): number | null {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (typeof value === 'string' && /^-?\d+(\.\d+)?$/.test(value)) return Number(value);
+  return null;
+}
+
 /** The text size for `factor` (1 = as the file says; 1.25 for large text): sizes below 3.0 cm grow by it, bigger ones stay. */
 export function largeFontSize(original: number, factor: number): number {
   if (factor === 1 || original >= 3) return original;
   return Math.max(3, Math.round(original * factor * 100) / 100);
 }
+
+/** Extra width a text gets in the `scale` mode (see above). */
+const TEXT_AIR = 1.02;
 
 const watched = new WeakSet<object>();
 

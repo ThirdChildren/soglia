@@ -94,7 +94,7 @@ describe('the access log lines', () => {
     expect(formatAccessContrast(true, 'ui')).toBe('access contrast=on source=ui');
     expect(formatAccessContrast(false, 'url')).toBe('access contrast=off source=url');
     expect(formatAccessText(true, 'ui')).toBe(`access text=large source=ui menu=${MENU_TEXT_WITH_LARGE} issues=${ISSUES_TEXT_WITH_LARGE}`);
-    expect(formatAccessText(false, 'saved')).toBe('access text=normal source=saved menu=normal issues=normal');
+    expect(formatAccessText(false, 'saved')).toBe('access text=normal source=saved menu=normal issues=large');
     expect(formatAccessApplied(7)).toBe('access applied recolored=7');
   });
 
@@ -103,11 +103,11 @@ describe('the access log lines', () => {
     expect(startupAccessLines(base)).toEqual([]);
     expect(startupAccessLines({ ...base, contrast: true, largeText: true, contrastSaved: true, textSaved: true })).toEqual([
       'access contrast=on source=saved',
-      'access text=large source=saved menu=normal issues=normal',
+      'access text=large source=saved menu=normal issues=large',
     ]);
     expect(startupAccessLines({ ...base, contrastExplicit: true, textExplicit: true })).toEqual([
       'access contrast=off source=url',
-      'access text=normal source=url menu=normal issues=normal',
+      'access text=normal source=url menu=normal issues=large',
     ]);
     // The URL wins over a saved value that is on.
     expect(startupAccessLines({ ...base, contrastExplicit: true, contrastSaved: true })).toEqual(['access contrast=off source=url']);

@@ -6,10 +6,17 @@
 // never tilts it; the pitch of the gaze only raises or lowers it, within a limit (task T4.R2, D49).
 
 import type { PanelExtent } from './menu';
-import { PINNED_DISTANCE, PINNED_DROP, PINNED_PITCH_MAX_DEG, PINNED_PITCH_MIN_DEG } from './menu-thresholds';
+import {
+  PINNED_DISTANCE,
+  PINNED_DISTANCE_LARGE,
+  PINNED_DROP,
+  PINNED_DROP_LARGE,
+  PINNED_PITCH_MAX_DEG,
+  PINNED_PITCH_MIN_DEG,
+} from './menu-thresholds';
 import type { Point3Like } from './view-fit';
 
-export { PINNED_DISTANCE, PINNED_DROP, PINNED_PITCH_MAX_DEG, PINNED_PITCH_MIN_DEG };
+export { PINNED_DISTANCE, PINNED_DISTANCE_LARGE, PINNED_DROP, PINNED_DROP_LARGE, PINNED_PITCH_MAX_DEG, PINNED_PITCH_MIN_DEG };
 
 /** Eye position used when the head position is not usable (a seated user), metres. */
 const FALLBACK_HEAD: Readonly<Point3Like> = { x: 0, y: 1.6, z: 0 };
@@ -52,17 +59,25 @@ export function pinnedAnchorPitchRad(pitchRad: number): number {
  * the pitch clamped by `pinnedAnchorPitchRad` (so the panel keeps the same horizontal distance and stays upright).
  * Writes into `out` (which may be `head`) and returns it. A head or yaw that is not finite falls back to a seated
  * user at the origin looking along -z, a pitch that is not finite to a level gaze, so the result never contains
- * NaN. Allocates nothing.
+ * NaN. Allocates nothing. `large` (the panel is 1.25 times bigger for large text) uses `PINNED_DISTANCE_LARGE` and `PINNED_DROP_LARGE`.
  */
-export function pinnedMenuAnchor(head: Readonly<Point3Like>, yawRad: number, out: Point3Like, pitchRad = 0): Point3Like {
+export function pinnedMenuAnchor(
+  head: Readonly<Point3Like>,
+  yawRad: number,
+  out: Point3Like,
+  pitchRad = 0,
+  large = false,
+): Point3Like {
+  const distance = large ? PINNED_DISTANCE_LARGE : PINNED_DISTANCE;
+  const drop = large ? PINNED_DROP_LARGE : PINNED_DROP;
   const usable = Number.isFinite(head.x + head.y + head.z);
   const hx = usable ? head.x : FALLBACK_HEAD.x;
   const hy = usable ? head.y : FALLBACK_HEAD.y;
   const hz = usable ? head.z : FALLBACK_HEAD.z;
   const yaw = Number.isFinite(yawRad) ? yawRad : 0;
-  out.x = hx - Math.sin(yaw) * PINNED_DISTANCE;
-  out.y = hy - PINNED_DROP + Math.tan(pinnedAnchorPitchRad(pitchRad)) * PINNED_DISTANCE;
-  out.z = hz - Math.cos(yaw) * PINNED_DISTANCE;
+  out.x = hx - Math.sin(yaw) * distance;
+  out.y = hy - drop + Math.tan(pinnedAnchorPitchRad(pitchRad)) * distance;
+  out.z = hz - Math.cos(yaw) * distance;
   return out;
 }
 

@@ -93,6 +93,15 @@ export const PINNED_PITCH_MIN_DEG = -8;
 /** See `PINNED_PITCH_MIN_DEG`. */
 export const PINNED_PITCH_MAX_DEG = 8;
 
+/**
+ * The pinned panels at large text (D58, T5.13, T5.16) are the normal ones made 1.25 times bigger (45 x 47 cm): the same panel with
+ * text of 3.0 cm. The anchor is different so that the whole panel stays in the 30 degree cone: a little farther (0.60 m) and the
+ * panel centred on the eye line (its bottom `PINNED_DROP_LARGE` below the eyes, half its height), so no corner is farther from
+ * the gaze than 28.5 degrees at a level gaze and 29.6 at the ends of the pitch the anchor follows. The frame is 0.64 m from the eyes.
+ */
+export const PINNED_DISTANCE_LARGE = 0.6;
+export const PINNED_DROP_LARGE = 0.235;
+
 // --- The "Palm up for the menu" hint ---------------------------------------------------------
 
 /** The hint floats this far above the anchor of the model, in metres (about 0.5 m from the head). */

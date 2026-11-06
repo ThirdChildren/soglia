@@ -221,6 +221,12 @@ export function tabSlots(visible: readonly MenuTabId[]): TabSlot[] {
 }
 
 /** Extent of a panel in its own plane, from its anchor, in metres: `halfWidth` to each side, `bottom` and `top` along its up axis. */
+/** `extent` made `factor` times as big about its frame (the bottom centre): a panel scaled for large text. Not a usable factor: a copy. */
+export function scaleExtent(extent: Readonly<PanelExtent>, factor: number): PanelExtent {
+  const f = Number.isFinite(factor) && factor > 0 ? factor : 1;
+  return { halfWidth: extent.halfWidth * f, bottom: extent.bottom * f, top: extent.top * f };
+}
+
 export interface PanelExtent {
   readonly halfWidth: number;
   readonly bottom: number;

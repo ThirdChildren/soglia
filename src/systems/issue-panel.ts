@@ -710,8 +710,10 @@ export class IssuePanelSystem extends createSystem({}) {
         anchor = new MenuAnchor(this.world, controlStableId(id));
         this.anchors.set(id, anchor);
       }
-      pinnedPanelPoint(ctx.panel.framePosition, yaw, base.dx, base.dy, this.spot);
-      this.pickSlots.push({ id, x: this.spot.x, y: this.spot.y, z: this.spot.z, halfWidth: base.halfWidth, halfHeight: base.halfHeight });
+      // With large text the whole panel is bigger (`ctx.panel.scale`): the places and the sizes of the controls grow with it.
+      const k = ctx.panel.scale;
+      pinnedPanelPoint(ctx.panel.framePosition, yaw, base.dx * k, base.dy * k, this.spot);
+      this.pickSlots.push({ id, x: this.spot.x, y: this.spot.y, z: this.spot.z, halfWidth: base.halfWidth * k, halfHeight: base.halfHeight * k });
       const object = anchor.object;
       if (object) {
         object.position.set(this.spot.x, this.spot.y, this.spot.z);

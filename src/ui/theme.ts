@@ -4,8 +4,9 @@
 // the preference that is on NOW (`setAccessibility`), so no constant is read at import time. The pairs of text and
 // background are checked against WCAG ratios in tests/unit/theme-contrast.test.ts.
 //
-// Values are 0xRRGGBB numbers: this module has no runtime imports, so it can be used from anywhere.
+// Values are 0xRRGGBB numbers: this module imports only pure logic, so it can be used from anywhere.
 
+import { LARGE_TEXT_FACTOR } from '../logic/access';
 import type { FloorMaterial } from '../logic/house';
 
 export const palette = {
@@ -57,7 +58,7 @@ export const highContrastPalette: Palette = {
 export type Palette = { readonly [K in keyof typeof palette]: K extends 'floor' ? Readonly<Record<FloorMaterial, number>> : number };
 
 /** Large text is 3.0 cm where the normal text is 2.4 cm (D58). */
-export { LARGE_TEXT_FACTOR } from '../logic/access';
+export { LARGE_TEXT_FACTOR };
 
 /** Factor of the size of a pin head in high contrast (D58: the head is 30 % bigger). */
 export const HIGH_CONTRAST_PIN_SCALE = 1.3;
@@ -82,6 +83,14 @@ export function isHighContrast(): boolean {
 
 export function isLargeText(): boolean {
   return largeText;
+}
+
+/**
+ * The scale of the panels that are made bigger as a whole for large text (the Issues panel and the menu, D58): 1.25 while the large
+ * text is on, else 1. The text is then 3.0 cm, and every length, every control and the extent of the panel grow with it.
+ */
+export function panelScale(): number {
+  return largeText ? LARGE_TEXT_FACTOR : 1;
 }
 
 /**
