@@ -16,9 +16,9 @@ Built 2026-11-02/04 (plan `docs/plans/M4.md`). Complements [[m3-lifecycle-and-jo
   extra instances placed right after the pins; `mesh.count` draws only the used instances. Entities `pin:<id>` are light, for QA only.
 - Long pinch (`long-press.ts`): 0.8 s, 1.5 cm, settle 0.15 s; the decision is delayed because other pinch systems claim the hand in their own
   listeners. Claim owner `issue` sits between `pan` and `room`; blocked by a held piece, the measure tool, real scale and transitions.
-- `transitionIssue` takes the role from the caller: always pass `store.get().role` (the reducer does not compare it with `state.role`).
+- `transitionIssue(id, action, nowIso, note?)` and `planTransition(state, id, action, nowIso, note?)` take NO role since T5.R1: the reducer uses `state.role`.
 - Persistence: role, issues, nextIssue, issuesSeeded, prefs.moveInVisible are additive (version 1); `explicit` params win over the saved role;
   the seed is applied once and makes every load save the state; own pieces whose catalog is missing are parked and rewritten identical.
-  Restore/save only start when the catalog loaded (known gap if `catalog.json` fails).
+  Since T5.R2 restore/save also run without a catalog (`restoreSavedState(..., null, ...)`: every piece parked, `failcatalog=1` with `debug=1`).
 - Tabletop button: 0.13 x 0.05 m, 0.55 m ahead and 0.22 m below the eyes, yaw only; re-anchors after 0.5 s beyond 35 deg (glide 0.3 s).
 - Pinned menu: `pinnedMenuAnchor(head, yaw, out, pitch)` clamps the pitch to +-8 deg; real window +12.0 / -14.3 deg (not +13.1 / -15.1).

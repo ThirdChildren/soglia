@@ -21,3 +21,4 @@
 - [M2 gate round 2](m2-gate-round2.md) — min 0.50 m clamp, dimmed menu, rect pick, alloc-free placement, licences; measured numbers, traps
 - [M2 rerun 2 fixes](m2-rerun2-fixes.md) — pinch never closes menu, async panel dispose trap, one-panel menu + anchors, UIKit opacity inheritance, label cone
 - [M4 issues UI](m4-issues-ui.md) — in-place UIKit screens, instanced pins, long pinch claims, role from store, parked pieces, Tabletop button, pitched pinned menu
+- [M5 Block R](m5-block-r.md) — T5.R1-R6: two-line list rows (why), agent chip constant, violet baseline, no-catalog persistence, debug-only params
