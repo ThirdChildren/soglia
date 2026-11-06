@@ -1,5 +1,7 @@
 # S3.1 · Punto di vista in scala reale e ritorno al plastico
 
+> **Changelog 2026-11-02** (nota condizionale, criteri invariati; piano M4, T4.R6): **se** la conferma del punto di vista è stata eseguita (riga `viewpoint confirm start` nei log), il pizzico sul marcatore va **tenuto almeno 0,6 s** (`xr_set_select_value` 1, attesa 0,8 s, poi 0) al posto di `xr_select` con `duration` 0,2–0,3 s (passi 2 e 8); nel passo 8 (pezzo in mano) il pizzico non fa partire alcuna conferma. Se T4.R6 è stato tagliato (ripiego: raggio 0,025 m), lo scenario resta com'è. Il ritorno si fa con la voce "Tabletop" del menu (passo 6) **o** con il pulsante `ui:tabletop-button` (`qa/scenarios/M4-one-hand-real-scale.md`).
+
 **Milestone**: M3 · **Tipo**: PC (emulatore IWER via MCP `iwsdk-runtime`) · **Regole di `CLAUDE.md`**: 2 (da seduti, nessuna locomozione, ci si sposta solo tra punti di vista con una dissolvenza), 3, 4
 Prerequisiti di implementazione: T3.10, T3.11, T3.12, T3.5 (barra con "Tabletop"), T3.3b. Vedi `docs/plans/M3.md`, D35. Convenzioni comuni (pose, `D_GRIP`, `Q_UP`, `W(...)`, regola di gate): `qa/scenarios/M3-persistence.md`.
 

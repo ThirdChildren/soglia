@@ -16,13 +16,35 @@ Legenda stato: ⬜ da fare · 🟨 in corso · ✅ PC-done · 🟩 Device-done
 | M1 Casa e plastico | 2 – 7 ott | ✅ PC-done 2026-10-05 (piano: `docs/plans/M1.md`; report: `qa/reports/M1-2026-10-05-rerun.md`; gate visore in debito) |
 | M2 Arredare con le mani | 8 – 14 ott (PC-done anticipato al 7 ott) | ✅ PC-done 2026-10-07 (piano: `docs/plans/M2.md`; report: `qa/reports/M2-2026-10-06-rerun3.md`; `contest-reviewer`: SUPERATO CON RISERVE, nessun bloccante; gate visore in debito, vedi `qa/device/DEBT.md`) |
 | M3 Dentro la casa e i miei mobili | 15 – 21 ott (PC-done atteso 12–13 ott) | ✅ PC-done 2026-11-02 (piano: `docs/plans/M3.md`; report: `qa/reports/M3-2026-10-10.md`; `contest-reviewer`: APPROVATO CON AVVISI, nessun bloccante; T3.15 tagliato; gate visore in debito, vedi `qa/device/DEBT.md`) |
-| M4 Segnalazioni e persistenza | 22 – 28 ott | ⬜ |
-| M5 Luce, agente, accessibilità, realtà mista | 29 ott – 4 nov | ⬜ |
-| M6 Integrazione con il visore | appena arriva il Quest (idealmente 2 – 10 nov) | ⬜ |
-| M7 Rifinitura e consegna | 9 – 15 nov (margine fino al 18) | ⬜ |
+| M4 Segnalazioni e persistenza | 2 – 8 nov (PC-done atteso dom 8, limite lun 9) | ✅ PC-done 2026-11-04 (piano: `docs/plans/M4.md`; report: `qa/reports/M4-2026-11-03.md`; `contest-reviewer`: APPROVATO CON AVVISI, nessun bloccante; nota vocale, tastiera di sistema, conferma completa del punto di vista e corsivo W4 non fatti; gate visore in debito, vedi `qa/device/DEBT.md`; ramo `m4`) |
+| M5 Luce, agente, accessibilità, realtà mista (**ridotta**) | 9 – 12 nov (PC-done entro gio 12, 23:59) | ⬜ |
+| M6 Integrazione con il visore | appena arriva il Quest: mezze giornate 10 – 13 nov, sessione principale ven 13; ripiego: prova di fumo del link 15 – 16 nov | ⬜ |
+| M7 Rifinitura e consegna | 14 – 17 nov (consegna interna mar 17, 18:00; scadenza mer 18 nov, 12:00 PT = 21:00 in Italia) | ⬜ |
 
-Il visore andrebbe preso **entro fine ottobre**: M6 ha bisogno di almeno una settimana di prove reali
-prima della consegna.
+### Calendario ripianificato (2026-11-02)
+
+Le date originali (M4 22–28 ott, M5 29 ott–4 nov, M6 2–10 nov, M7 9–15 nov) erano **superate**: M3 si è chiusa il
+2 novembre con ~12–13 h di lavoro attivo contro 7 stimate (fattore ≈ 1,8, tre interruzioni per limite d'uso).
+Restano 16 giorni alla consegna. L'utente ha deciso di proseguire ("slitta tutto il resto, penso che possiamo
+farcela"). Le stime di `docs/plans/M4.md` applicano il fattore 1,8: M4 ≈ **23 h reali** (intervallo 16–32 h).
+
+| Quando (Italia) | Cosa |
+|---|---|
+| lun 2 – dom 8 nov | **M4**: Blocco R (riporti dal gate di M3), segnalazioni, persistenza, gate PC |
+| lun 9 – gio 12 nov | **M5 ridotta**: sole, agente minimo, accessibilità base; R-A se ci sono le ombre |
+| **gio 12 nov, 23:59** | **CONGELAMENTO DELLE FUNZIONI**: nessun task nuovo dopo **mer 11 nov, 12:00**; dopo solo correzioni, tarature, documenti |
+| 10 – 13 nov (mezze giornate) | **M6** appena c'è il Quest; sessione principale ven 13 |
+| sab 14 – mar 17 nov | **M7**: README e `DATA_FORMATS.md` in inglese, video < 3 min, Devpost, istruzioni di test, `contest-reviewer`, deploy manuale, prova del link |
+| mar 17 nov, 18:00 | **consegna interna**; mer 18 mattina di riserva |
+
+**Tagli, in ordine** (dettagli e criteri persi in `docs/plans/M4.md`, "Tagli"): nota vocale e tastiera di sistema (già
+tagliate di partenza) → conferma del punto di vista (T4.R6) e W4 → presa a distanza (già tagliata, T3.15) → confronto di
+due disposizioni/case → mappa dell'interesse e domande → realtà mista → ombre del sole → modalità una mano completa di M5.
+**Scenario A** (ritardo moderato): tagli fino alla mappa. **Scenario B** (M4 non PC-done lun 9 notte): M4 minima e M5
+ridotta a sole (quadrante) + Furnish/Clear + alto contrasto/testo grande.
+
+Il visore va preso **il prima possibile**: ogni giorno senza Quest sposta le prove del pizzico prolungato, dei 60 fps e
+della ripresa vera in `qa/device/DEBT.md`.
 
 ---
 
@@ -178,11 +200,17 @@ attivo contro 7 h stimate, con tre interruzioni per limite d'uso dell'account.
 ## M4 · Segnalazioni e persistenza
 
 **Obiettivo**: il ciclo completo della segnalazione e la ripresa dopo una pausa.
+**Piano e decisioni D39–D52 in `docs/plans/M4.md` (consegnato il 2026-11-02, 🟨)**: prima il Blocco R (riporti dal
+gate di M3, T4.R1–T4.R7), poi segnalazioni e persistenza (T4.1–T4.12), gate PC (T4.13) e revisione (T4.14). Stima:
+≈ 23 h reali (centrale × 1,8); PC-done atteso dom 8 nov, limite lun 9.
 
-- `Roles`: visitatore, agente, inquilino, proprietario (cambio dal menu del palmo).
-- `Issues`: pizzico prolungato su un punto o su un fixture → segnaposto; categoria (proposta dal
-  fixture), urgenza, testo con tastiera di sistema, nota vocale con MediaRecorder **solo se esiste**;
-  stati open → in_progress → resolved → archived; conferma dell'inquilino; verbale d'ingresso (blu).
+- `Roles`: visitatore, agente (M5), inquilino, proprietario; **il cambio avviene dal nuovo pannello "Issues"**
+  (due pulsanti specchiati sopra i pulsanti "Menu", raggiungibili con una mano; il menu del palmo è al limite del
+  cono di 30°), non dal menu del palmo; il ruolo si salva, un `role=` nell'URL vince (D41).
+- `Issues`: pizzico prolungato (0,8 s) su un punto o su un fixture → segnaposto; categoria (proposta dal
+  fixture), urgenza, **testo scelto tra frasi predefinite per categoria** (nessuna tastiera: D40; la tastiera di
+  sistema e la nota vocale con MediaRecorder sono extra opzionali, feature-detected, tagliati di partenza);
+  stati open → in_progress → resolved → archived; conferma dell'inquilino; verbale d'ingresso (blu, "Sample data").
 - `Persistence`: salvataggio automatico (localStorage/IndexedDB con try/catch), ripresa su reload
   e su `visibilitychange`. **La prima fetta è consegnata in M3** (T3.1a/b: chiave
   `soglia:v1:state:<casa>`, lista bianca dei campi ripristinati, `reset=1`, ciclo di vita con presa
@@ -191,7 +219,7 @@ attivo contro 7 h stimate, con tre interruzioni per limite d'uso dell'account.
   IndexedDB se la quota lo richiede. Il caso peggiore dei draw call di M3 ha misurato **71** (< 85):
   R-A (unire muri e soglie in due mesh, −16 chiamate per vista, ~2,5 h; vedi `docs/plans/M3.md`, D33)
   **non** è il primo task di M4, ma resta pronto se il Quest misura di più.
-- **Riporti dal gate di M3 (avvisi del `contest-reviewer` e di `emulator-qa`, da fare in M4 o M5)**, in
+- **Riporti dal gate di M3 → Blocco R di `docs/plans/M4.md` (da eseguire PRIMA del lavoro nuovo; prerequisiti: (1), (2), (5), (9) = T4.R1–T4.R4; rimandabili: (3)+(6) T4.R5, (4) T4.R6, W4 T4.R7; (7) scenari già corretti il 2026-11-02, con riga di changelog; (8) in M7)** (avvisi del `contest-reviewer` e di `emulator-qa`), in
   ordine di importanza: (1) **scala reale senza menu per chi usa una mano sola**: mostrare almeno un
   pulsante di ritorno al plastico anche in scala reale (regola 9); (2) **menu `pinned` nel cono di 30°
   solo con lo sguardo livellato**: ancora che tiene conto del beccheggio (`fitPanelToCone`); (3)
@@ -206,20 +234,34 @@ attivo contro 7 h stimate, con tre interruzioni per limite d'uso dell'account.
 
 | Scenario PC | Verifica |
 |---|---|
-| S4.1 Segnalazione | ruolo tenant, pizzico prolungato su `fixture:washer` → categoria `appliances`, testo "The washing machine leaks during the spin cycle", urgenza medium → `pin:*` rosso |
-| S4.2 Voce | se MediaRecorder esiste: nota registrata e collegata; altrimenti il pulsante voce è nascosto e resta la tastiera |
-| S4.3 Proprietario | ruolo landlord → elenco per urgenza; "Take on" → arancione; "Resolved" → verde; conferma tenant → storico |
-| S4.4 Ripresa | ricarica la pagina → stesse segnalazioni, stessa casa, stesso ruolo |
-| S4.5 Verbale | "Move-in report" → segnaposto blu da `issues-apartment-a.json` |
+| S4.1 Segnalazione | `qa/scenarios/M4-issue-create.md`: ruolo tenant, pizzico prolungato su `fixture:washer` → categoria `appliances`, frase "Leaks" → testo `The washing machine leaks.` (frasi predefinite al posto della tastiera, D40), urgenza medium → `pin:issue-014` rosso; punto libero con scelta della categoria; ruoli non autorizzati |
+| S4.2 Voce (opzionale) | `qa/scenarios/M4-voice-note.md`: sempre: nessun pulsante vocale senza API (nessun pulsante morto); se T4.15: nota registrata e collegata |
+| S4.3 Proprietario | `qa/scenarios/M4-landlord-flow.md`: ruolo landlord → elenco per urgenza (`014, 013, 012, 010`); "Take on" → arancione; "Resolved" → verde; conferma tenant → storico (archiviata); "Reopen" |
+| S4.4 Ripresa | `qa/scenarios/M4-persistence-resume.md`: ricarica → stesse segnalazioni, stesso ruolo (un `role=` esplicito vince), pezzi propri non persi (`failmy=1`), sospensione con la bozza aperta |
+| S4.5 Verbale | `qa/scenarios/M4-move-in-report.md`: "Move-in report" → segnaposto blu da `issues-apartment-a.json`, "Sample data" |
+| S4.6 Scala reale a una mano (aggiunto) | `qa/scenarios/M4-one-hand-real-scale.md`: pulsante `ui:tabletop-button` in scala reale, ritorno con una sola mano (riporto 1 di M3) |
+| S4.7 Menu `pinned` inclinato (aggiunto) | `qa/scenarios/M4-pinned-menu-pitch.md`: cono ≤ 30° con beccheggio da +10° a −14° (riporto 2) |
+| S4.8 Etichetta, pilastro, zona morta (aggiunto) | `qa/scenarios/M4-labels-and-markers.md`: etichetta del corridoio leggibile, quota minima, conferma del punto di vista (riporti 3, 4, 6) |
+| S4.9 Regressione rapida (aggiunto) | `qa/scenarios/M4-regression.md`: S1.2, S1.3, S1.6, S2.1–S2.9, S3.0–S3.9 con `pinch=grip` e i punti corretti |
+| S4.10 Budget (aggiunto) | `qa/scenarios/M4-budget.md`: K1–K13, caso peggiore di M4 K11 (previsione 74); ≥ 85 apre R-A in M5 |
 
 **Unit test**: macchina a stati (transizioni valide e vietate), serializzazione/deserializzazione,
 permessi per ruolo.
-**Gate visore**: pizzico prolungato distinto dal pizzico normale, tastiera di sistema in WebXR,
-microfono nel Quest Browser (se c'è), ripresa dopo aver tolto il visore.
+**Gate visore**: pizzico prolungato distinto dal pizzico normale, pulsanti "Issues" e pannello leggibili e
+raggiungibili con una mano, scala reale a una mano ("Tabletop"), ripresa dopo aver tolto il visore; tastiera di
+sistema in WebXR e microfono nel Quest Browser solo se gli extra opzionali (T4.15, T4.16) sono stati fatti.
+Voci previste in `docs/plans/M4.md`, "Debito per `qa/device/DEBT.md`" (le aggiunge l'utente al gate).
 
 ## M5 · Luce, agente, accessibilità, realtà mista
 
-**Obiettivo**: tutte le funzioni della demo presenti.
+**Riporti dal gate di M4 (avvisi del `contest-reviewer` e di `emulator-qa`, 2026-11-04), in ordine di importanza**: (1) **`transitionIssue` deve usare `state.role`** (il reducer oggi si fida del ruolo passato dal chiamante: oggi l'unico chiamante passa `state.role`, quindi nessun aggiramento reale, ma M5 aggiunge chiamanti); (2) **persistenza anche se `catalog.json` non si carica** (`src/index.ts` ripristina e salva solo con il catalogo: ruolo e segnalazioni andrebbero persi); (3) **chip "Agent"**: oggi è un ruolo senza funzioni con il suggerimento "Info points for agents are coming soon.": M5 consegna i punti informativi oppure si nasconde il chip prima di M7; (4) **accessibilità dell'elenco**: stato in parole o forma oltre al pallino colorato (D46), testo delle righe troncato a circa 16 caratteri, `Medium` a bordo pannello nel dettaglio, blu del verbale vicino al blu dei pilastri; (5) **apertura del dettaglio con due pressioni** (scopribilità): un'indicazione o un solo pizzico; (6) **scenari da allineare** (decisione dell'utente, non toccati): S3.0 verifica 4 (`state restored pieces=0` al posto di `state none` con il seme), S4.3 passo 4 (due pressioni), S4.5 passi 2 e 5 (interruttore spento di default), punti non liberi di S3.0 fase 2 e S3.5 passo 3; (7) il `warn` di framework `THREE.WebGLRenderer: Can't change size while VR device is presenting.` (solo `xr_end_session`) nel contratto dei log; (8) `console.error` di `src/index.ts` fuori dal prefisso, `strings.issues.comingSoon` quasi morto, `?glyphs=1` senza `debug=1`; (9) tetto di 40 pezzi che non conta i parcheggiati (rarissimo); (10) conferma completa di 0,30 s sul punto di vista (T4.R6) e corsivo W4 (T4.R7) se il visore le chiede.
+
+**Obiettivo**: tutte le funzioni della demo presenti. **Ripianificata il 2026-11-02 (9 – 12 nov, PC-done entro gio 12
+23:59 = congelamento delle funzioni)** e **ridotta al minimo che regge i tre atti**: restano sole, Furnish/Clear e
+punti informativi, alto contrasto e testo grande, "Rotate", onboarding del menu; sono tagliabili, in quest'ordine,
+confronto di due disposizioni/case, mappa dell'interesse e domande, realtà mista (`?mr=1`, fuori dalla demo salvo prova
+sul visore in due stanze), ombre (si evita R-A), modalità una mano completa. Il caso peggiore del ruolo agent arriva a
+~95 chiamate con le ombre: R-A (−16) è il primo task di M5 se ci sono le ombre (vedi `docs/plans/M4.md`).
 
 - `Sun` con SunCalc, manopola mese/ora, ombre solo nella stanza attiva.
 - Agente: punti informativi, "Furnish / Clear" (preset `staging`), mappa dell'interesse con
@@ -271,11 +313,17 @@ leggibile, sessione completa di 10 minuti senza fastidio.
   copione e sottotitoli del video.
 - Video < 3 minuti con riprese reali (visore o emulatore), niente video generati con AI.
 - `contest-reviewer`: revisione finale su `docs/RULES.md`.
-- Deploy manuale su GitHub Pages, prova del link dal visore, consegna entro domenica 15 novembre.
-- **Congelamento** fino all'annuncio dei vincitori.
+- **`README.md`** (ancora a "M0", con "solo CC0" che contraddice le tre eccezioni di `docs/RULES.md`) e
+  **`docs/DATA_FORMATS.md` in inglese** (oggi in italiano): riporto (8) del gate di M3, da fare prima della consegna.
+- Deploy manuale su GitHub Pages, prova del link (dal visore se c'è), **consegna interna martedì 17 novembre, 18:00**
+  (scadenza ufficiale mercoledì 18 novembre, 12:00 PT = 21:00 in Italia; mercoledì mattina di riserva).
+- **Congelamento delle funzioni giovedì 12 novembre 2026, 23:59** (nessun task nuovo dopo mer 11 nov, 12:00); poi
+  **congelamento del sito** dalla consegna fino all'annuncio dei vincitori (nessun deploy).
 
 ## Changelog
 
+- 2026-11-02: **piano M4 consegnato (M4 ⬜ → 🟨)**: `docs/plans/M4.md` (decisioni D39–D52, Blocco R dei riporti di M3, task T4.R1–T4.R7 e T4.1–T4.14, previsione dei draw call, rischi, debito, stima onesta con fattore 1,8) e scenari `qa/scenarios/M4-*.md` (S4.1–S4.10). **Calendario M4–M7 ripianificato** (le date precedenti erano superate): M4 PC-done atteso dom 8 nov (limite lun 9), M5 ridotta 9–12 nov, **congelamento delle funzioni gio 12 nov 23:59**, M6 appena c'è il Quest (sessione principale ven 13), M7 14–17 nov con consegna interna mar 17, 18:00; tagli in ordine e scenari A/B in `docs/plans/M4.md`. Testo con le sole mani: frasi predefinite (D40), tastiera di sistema e nota vocale opzionali e tagliate di partenza. Cambio ruolo dal nuovo pannello "Issues" (D41). Scenari corretti nei punti di partenza (non nei criteri), con riga di changelog in testa: S1.2, S2.6, S2.9, S3.0, S3.2, S3.3 e nota condizionale su S3.1. `README.md` e `docs/DATA_FORMATS.md` in inglese passano a M7. Stato di M3 invariato (✅ PC-done).
+- 2026-11-04: **M4 🟨 → ✅ PC-done** (report `qa/reports/M4-2026-11-03.md`; scenari S4.1–S4.8, S4.10 e regressioni S1.x, S2.x, S3.x superati; `contest-reviewer`: APPROVATO CON AVVISI, nessun bloccante). Caso peggiore di draw call 75 per vista (< 85: R-A non è il primo task di M5). Chiuso con 5 giorni di anticipo sul piano rivisto (previsto dom 8–lun 9 nov). Voci M4 aggiunte a `qa/device/DEBT.md`. Una differenza di criterio da decidere: S3.0 verifica 4. Riporti a M5 nella sezione M5.
 - 2026-11-02: **M3 🟨 → ✅ PC-done** (report `qa/reports/M3-2026-10-10.md`; scenari S3.0–S3.9 e regressioni S1.1–S1.6, S2.0–S2.9 superati; `contest-reviewer`: APPROVATO CON AVVISI, nessun bloccante). T3.15 tagliato (presa e misura a distanza passano a M5/M7). Chiarimento della regola 8 in `docs/RULES.md` (ingressi di riserva fino a 45°: due pulsanti Menu laterali a ±0,45 m). Voci M3 aggiunte a `qa/device/DEBT.md`. **Calendario non aggiornato**: M3 si chiude il 2 novembre invece del 12–13 ottobre e restano 16 giorni alla consegna del 18 novembre per M4–M7: da ripianificare con l'utente (tagli possibili: presa a distanza, voce, agente).
 - 2026-10-09: piano M3 consegnato (`docs/plans/M3.md`, scenari `qa/scenarios/M3-*.md`): **M3 ⬜ → 🟨**. Richiesta dell'utente: i primi quattro task sono salvataggio minimo in `localStorage` + ciclo di vita, palmo e pizzico dai giunti, pulsante "Menu" a una mano, previsione dei draw call fino a M5. Righe scenari aggiunte (S3.0, S3.6–S3.10). **M4**: `Persistence` ha già la prima fetta (nota). **M5**: la voce "menu e Recenter usabili con una mano sola" è riscritta come consegnata in M3, con l'elenco di ciò che resta a M5 (onboarding del pulsante, "Rotate", alto contrasto, default una mano, S5.4, prova sul visore). Nessun altro stato di milestone è cambiato.
 - 2026-10-07: M2 PC-done (report `qa/reports/M2-2026-10-06-rerun3.md`; `contest-reviewer`: SUPERATO CON RISERVE, nessun bloccante). Gate visore di M2 in debito: voci aggiunte o allineate in `qa/device/DEBT.md`. Stato di M3+ invariato (lo aggiorna il piano M3).

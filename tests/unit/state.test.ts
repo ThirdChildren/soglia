@@ -60,12 +60,15 @@ describe('createInitialState', () => {
       role: 'tenant',
       miniature: { scale: 0.05, yawDeg: 0, offset: [0, 0] },
       selectedRoomId: null,
-      prefs: { onboardingStep: 'pinch', menuOpened: false },
+      prefs: { onboardingStep: 'pinch', menuOpened: false, moveInVisible: false },
       furniture: [],
       nextInstance: {},
       history: [],
       view: { kind: 'tabletop' },
       tool: 'furnish',
+      issues: [],
+      nextIssue: 14,
+      issuesSeeded: false,
     });
   });
 
@@ -102,6 +105,9 @@ describe('createInitialState', () => {
       'history',
       'view',
       'tool',
+      'issues',
+      'nextIssue',
+      'issuesSeeded',
     ]);
   });
 });
@@ -554,17 +560,21 @@ describe('serialize', () => {
       'nextInstance',
       'history',
       'view',
+      'issues',
+      'nextIssue',
+      'issuesSeeded',
     ]);
     expect(Object.keys(parsed.miniature)).toEqual(['scale', 'yawDeg', 'offset']);
-    expect(Object.keys(parsed.prefs)).toEqual(['onboardingStep', 'menuOpened']);
+    expect(Object.keys(parsed.prefs)).toEqual(['onboardingStep', 'menuOpened', 'moveInVisible']);
   });
 
   it('produces the exact expected string for the initial state', () => {
     expect(serialize(initial())).toBe(
       '{"version":1,"houseId":"apartment-a","role":"visitor",' +
         '"miniature":{"scale":0.05,"yawDeg":0,"offset":[0,0]},"selectedRoomId":null,' +
-        '"prefs":{"onboardingStep":"pinch","menuOpened":false},' +
-        '"furniture":[],"nextInstance":{},"history":[],"view":{"kind":"tabletop"}}',
+        '"prefs":{"onboardingStep":"pinch","menuOpened":false,"moveInVisible":false},' +
+        '"furniture":[],"nextInstance":{},"history":[],"view":{"kind":"tabletop"},' +
+        '"issues":[],"nextIssue":14,"issuesSeeded":false}',
     );
   });
 
@@ -596,6 +606,9 @@ describe('serialize', () => {
       'nextInstance',
       'history',
       'view',
+      'issues',
+      'nextIssue',
+      'issuesSeeded',
     ]);
   });
 
@@ -875,8 +888,8 @@ describe('deserialize normalisation', () => {
 
   it('drops unknown keys inside prefs', () => {
     const restored = load(savedState({ prefs: { onboardingStep: 'done', theme: 'dark' } }));
-    expect(restored?.prefs).toEqual({ onboardingStep: 'done', menuOpened: false });
-    expect(Object.keys(restored?.prefs ?? {})).toEqual(['onboardingStep', 'menuOpened']);
+    expect(restored?.prefs).toEqual({ onboardingStep: 'done', menuOpened: false, moveInVisible: false });
+    expect(Object.keys(restored?.prefs ?? {})).toEqual(['onboardingStep', 'menuOpened', 'moveInVisible']);
   });
 
   it('re-serializes to the canonical key order even if the saved keys were shuffled', () => {

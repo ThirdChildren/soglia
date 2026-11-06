@@ -58,8 +58,23 @@ export default defineAssets({
     type: AssetType.UIKitML,
     priority: 'lazy',
   },
+  'issue-button': {
+    url: `${import.meta.env.BASE_URL}ui/issue-button.uikitml`,
+    type: AssetType.UIKitML,
+    priority: 'lazy',
+  },
+  'issue-panel': {
+    url: `${import.meta.env.BASE_URL}ui/issue-panel.uikitml`,
+    type: AssetType.UIKitML,
+    priority: 'lazy',
+  },
   'menu-button': {
     url: `${import.meta.env.BASE_URL}ui/menu-button.uikitml`,
+    type: AssetType.UIKitML,
+    priority: 'lazy',
+  },
+  'tabletop-button': {
+    url: `${import.meta.env.BASE_URL}ui/tabletop-button.uikitml`,
     type: AssetType.UIKitML,
     priority: 'lazy',
   },

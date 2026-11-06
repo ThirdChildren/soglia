@@ -48,6 +48,9 @@ describe('classifyGroup: real object names', () => {
   it('viewpoints, pins and the FitCheck markers are markers (not ui)', () => {
     expect(classifyGroup('viewpoint:V1')).toBe('markers');
     expect(classifyGroup('pin:issue-014')).toBe('markers');
+    // The instanced mesh of the pins (T4.4) and the draft ghost.
+    expect(classifyGroup('pin:instances')).toBe('markers');
+    expect(classifyGroup('pin:draft')).toBe('markers');
     expect(classifyGroup('ui:fit-marker-1')).toBe('markers');
     expect(classifyGroup('ui:fit-marker-door-d-bedroom')).toBe('markers');
     // The label of the FitCheck is a panel, not a marker.
@@ -152,6 +155,8 @@ describe('classifyGroup: every stable id the project generates (expected group w
     // Markers.
     ['pin:issue-001', 'markers'],
     ['pin:issue-014', 'markers'],
+    ['pin:instances', 'markers'],
+    ['pin:baseline-001', 'markers'],
     ['viewpoint:V1', 'markers'],
     ['viewpoint:V2', 'markers'],
     ['viewpoint:V12', 'markers'],
@@ -167,6 +172,20 @@ describe('classifyGroup: every stable id the project generates (expected group w
     ['ui:menu-tab-fit', 'ui'],
     ['ui:menu-tab-measure', 'ui'],
     ['ui:menu-tabletop', 'ui'],
+    // M4 (T4.12): the Issues buttons, the panel and its controls, and the Tabletop button are panels (`ui`), the pins are `markers`.
+    ['ui:issue-button-left', 'ui'],
+    ['ui:issue-button-right', 'ui'],
+    ['ui:issue-panel', 'ui'],
+    ['ui:issue-close', 'ui'],
+    ['ui:issue-back', 'ui'],
+    ['ui:issue-role-tenant', 'ui'],
+    ['ui:issue-open-list', 'ui'],
+    ['ui:issue-open-movein', 'ui'],
+    ['ui:issue-row-0', 'ui'],
+    ['ui:issue-movein-toggle', 'ui'],
+    ['ui:issue-action-take-on', 'ui'],
+    ['ui:issue-phrase-leaks', 'ui'],
+    ['ui:tabletop-button', 'ui'],
     ['ui:menu-undo', 'ui'],
     ['ui:menu-recenter', 'ui'],
     ['ui:menu-page-prev', 'ui'],
@@ -705,5 +724,37 @@ describe('classifyGroup: the real names of the tape measure in the source', () =
     expect(classifyGroup('ui:measure')).toBe('ui');
     expect(classifyGroup('measure-instances')).toBe('other');
     expect(classifyGroup('furniture:measure-instances#1')).toBe('furniture');
+  });
+});
+
+describe('the issues and pins of M4 are counted in the right groups (T4.12)', () => {
+  it('puts the instanced pin mesh and every pin entity in markers, and every Issues panel part and button in ui', () => {
+    expect(classifyGroup('pin:instances')).toBe('markers');
+    for (const name of ['pin:issue-010', 'pin:issue-014', 'pin:baseline-001', 'pin:draft']) expect(classifyGroup(name), name).toBe('markers');
+    for (const name of [
+      'ui:issue-button-left',
+      'ui:issue-button-right',
+      'ui:issue-panel',
+      'ui:issue-category-floors-walls',
+      'ui:issue-urgency-urgent',
+      'ui:issue-report',
+      'ui:issue-cancel',
+      'ui:issue-page-next',
+      'ui:issue-movein-toggle',
+      'ui:tabletop-button',
+    ]) {
+      expect(classifyGroup(name), name).toBe('ui');
+    }
+    // The fixtures are anchors of the house (no mesh), counted in house.
+    for (const name of ['fixture:washer', 'fixture:boiler', 'fixture:kitchen-unit', 'fixture:bedroom-shutter']) expect(classifyGroup(name), name).toBe('house');
+  });
+
+  it('formats a line with the pins in markers: one instanced mesh is one call whatever the number of pins', () => {
+    const counts = emptyGroupCounts();
+    counts.house = 24;
+    counts.furniture = 14;
+    counts.ui = 9;
+    counts.markers = 5;
+    expect(formatGroupsLine(counts)).toBe('house=24 furniture=14 hands=0 ui=9 markers=5 other=0');
   });
 });

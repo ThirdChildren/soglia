@@ -1,5 +1,7 @@
 # S3.2 · Metro: misura la finestra dello studio
 
+> **Changelog 2026-11-02** (solo punto di partenza, criteri invariati; gate M3, avviso A-S3.2-1 in `qa/reports/M3-2026-10-10-B.md`): passo 10: lo zoom a 0,12 parte con le mani simmetriche a **∓0,20 m** dal centro (non ∓0,15: a 0,02–0,025 m dal marcatore `viewpoint:V1` il pizzico entrava nel punto di vista) e arriva a ∓0,60; il plastico resta in `O` (nessuno spostamento di 0,30 m) e i punti `A1'`, `A2'` si ricalcolano a scala 0,12.
+
 **Milestone**: M3 · **Tipo**: PC (emulatore IWER via MCP `iwsdk-runtime`)
 Prerequisiti di implementazione: T3.13, T3.14, T3.5 (scheda `measure`, `ui:menu-tab-measure`), T3.10 (claim `measure`). Vedi `docs/plans/M3.md`, D36. Convenzioni comuni (pose, `D_GRIP`, `Q_UP`, `W(...)`, regola di gate): `qa/scenarios/M3-persistence.md`.
 
@@ -19,7 +21,7 @@ Prerequisiti di implementazione: T3.13, T3.14, T3.5 (scheda `measure`, `ui:menu-
 7. **Priorità con un pezzo e con la stanza**: con lo strumento attivo, pizzico sul **centro della sedia** `W(1,5; 3,0)` (pose del passo 1): log `pattern: "measure|furniture|room"`; pizzico in una stanza (`W(6,8; 2,3)`): nessuna selezione.
 8. **Il menu resta sopra**: aprire il menu (sinistra), pizzico della destra su `ui:menu-undo` o su `ui:menu-tab-items` (con strumento attivo): log `pattern: "menu|measure|undo"`.
 9. **Uscire**: con la scheda `items` attiva (passo 8) `ecs_find_entities` con `^ui:measure-`; log `pattern: "measure"`; poi prendere un pezzo dal menu e posarlo: la presa funziona di nuovo.
-10. **Scala 0,12 (informativo)**: zoom a due mani fino a 0,12 (S1.2 fase C, mani `y = Oy + 0,10`), riattivare `measure`, misurare ancora la finestra con le pose ricalcolate da `W` alla scala letta (`O` + (pianta − centro)·0,12): l'aggancio funziona con raggio più piccolo (0,10 m di pianta); l'esito 140 ± 1 vale ancora.
+10. **Scala 0,12 (informativo)**: zoom a due mani fino a 0,12 con mani simmetriche attorno a `O` a `y = Oy + 0,10`: bersagli di partenza (Ox ∓ 0,20; Oy + 0,10; Oz), di arrivo (Ox ∓ 0,60; …), pose = bersaglio − `D_GRIP` (le due mani stanno a ≥ 0,07 m da ogni marcatore `viewpoint:V*`; verificare `miniature gesture start` e `miniature:root` ancora in `O`; se il centro si fosse spostato, ricalcolare con la radice letta). Punti a scala 0,12 con la radice in `O`: `A1'` = (Ox + 0,420; Oy + 0,04; Oz − 0,432) = (0,420; 1,39; −0,882) e `A2'` = (0,588; 1,39; −0,882), pose (0,458; 1,393; −0,919) e (0,626; 1,393; −0,919), riattivare `measure`, misurare ancora la finestra con le pose ricalcolate da `W` alla scala letta (`O` + (pianta − centro)·0,12): l'aggancio funziona con raggio più piccolo (0,10 m di pianta); l'esito 140 ± 1 vale ancora.
 11. Log senza filtro (`error`, `Cannot read`, `Missing glyph`); pulizia come S3.0.
 
 ## Verifiche (tutte obbligatorie)

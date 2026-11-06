@@ -82,6 +82,16 @@ export const PINNED_DISTANCE = 0.55;
  * about -20 and +15 degrees vertically and below the far edge of the model.
  */
 export const PINNED_DROP = 0.2;
+/**
+ * The pinned menu follows the pitch of the gaze at the opening (task T4.R2, D49), but only within this range, in
+ * degrees (positive = looking up): the anchor is raised or lowered by `PINNED_DISTANCE * tan(pitch)`. Beyond the
+ * range it does not chase the gaze, so it never climbs into the sight line of the model nor covers it (a gaze
+ * toward the model is usually 15 to 25 degrees down). With the real size of the menu the whole panel is inside the
+ * 30 degree cone for a gaze pitch of about -14.4 to +12.0 degrees (the test `menu-anchor-pitch` computes it).
+ */
+export const PINNED_PITCH_MIN_DEG = -8;
+/** See `PINNED_PITCH_MIN_DEG`. */
+export const PINNED_PITCH_MAX_DEG = 8;
 
 // --- The "Palm up for the menu" hint ---------------------------------------------------------
 

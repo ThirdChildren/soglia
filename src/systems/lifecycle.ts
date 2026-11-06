@@ -6,7 +6,7 @@
 // and `pagehide`. All of them end in the same `apply`, and the development keys of src/debug/lifecycle-keys.ts
 // call `applyVisibility`, the function the real signal calls, so they only SIMULATE the event.
 //
-// Suspending runs in this order (D30): (1) save at once; (2) stop a fade between views (the scene is then unchanged or already
+// Suspending runs in this order (D30): (1) save at once; (1b) drop the draft of a new issue and close the Issues panel (T4.11); (2) stop a fade between views (the scene is then unchanged or already
 // complete: the change happens in one call, T3.12) and cancel the piece in the hand (a menu piece goes back
 // to the catalog, a model piece back to the pose it was grabbed in: no store change); (3) end the two-hand gesture
 // and the drag with their current values (the tape measure is turned off with the piece in the hand: no points are kept); (4) close the menu and clear its detectors; (5) clear the pinch flags and
@@ -30,6 +30,8 @@ import { cancelHeldFurniture } from './furniture-grab';
 import { cancelMeasure } from './measure';
 import { endMiniatureGesture } from './miniature-gesture';
 import { endMiniaturePan } from './miniature-pan';
+import { cancelDraft } from './issue-create';
+import { closeIssuePanel, resumeIssuePanel, suspendIssuePanel } from './issue-panel';
 import { resumePalmMenu, suspendPalmMenu } from './palm-menu';
 import { cancelViewTransition } from './viewpoint';
 import { resumePinchInput, suspendPinchInput } from './pinch-input';
@@ -61,18 +63,31 @@ export function attachLifecycle(world: World, persistence: Persistence): Lifecyc
     endMiniatureGesture(); // (3) `miniature gesture end` with the current values
     endMiniaturePan(); // (3) `pan end`
     suspendPalmMenu(); // (4)
+    suspendIssuePanel(); // (4b) the Issues panel closes like the menu (T4.6a)
     suspendPinchInput(); // (5)
+  };
+
+  // (1b) The draft of a new issue and the Issues panel go BEFORE the input is suspended: `issue draft cancelled reason=suspend`, then
+  // `issues panel closed via=suspend`. Nothing is created from a half-filled form, and nothing is saved for it: the state was
+  // already written by `save-now` and the draft is not part of it (T4.11, D44).
+  const closeIssueUi = (): void => {
+    cancelDraft('suspend');
+    closeIssuePanel('suspend');
   };
 
   const resumeInput = (): void => {
     resumePinchInput();
     resumePalmMenu();
+    resumeIssuePanel();
   };
 
   const run = (action: LifecycleAction, event: LifecycleEvent): void => {
     switch (action) {
       case 'save-now':
         persistence.flush(saveReason(event)); // (1)
+        break;
+      case 'close-issue-ui':
+        closeIssueUi();
         break;
       case 'suspend-input':
         suspendInput();

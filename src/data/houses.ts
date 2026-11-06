@@ -13,3 +13,15 @@ export function isKnownHouse(id: string): id is KnownHouseId {
 export function houseUrl(id: string): string {
   return `${import.meta.env.BASE_URL}houses/${id}.json`;
 }
+
+/** Houses that come with a demo file of issues (`public/demo/issues-<id>.json`). Others never request one: no 404. */
+export const DEMO_ISSUE_HOUSES: readonly string[] = ['apartment-a'];
+
+export function hasDemoIssues(id: string): boolean {
+  return DEMO_ISSUE_HOUSES.includes(id);
+}
+
+/** URL of the demo issues of a house. Only call with an id that passed `hasDemoIssues`. */
+export function demoIssuesUrl(id: string): string {
+  return `${import.meta.env.BASE_URL}demo/issues-${id}.json`;
+}

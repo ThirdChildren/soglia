@@ -1,21 +1,26 @@
 // Pure layout helpers used by the house builder: no imports from @iwsdk/core or three.
 // All values are in real metres on the plan (x-z plane); see docs/DATA_FORMATS.md.
 
-import { bbox, polygonCentroid, wallFrame, type Point2 } from './geometry';
+import { bbox, polygonCentroid, wallFrame, type BBox, type Point2 } from './geometry';
 import type { House, Opening, Wall } from './house';
 
-/**
- * Centre of the plan's bounding box (rooms and wall end points). The house node is offset by the
- * negative of this point so that the plan centre sits on the origin of `miniature:root` (D2).
- */
-export function planCenter(house: House): [number, number] {
+/** Bounding box of the plan: every room point and wall end point. */
+export function planBox(house: Pick<House, 'rooms' | 'walls'>): BBox {
   const points: Point2[] = [];
   for (const room of house.rooms) for (const p of room.polygon) points.push(p);
   for (const wall of house.walls) {
     points.push(wall.from);
     points.push(wall.to);
   }
-  const box = bbox(points);
+  return bbox(points);
+}
+
+/**
+ * Centre of the plan's bounding box (rooms and wall end points). The house node is offset by the
+ * negative of this point so that the plan centre sits on the origin of `miniature:root` (D2).
+ */
+export function planCenter(house: House): [number, number] {
+  const box = planBox(house);
   return [box.cx, box.cz];
 }
 

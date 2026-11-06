@@ -38,6 +38,7 @@ describe('parseParams defaults', () => {
       glyphs: false,
       furnish: 'none',
       failmodels: false,
+      failmy: false,
       pinch: 'auto',
     });
   });
@@ -248,7 +249,7 @@ describe('parseParams time', () => {
 
 describe('parseParams multiple keys', () => {
   it('parses every key in one query string', () => {
-    const r = parseParams('house=apartment-b&role=landlord&reset=1&seed=7&time=2026-12-21T10:00&debug=1&mr=1&glyphs=1&furnish=scandinavian&failmodels=1&pinch=grip');
+    const r = parseParams('house=apartment-b&role=landlord&reset=1&seed=7&time=2026-12-21T10:00&debug=1&mr=1&glyphs=1&furnish=scandinavian&failmodels=1&failmy=1&pinch=grip');
     expect(r.params).toEqual({
       house: 'apartment-b',
       role: 'landlord',
@@ -260,9 +261,10 @@ describe('parseParams multiple keys', () => {
       glyphs: true,
       furnish: 'scandinavian',
       failmodels: true,
+      failmy: true,
       pinch: 'grip',
     });
-    expect([...r.present].sort()).toEqual(['debug', 'failmodels', 'furnish', 'glyphs', 'house', 'mr', 'pinch', 'reset', 'role', 'seed', 'time']);
+    expect([...r.present].sort()).toEqual(['debug', 'failmodels', 'failmy', 'furnish', 'glyphs', 'house', 'mr', 'pinch', 'reset', 'role', 'seed', 'time']);
     expect(r.warnings).toEqual([]);
   });
 
@@ -291,7 +293,7 @@ describe('parseParams multiple keys', () => {
     expect(r.params.house).toBe('apartment-b');
     expect(r.present).toEqual(['house']);
     expect(r.warnings).toEqual([]);
-    expect(Object.keys(r.params).sort()).toEqual(['debug', 'failmodels', 'furnish', 'glyphs', 'house', 'mr', 'pinch', 'reset', 'role', 'seed', 'time']);
+    expect(Object.keys(r.params).sort()).toEqual(['debug', 'failmodels', 'failmy', 'furnish', 'glyphs', 'house', 'mr', 'pinch', 'reset', 'role', 'seed', 'time']);
   });
 
   it('ignores key names that differ only by case', () => {
@@ -302,9 +304,9 @@ describe('parseParams multiple keys', () => {
   });
 
   it('emits one warning per rejected key, in the fixed key order and not in URL order', () => {
-    const r = parseParams('pinch=x&failmodels=2&time=bad&seed=x&furnish=x&glyphs=2&mr=2&debug=2&reset=2&role=boss&house=../x');
+    const r = parseParams('pinch=x&failmy=2&failmodels=2&time=bad&seed=x&furnish=x&glyphs=2&mr=2&debug=2&reset=2&role=boss&house=../x');
     const keys = r.warnings.map((w) => /^param (\w+)=/u.exec(w)?.[1]);
-    expect(keys).toEqual(['house', 'role', 'reset', 'debug', 'mr', 'glyphs', 'furnish', 'seed', 'time', 'failmodels', 'pinch']);
+    expect(keys).toEqual(['house', 'role', 'reset', 'debug', 'mr', 'glyphs', 'furnish', 'seed', 'time', 'failmodels', 'failmy', 'pinch']);
   });
 
   it('formats a warning as: param key="value" ignored: reason', () => {
@@ -473,6 +475,7 @@ describe('formatParamsLine', () => {
       glyphs: false,
       furnish: 'none',
       failmodels: false,
+      failmy: false,
       pinch: 'auto',
     });
     expect(line).toBe('params source=dev-file house=apartment-b role=visitor reset=false seed=1 debug=true time=-');

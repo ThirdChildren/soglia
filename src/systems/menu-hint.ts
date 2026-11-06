@@ -9,6 +9,7 @@ import { placeHint, shouldShowMenuHint } from '../logic/hint';
 import type { Store } from '../logic/state';
 import { MenuHintPanel } from '../ui/menu-hint-panel';
 import { strings } from '../ui/strings';
+import { isIssuePanelOpen } from './issue-panel';
 import { getMiniatureAnchor } from './miniature';
 import { getRoomLabelPosition } from './room-label';
 
@@ -39,7 +40,8 @@ export class MenuHintSystem extends createSystem({}) {
     if (!ctx) return;
     const state = ctx.store.get();
     const xr = this.world.renderer.xr;
-    const want = shouldShowMenuHint(state.prefs.onboardingStep, state.prefs.menuOpened, xr.isPresenting);
+    // The Issues panel opens at the same place as the pinned menu: while it is open the hint would sit over its bar (T4.6a).
+    const want = shouldShowMenuHint(state.prefs.onboardingStep, state.prefs.menuOpened, xr.isPresenting) && !isIssuePanelOpen();
 
     if (want && !ctx.panel.exists) {
       ctx.panel.create();

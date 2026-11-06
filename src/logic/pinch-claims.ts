@@ -2,30 +2,31 @@
 // @iwsdk/core or three.
 //
 // A pinch of a hand can mean different things (pick a menu item, grab a piece, zoom the model with
-// two hands, drag the model with one hand, select a room). Each meaning is an "owner". An owner
+// two hands, drag the model with one hand, start a new issue with a long pinch, select a room). Each meaning is an "owner". An owner
 // claims a hand when it starts to use its pinch; only one owner holds a hand at a time. When two
 // owners want the same hand the one with the higher priority wins:
 //
-//   menu > measure > furniture > viewpoint > two-hands > pan > room
+//   menu > measure > furniture > viewpoint > two-hands > pan > issue > room
 //
 // A claim on a hand that is free, or held by a lower priority owner, succeeds (the previous owner
 // is told that its claim was taken away). `measure` (T3.14, D36) is the pinch of the tape measure: with the tool
 // active a pinch inside the plan of the model puts a point and nothing else may use it (no grab, no room, no drag). A claim on a hand held by an equal or higher priority
 // owner is refused. Two more rules keep a held piece safe: a hand can never start `viewpoint`,
-// `two-hands` or `pan` while a `furniture` claim exists on any hand (the second pinch is the tap that
+// `two-hands`, `pan` or `issue` while a `furniture` claim exists on any hand (the second pinch is the tap that
 // rotates the piece, not a new gesture and not a change of view: T3.12).
 
 export type ClaimHand = 'left' | 'right';
-export type ClaimOwner = 'menu' | 'measure' | 'furniture' | 'viewpoint' | 'two-hands' | 'pan' | 'room';
+export type ClaimOwner = 'menu' | 'measure' | 'furniture' | 'viewpoint' | 'two-hands' | 'pan' | 'issue' | 'room';
 
 /** Higher number = higher priority. */
 export const CLAIM_PRIORITY: Readonly<Record<ClaimOwner, number>> = {
-  menu: 7,
-  measure: 6,
-  furniture: 5,
-  viewpoint: 4,
-  'two-hands': 3,
-  pan: 2,
+  menu: 8,
+  measure: 7,
+  furniture: 6,
+  viewpoint: 5,
+  'two-hands': 4,
+  pan: 3,
+  issue: 2,
   room: 1,
 };
 
@@ -65,6 +66,7 @@ export function createClaims(): Claims {
     viewpoint: new Set(),
     'two-hands': new Set(),
     pan: new Set(),
+    issue: new Set(),
     room: new Set(),
   };
 
@@ -74,7 +76,9 @@ export function createClaims(): Claims {
   };
 
   const canClaim = (hand: ClaimHand, owner: ClaimOwner): boolean => {
-    if ((owner === 'viewpoint' || owner === 'two-hands' || owner === 'pan') && anyClaimed('furniture')) return false;
+    if ((owner === 'viewpoint' || owner === 'two-hands' || owner === 'pan' || owner === 'issue') && anyClaimed('furniture')) {
+      return false;
+    }
     const current = held[hand];
     if (current === null || current === owner) return true;
     return CLAIM_PRIORITY[owner] > CLAIM_PRIORITY[current];
