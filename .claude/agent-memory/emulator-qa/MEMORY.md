@@ -8,3 +8,4 @@
 - [M5 gate traps](reference_m5_gate_traps.md) — CLI helper-lib pitfalls (cd in sourced file), regex-log traps, info-pin head offset, coach 20 s timing, sun patches behind V1, budget readings, W1/W2 findings
 
 - [M5 rerun recipes](reference_m5_rerun_recipes.md) — lib.sh overwrite/variable traps, coach v9 and K18 scripts, post-T5.RA budget numbers, merged-wall checks, V1/B coordinates, measure F1/F2
+- [M5 C2+D recipes](reference_m5_c2d_recipes.md) — palm-menu pinch offsets (right hand = plain grip), `I` var trap, pinch counter windows, ipx selectors, rotate-vs-undo overlap, intermittent glyph warn, demo route
