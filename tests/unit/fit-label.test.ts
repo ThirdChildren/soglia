@@ -331,7 +331,7 @@ describe('lowerLabelsUnder (the fit label cannot move: the reason labels go unde
   });
 });
 
-// --- The time machine of the label: edge cases (D34 "Quando si mostra") ---------------------------------------------
+// --- The time machine of the label: edge cases (D34, when the label is shown) ---------------------------------------------
 
 describe('createFitLabelTracker: the 8 s with an injected clock that jumps', () => {
   it('shows the label at the release instant and for exactly 8000 ms, whatever the frame rate', () => {

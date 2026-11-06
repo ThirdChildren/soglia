@@ -1,4 +1,4 @@
-// Pure part of the FitCheck label (task T3.9, decision D34 "Quando si mostra"): which piece the label is about, for how
+// Pure part of the FitCheck label (task T3.9, decision D34, when the label is shown): which piece the label is about, for how
 // long, and where the label floats. No imports from @iwsdk/core or three.
 //
 // The outcome of the FitCheck is DERIVED for every piece (`Furniture.fit`), but it is SHOWN only for
