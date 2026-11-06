@@ -60,7 +60,7 @@ describe('createInitialState', () => {
       role: 'tenant',
       miniature: { scale: 0.05, yawDeg: 0, offset: [0, 0] },
       selectedRoomId: null,
-      prefs: { onboardingStep: 'pinch', menuOpened: false, moveInVisible: false, contrast: false, largeText: false },
+      prefs: { onboardingStep: 'pinch', menuOpened: false, moveInVisible: false, contrast: false, largeText: false, coach: 'menu-button' },
       furniture: [],
       nextInstance: {},
       history: [],
@@ -568,14 +568,14 @@ describe('serialize', () => {
       'sunTime',
     ]);
     expect(Object.keys(parsed.miniature)).toEqual(['scale', 'yawDeg', 'offset']);
-    expect(Object.keys(parsed.prefs)).toEqual(['onboardingStep', 'menuOpened', 'moveInVisible', 'contrast', 'largeText']);
+    expect(Object.keys(parsed.prefs)).toEqual(['onboardingStep', 'menuOpened', 'moveInVisible', 'contrast', 'largeText', 'coach']);
   });
 
   it('produces the exact expected string for the initial state', () => {
     expect(serialize(initial())).toBe(
       '{"version":1,"houseId":"apartment-a","role":"visitor",' +
         '"miniature":{"scale":0.05,"yawDeg":0,"offset":[0,0]},"selectedRoomId":null,' +
-        '"prefs":{"onboardingStep":"pinch","menuOpened":false,"moveInVisible":false,"contrast":false,"largeText":false},' +
+        '"prefs":{"onboardingStep":"pinch","menuOpened":false,"moveInVisible":false,"contrast":false,"largeText":false,"coach":"menu-button"},' +
         '"furniture":[],"nextInstance":{},"history":[],"view":{"kind":"tabletop"},' +
         '"issues":[],"nextIssue":14,"issuesSeeded":false,"sunTime":"2026-12-21T10:00"}',
     );
@@ -892,8 +892,8 @@ describe('deserialize normalisation', () => {
 
   it('drops unknown keys inside prefs', () => {
     const restored = load(savedState({ prefs: { onboardingStep: 'done', theme: 'dark' } }));
-    expect(restored?.prefs).toEqual({ onboardingStep: 'done', menuOpened: false, moveInVisible: false, contrast: false, largeText: false });
-    expect(Object.keys(restored?.prefs ?? {})).toEqual(['onboardingStep', 'menuOpened', 'moveInVisible', 'contrast', 'largeText']);
+    expect(restored?.prefs).toEqual({ onboardingStep: 'done', menuOpened: false, moveInVisible: false, contrast: false, largeText: false, coach: 'menu-button' });
+    expect(Object.keys(restored?.prefs ?? {})).toEqual(['onboardingStep', 'menuOpened', 'moveInVisible', 'contrast', 'largeText', 'coach']);
   });
 
   it('re-serializes to the canonical key order even if the saved keys were shuffled', () => {

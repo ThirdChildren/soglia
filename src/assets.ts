@@ -78,6 +78,11 @@ export default defineAssets({
     type: AssetType.UIKitML,
     priority: 'lazy',
   },
+  'coach-panel': {
+    url: `${import.meta.env.BASE_URL}ui/coach-panel.uikitml`,
+    type: AssetType.UIKitML,
+    priority: 'lazy',
+  },
   'rotate-button': {
     url: `${import.meta.env.BASE_URL}ui/rotate-button.uikitml`,
     type: AssetType.UIKitML,

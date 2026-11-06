@@ -68,6 +68,11 @@ export const strings = {
   viewpoint: {
     tabletopButton: 'Tabletop',
   },
+  /** The coach of the first minute (M5, D60): two short lines, one for each step. */
+  coach: {
+    menuButton: 'Pinch Menu',
+    grab: 'Drop it in the house',
+  },
   /** The button above a piece that was just put down: it turns the piece a quarter turn, with one hand (M5, D59). */
   rotate: {
     button: 'Rotate',

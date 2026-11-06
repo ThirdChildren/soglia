@@ -28,6 +28,10 @@ export const ZOOM_MAX = 0.12;
 export const ONBOARDING_STEPS = ['pinch', 'two-hands', 'done'] as const;
 export type OnboardingStep = (typeof ONBOARDING_STEPS)[number];
 
+/** The coach after the first onboarding (M5, T5.15, D60): pinch the Menu button, then drop the first piece in the house, then nothing. */
+export const COACH_STEPS = ['menu-button', 'grab', 'done'] as const;
+export type CoachStep = (typeof COACH_STEPS)[number];
+
 /** The sun time when nothing was asked or saved and the house has not computed one yet (the real default is `defaultSunTime`). */
 export const DEFAULT_SUN_TIME = FALLBACK_SUN_TIME;
 
@@ -114,6 +118,8 @@ export interface AppState {
     readonly contrast: boolean;
     /** Large text (3.0 cm instead of 2.4) in the panels and the labels (M5, D58). Saved; `text=` in the URL wins. */
     readonly largeText: boolean;
+    /** The step of the coach that shows the Menu button and the first piece (M5, D60). Saved. */
+    readonly coach: CoachStep;
   };
   /** Furniture placed in the house, in order of last placement or move (the evaluation order of collisions). */
   readonly furniture: readonly PlacedPiece[];
@@ -141,6 +147,8 @@ export type RestorePrefs = Pick<AppState['prefs'], 'onboardingStep' | 'menuOpene
   /** Absent: the preference stays as the session has it (an older state, or the URL named it: `contrast=`, D58). */
   readonly contrast?: boolean;
   readonly largeText?: boolean;
+  /** Absent: the coach stays as the session has it (an older state: `deserialize` already chose the step). */
+  readonly coach?: CoachStep;
 };
 
 export type Action =
@@ -163,6 +171,7 @@ export type Action =
       readonly note?: string;
     }
   | { readonly type: 'setMoveIn'; readonly visible: boolean }
+  | { readonly type: 'setCoach'; readonly step: CoachStep }
   | { readonly type: 'setContrast'; readonly on: boolean }
   | { readonly type: 'setLargeText'; readonly on: boolean }
   | { readonly type: 'setSunTime'; readonly sunTime: string }
@@ -279,6 +288,10 @@ export function setSunTime(sunTime: string): Action {
 export function stepSunTime(unit: SunStepUnit, delta: number): Action {
   return { type: 'stepSunTime', unit, delta };
 }
+/** Moves the coach to `step` (D60). A step that does not exist is ignored. */
+export function setCoach(step: CoachStep): Action {
+  return { type: 'setCoach', step };
+}
 /** High contrast on or off (D58). Not a boolean: ignored. */
 export function setContrast(on: boolean): Action {
   return { type: 'setContrast', on };
@@ -360,6 +373,7 @@ export function createInitialState(params: Params): AppState {
       moveInVisible: false,
       contrast: params.contrast,
       largeText: params.text === 'large',
+      coach: 'menu-button',
     },
     furniture: [],
     nextInstance: {},
@@ -611,6 +625,10 @@ export function reduce(state: AppState, action: Action): AppState {
       if (typeof action.visible !== 'boolean' || action.visible === state.prefs.moveInVisible) return state;
       return { ...state, prefs: { ...state.prefs, moveInVisible: action.visible } };
     }
+    case 'setCoach': {
+      if (!(COACH_STEPS as readonly string[]).includes(action.step) || action.step === state.prefs.coach) return state;
+      return { ...state, prefs: { ...state.prefs, coach: action.step } };
+    }
     case 'setContrast': {
       if (typeof action.on !== 'boolean' || action.on === state.prefs.contrast) return state;
       return { ...state, prefs: { ...state.prefs, contrast: action.on } };
@@ -744,6 +762,7 @@ export function reduce(state: AppState, action: Action): AppState {
           moveInVisible,
           contrast: typeof prefs.contrast === 'boolean' ? prefs.contrast : state.prefs.contrast,
           largeText: typeof prefs.largeText === 'boolean' ? prefs.largeText : state.prefs.largeText,
+          coach: (COACH_STEPS as readonly string[]).includes(prefs.coach as string) ? (prefs.coach as CoachStep) : state.prefs.coach,
         },
         view,
         issues,
@@ -878,6 +897,16 @@ export function deserializeWithReport(
     furniture = sanitizePieces(data.furniture);
   }
 
+  // Added in M5 (D60): a state of before the coach (or a broken value) starts where its user is: pieces in the house mean the coach
+  // has nothing left to teach, an opened menu means the Menu button is known, else the coach starts from the beginning.
+  const coach: CoachStep = (COACH_STEPS as readonly string[]).includes(prefs.coach as string)
+    ? (prefs.coach as CoachStep)
+    : furniture.length > 0
+      ? 'done'
+      : menuOpened
+        ? 'grab'
+        : 'menu-button';
+
   let nextInstance: Record<string, number> = {};
   if ('nextInstance' in data) {
     const n = data.nextInstance;
@@ -933,7 +962,7 @@ export function deserializeWithReport(
       role: role as Role,
       miniature: { scale: clampScale(scale), yawDeg: yawDeg + 0, offset },
       selectedRoomId,
-      prefs: { onboardingStep: step as OnboardingStep, menuOpened, moveInVisible, contrast, largeText },
+      prefs: { onboardingStep: step as OnboardingStep, menuOpened, moveInVisible, contrast, largeText, coach },
       furniture,
       nextInstance,
       history,

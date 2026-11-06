@@ -65,6 +65,7 @@ import { FurnitureVisuals } from './ui/furniture-visuals';
 import { strings } from './ui/strings';
 import { startupAccessLines } from './logic/access';
 import { installAccess } from './systems/access';
+import { createCoach } from './systems/coach';
 import { createRotateButton } from './systems/rotate-button';
 
 async function start(): Promise<void> {
@@ -228,6 +229,8 @@ async function start(): Promise<void> {
     createIssuePanel(world, store, result.house, issueClock, infoPoints);
     // The View panel (T5.5): its controls are a `menu` claim too, so it goes right after the Issues panel.
     createViewPanel(world, store, result.house);
+    // The coach of the first minute (T5.15): not interactive; it reads the menu buttons and the release of a piece, so it goes after them.
+    createCoach(world, store);
     // The tape measure claims the pinch above the grab (and below the menu): register it after the menu, before the grab (T3.14).
     createMeasure(world, store, result.house, merged ? merged.items : [], built.entity, miniature.root);
     // The long pinch (T4.5): after the tape measure (a point wins), before the grab (it waits for the claims of the later systems).

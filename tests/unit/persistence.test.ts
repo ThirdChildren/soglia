@@ -84,7 +84,7 @@ describe('pickRestorable', () => {
     expect(picked?.furniture).toEqual(state.furniture);
     expect(picked?.nextInstance).toEqual(state.nextInstance);
     expect(picked?.history).toEqual(state.history);
-    expect(picked?.prefs).toEqual({ onboardingStep: 'done', menuOpened: true, moveInVisible: false, contrast: false, largeText: false });
+    expect(picked?.prefs).toEqual({ onboardingStep: 'done', menuOpened: true, moveInVisible: false, contrast: false, largeText: false, coach: 'menu-button' });
     expect(picked?.dropped).toEqual([]);
   });
 
@@ -108,7 +108,7 @@ describe('pickRestorable', () => {
       furniture: [],
       nextInstance: {},
       history: [],
-      prefs: { onboardingStep: 'two-hands', menuOpened: false, moveInVisible: false, contrast: false, largeText: false },
+      prefs: { onboardingStep: 'two-hands', menuOpened: false, moveInVisible: false, contrast: false, largeText: false, coach: 'menu-button' },
       view: { kind: 'tabletop' },
       dropped: [],
       parked: [],
@@ -186,7 +186,7 @@ describe('pickRestorable', () => {
       furniture: [],
       nextInstance: {},
       history: [],
-      prefs: { onboardingStep: 'done', menuOpened: true, moveInVisible: false, contrast: false, largeText: false },
+      prefs: { onboardingStep: 'done', menuOpened: true, moveInVisible: false, contrast: false, largeText: false, coach: 'menu-button' },
       view: { kind: 'tabletop' },
       dropped: [],
       parked: [],
@@ -409,7 +409,7 @@ describe('pickRestorable: ignoreFurniture', () => {
     expect(picked.history).toEqual([]);
     expect(picked.nextInstance).toEqual({});
     expect(picked.dropped).toEqual([]);
-    expect(picked.prefs).toEqual({ onboardingStep: 'done', menuOpened: true, moveInVisible: false, contrast: false, largeText: false });
+    expect(picked.prefs).toEqual({ onboardingStep: 'done', menuOpened: true, moveInVisible: false, contrast: false, largeText: false, coach: 'menu-button' });
   });
 
   it('still returns null for another house or broken data', () => {
@@ -420,7 +420,7 @@ describe('pickRestorable: ignoreFurniture', () => {
   it('restores only the preferences into the store, and the counters then start from the preset', () => {
     const picked = mustPick(serialize(busyState()), ctx({ ignoreFurniture: true }));
     const restored = reduce(initial(), restoreSaved(picked));
-    expect(restored.prefs).toEqual({ onboardingStep: 'done', menuOpened: true, moveInVisible: false, contrast: false, largeText: false });
+    expect(restored.prefs).toEqual({ onboardingStep: 'done', menuOpened: true, moveInVisible: false, contrast: false, largeText: false, coach: 'menu-button' });
     expect(restored.furniture).toEqual([]);
     expect(restored.history).toEqual([]);
     expect(restored.nextInstance).toEqual({});
@@ -567,7 +567,7 @@ describe('pickRestorable: preferences', () => {
     json.prefs = { onboardingStep: 'done', menuOpened: 'yes' };
     expect(pickRestorable(JSON.stringify(json), ctx())).toBeNull();
     json.prefs = { onboardingStep: 'done' };
-    expect(mustPick(JSON.stringify(json)).prefs).toEqual({ onboardingStep: 'done', menuOpened: false, moveInVisible: false, contrast: false, largeText: false });
+    expect(mustPick(JSON.stringify(json)).prefs).toEqual({ onboardingStep: 'done', menuOpened: false, moveInVisible: false, contrast: false, largeText: false, coach: 'done' });
   });
 
   it('restores each known onboarding step', () => {
@@ -675,7 +675,7 @@ describe('what is NOT restored, even when it is in the saved text', () => {
   it('keeps the object of the result free of fields that are outside the whitelist', () => {
     const picked = mustPick(loudText());
     expect(Object.keys(picked).sort()).toEqual(['discardedIssues', 'dropped', 'furniture', 'history', 'issues', 'issuesSeeded', 'nextInstance', 'nextIssue', 'parked', 'prefs', 'role', 'sunTime', 'view']);
-    expect(Object.keys(picked.prefs).sort()).toEqual(['contrast', 'largeText', 'menuOpened', 'moveInVisible', 'onboardingStep']);
+    expect(Object.keys(picked.prefs).sort()).toEqual(['coach', 'contrast', 'largeText', 'menuOpened', 'moveInVisible', 'onboardingStep']);
   });
 
   it('ignores unknown fields, including a __proto__ key, without touching any prototype', () => {
@@ -727,7 +727,7 @@ describe('restoreSaved in the reducer', () => {
     const after = reduce(session, restoreSaved(good()));
     expect(after.furniture.map((p) => p.id)).toEqual(busyState().furniture.map((p) => p.id));
     expect(after.history).toEqual(busyState().history);
-    expect(after.prefs).toEqual({ onboardingStep: 'done', menuOpened: true, moveInVisible: false, contrast: false, largeText: false });
+    expect(after.prefs).toEqual({ onboardingStep: 'done', menuOpened: true, moveInVisible: false, contrast: false, largeText: false, coach: 'menu-button' });
   });
 
   it('keeps one of two pieces with the same id and raises the counters above every piece', () => {
@@ -765,7 +765,7 @@ describe('restoreSaved in the reducer', () => {
   it('copies only the two known preference fields', () => {
     const prefs = { onboardingStep: 'done', menuOpened: true, theme: 'loud' } as unknown as AppState['prefs'];
     const after = reduce(initial(), restoreSaved({ ...good(), prefs }));
-    expect(Object.keys(after.prefs).sort()).toEqual(['contrast', 'largeText', 'menuOpened', 'moveInVisible', 'onboardingStep']);
+    expect(Object.keys(after.prefs).sort()).toEqual(['coach', 'contrast', 'largeText', 'menuOpened', 'moveInVisible', 'onboardingStep']);
   });
 
   it('survives a missing or null counter map', () => {
