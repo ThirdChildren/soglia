@@ -453,7 +453,7 @@ describe('mergeParams', () => {
     ['time', 'time=2026-12-21T10:00'],
     ['debug', 'debug=1'],
     ['mr', 'mr=1'],
-    ['glyphs', 'glyphs=1'],
+    ['glyphs', 'glyphs=1&debug=1'],
     ['furnish', 'furnish=scandinavian'],
     ['failmodels', 'failmodels=1&debug=1'],
     ['pinch', 'pinch=grip'],

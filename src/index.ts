@@ -12,7 +12,7 @@ import { loadCatalog } from './data/load-catalog';
 import { loadMyFurniture, type LoadMyFurnitureResult } from './data/load-my-furniture';
 import { loadHouse } from './data/load-house';
 import { createSafeStorage } from './data/storage';
-import { slog, swarn } from './log';
+import { describeError, slog, swarn } from './log';
 import { formatParamsLine, hasInvalidHouse, mergeParams, parseParams } from './logic/params';
 import { mergeCatalog, menuSections } from './logic/catalog';
 import { planRadius } from './logic/house-layout';
@@ -222,5 +222,6 @@ async function start(): Promise<void> {
 }
 
 start().catch((error: unknown) => {
-  console.error(error);
+  // The last resort: one prefixed warning with the message intact, not a bare `console.error` (T5.R6).
+  swarn(`start failed: ${describeError(error)}`);
 });

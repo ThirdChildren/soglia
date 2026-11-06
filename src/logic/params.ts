@@ -44,7 +44,7 @@ export interface Params {
   debug: boolean;
   /** `mr=1`: request mixed reality (passthrough) instead of VR. */
   mr: boolean;
-  /** `glyphs=1`: show the glyph test panel (`ui:glyph-test`), a development aid. */
+  /** `glyphs=1`: show the glyph test panel (`ui:glyph-test`), a development aid. Only honoured together with `debug=1` (T5.R6). */
   glyphs: boolean;
   /** `furnish=scandinavian`: start with the staging preset of the house (development aid, D23). */
   furnish: FurnishStyle;
@@ -83,7 +83,7 @@ export interface ParsedParams {
 export interface MergedParams {
   params: Params;
   /**
-   * The keys that were named on purpose, in the URL or in the dev file (a valid value; `failmodels` / `failmy` / `failcatalog` dropped
+   * The keys that were named on purpose, in the URL or in the dev file (a valid value; `failmodels` / `failmy` / `failcatalog` / `glyphs` dropped
    * for lack of `debug=1` are not here). An explicit `role` beats the saved one (D41).
    */
   explicit: readonly ParamKey[];
@@ -250,6 +250,11 @@ export function mergeParams(
     params.failcatalog = false;
     explicit.splice(explicit.indexOf('failcatalog'), 1);
     warnings.push('param failcatalog ignored: needs debug=1');
+  }
+  if (params.glyphs && !params.debug) {
+    params.glyphs = false;
+    explicit.splice(explicit.indexOf('glyphs'), 1);
+    warnings.push('param glyphs ignored: needs debug=1');
   }
   return { params, explicit, source, warnings };
 }
