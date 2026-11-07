@@ -1,5 +1,7 @@
 # S2.0 · Glifi del font dei pannelli
 
+> **Changelog 2026-11-06** (scostamento del Blocco R, T5.R6): `glyphs=1` richiede ora `debug=1`; senza, la riga `param glyphs ignored: needs debug=1` (warn) e nessun pannello `ui:glyph-test`. Le righe di `dev-params.local.txt` di questo scenario hanno già `debug=1` (parte A e B con `glyphs=1`): nessun cambio di ricetta. Se `ui:glyph-test` non compare, controllare anche che `debug=1` sia nel file.
+
 **Milestone**: M2 · **Tipo**: PC (emulatore IWER via MCP `iwsdk-runtime`)
 Prerequisiti di implementazione: **parte A** T2.1; **parte B** T2.2. **L'opzione A (atlante esteso da Inter) è già approvata dall'utente (2026-10-05)**: la parte B si esegue se lo spike di 45 minuti di T2.1 è riuscito; se lo spike è fallito si adotta **senza altre domande** l'opzione D e vale il ramo D. Il report scrive quale delle due è stata adottata (la scelta è in `docs/plans/M2.md`, "Esiti degli spike"). Vedi `docs/plans/M2.md`.
 

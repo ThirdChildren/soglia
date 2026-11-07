@@ -2,6 +2,8 @@
 
 > **Changelog 2026-11-02**: scenario creato dal piano M4 (D41, D44, T4.R4, T4.11). Estende S3.0 (`qa/scenarios/M3-persistence.md`, che resta valido) con ruolo e segnalazioni.
 
+> **Changelog 2026-11-06 (gate di M5, F-C2-2)**: dal T5.9 con ruolo `visitor` (anche il predefinito senza `role=` e senza salvato) `^pin:` dà i 5 `pin:info-*`; in questo scenario i ruoli sono `tenant`/`landlord`, quindi i conteggi `^pin:` (3 e 4) non cambiano. Dove si legge un conteggio sotto `visitor` va letto come `^pin:(issue|baseline)` = 0 e `pin:info-*` = 5. In `apartment-b` (fase 5) nessun file demo: `^pin:` = 0 anche per il visitatore.
+
 **Milestone**: M4 · **Tipo**: PC (emulatore IWER via MCP `iwsdk-runtime`) · **Regola di `CLAUDE.md`**: 4 (avvio rapido, pausa e ripresa pulite)
 Prerequisiti di implementazione: T4.2, T4.R4, T4.11 (T4.4–T4.9 per i pin e il pannello). Convenzioni: `qa/scenarios/M4-issue-create.md` e `qa/scenarios/M3-persistence.md`.
 

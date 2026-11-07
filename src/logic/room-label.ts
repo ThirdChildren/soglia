@@ -4,6 +4,7 @@ import { CUT_HEIGHT } from './constants';
 import { formatArea } from './geometry';
 import type { PanelExtent } from './menu';
 import { ROOM_LABEL_MIN_DISTANCE, VIEW_CONE_HALF_ANGLE_DEG } from './menu-thresholds';
+import { currentExtent, extentPair, labelFit, labelMinDistance } from './label-scale';
 import { anchorInCone, clampDistanceFromHead, panelConeAngleDeg, type ConeFit, type Point3Like } from './view-fit';
 
 /** Height of the label above the centre of the room floor, in world metres. */
@@ -12,6 +13,11 @@ export const ROOM_LABEL_LIFT = 0.12;
 export const ROOM_LABEL_MAX_DISTANCE = 0.6;
 /** The room label (46 cm wide, one or two lines, `public/ui/room-label.uikitml`) around its centre, in metres. */
 export const ROOM_LABEL_EXTENT: PanelExtent = { halfWidth: 0.23, bottom: -0.047, top: 0.047 };
+const ROOM_LABEL_EXTENTS = extentPair(ROOM_LABEL_EXTENT);
+/** The rectangle of the room label now: `ROOM_LABEL_EXTENT`, or 1.25 times that at large text. */
+export function roomLabelExtent(): PanelExtent {
+  return currentExtent(ROOM_LABEL_EXTENTS);
+}
 /** The WHOLE label stays inside the view cone and 0.52-0.6 m from the head, even for a room far outside the cone (M2 A4). */
 export const ROOM_LABEL_FIT: ConeFit = {
   halfAngleDeg: VIEW_CONE_HALF_ANGLE_DEG,
@@ -27,7 +33,7 @@ export const ROOM_LABEL_FIT: ConeFit = {
  */
 export function roomLabelMinY(floorY: number, scale: number): number {
   const wall = Number.isFinite(scale) && scale > 0 ? CUT_HEIGHT * scale : 0;
-  return floorY + wall + ROOM_LABEL_EXTENT.top;
+  return floorY + wall + roomLabelExtent().top;
 }
 
 const scratch: Point3Like = { x: 0, y: 0, z: 0 };
@@ -65,7 +71,7 @@ function raiseToFloor(p: Point3Like, head: Readonly<Point3Like>, forward: Readon
 
 /** True when the whole label centred at `p` (a vertical panel turned toward the head) is inside the cone. */
 function fits(p: Readonly<Point3Like>, head: Readonly<Point3Like>, forward: Readonly<Point3Like>): boolean {
-  return panelConeAngleDeg(p, head, forward, ROOM_LABEL_EXTENT, true) <= ROOM_LABEL_FIT.halfAngleDeg;
+  return panelConeAngleDeg(p, head, forward, roomLabelExtent(), true) <= ROOM_LABEL_FIT.halfAngleDeg;
 }
 
 /**
@@ -132,13 +138,13 @@ export function placeRoomLabel(
   scratch.x = roomCentre.x;
   scratch.y = roomCentre.y + ROOM_LABEL_LIFT;
   scratch.z = roomCentre.z;
-  clampDistanceFromHead(scratch, head, ROOM_LABEL_FIT.minDistance, ROOM_LABEL_FIT.maxDistance, forward, out);
+  clampDistanceFromHead(scratch, head, labelMinDistance(ROOM_LABEL_FIT.minDistance), ROOM_LABEL_FIT.maxDistance, forward, out);
   const fl = Math.hypot(forward.x, forward.y, forward.z);
   if (!(fl > 1e-9) || !Number.isFinite(out.x + out.y + out.z)) return out;
   raiseToFloor(out, head, forward, minY);
   if (fits(out, head, forward)) return out;
   if (turnTowardGaze(out, head, forward)) return out;
-  anchorInCone(out, head, forward, ROOM_LABEL_EXTENT, ROOM_LABEL_FIT, out, true);
+  anchorInCone(out, head, forward, roomLabelExtent(), labelFit(ROOM_LABEL_FIT), out, true);
   raiseToFloor(out, head, forward, minY);
   return out;
 }

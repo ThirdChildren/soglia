@@ -215,11 +215,13 @@ export class MenuItemsSystem extends createSystem({}) {
       const control = slot.control;
       const object = control.anchor.object;
       if (!object) continue;
-      this.spot.set(control.offset.dx, control.offset.dy, 0).applyQuaternion(this.frameQuat).add(menu.framePosition);
+      // With large text the whole menu is bigger (`menu.scale`): the places and the sizes of the controls grow with it.
+      const k = menu.scale;
+      this.spot.set(control.offset.dx * k, control.offset.dy * k, 0).applyQuaternion(this.frameQuat).add(menu.framePosition);
       object.position.copy(this.spot);
       object.quaternion.copy(this.frameQuat);
-      slot.halfWidth = control.half.halfWidth;
-      slot.halfHeight = control.half.halfHeight;
+      slot.halfWidth = control.half.halfWidth * k;
+      slot.halfHeight = control.half.halfHeight * k;
       slot.x = this.spot.x;
       slot.y = this.spot.y;
       slot.z = this.spot.z;
@@ -324,7 +326,8 @@ export class MenuItemsSystem extends createSystem({}) {
     const hit = pickRect(this.point, this.slots, menu.frameOrientation);
     if (!hit) return;
     // The menu has the highest priority: this only fails if the menu already owns the hand.
-    if (!pinchClaims.claim(hand, 'menu')) return;
+    // The Rotate button comes first (T5.14): a pinch that pressed it is not a second press on a control under it.
+    if (pinchClaims.ownerOf(hand) === 'menu' || !pinchClaims.claim(hand, 'menu')) return;
     const control = hit.control;
     if (control.tab !== undefined) {
       this.selectTab(ctx, menu, control.tab);

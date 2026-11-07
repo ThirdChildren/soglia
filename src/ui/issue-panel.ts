@@ -16,6 +16,7 @@ import {
   backVisible,
   homeActions,
   homeHint,
+  homeSlotIds,
   type HomeActionId,
   type IssueScreen,
 } from '../logic/issue-panel';
@@ -35,16 +36,18 @@ import {
 } from '../logic/issue-detail';
 import { LIST_BAR_BUTTON_WIDTH, LIST_PAGE_SIZE, listBarWidth, type ListPage, type ListRow } from '../logic/issue-list';
 import { MOVEIN_MAX_ROWS, type MoveInPage } from '../logic/issue-movein';
+import { INFO_TEXT_LINES, type InfoModel } from '../logic/info-panel';
 import { ISSUE_URGENCIES } from '../logic/issues';
-import type { Role } from '../logic/params';
-import { PANEL_CENTER } from '../logic/menu';
+import { ROLES, type Role } from '../logic/params';
+import { PANEL_CENTER, scaleExtent } from '../logic/menu';
 import { pinnedAnchorPitchRad, pinnedConeAngleDeg, pinnedMenuAnchor, pitchOfForward, yawOfForward } from '../logic/menu-anchor';
 import type { Vec3Like } from '../logic/palm';
 import { slog } from '../log';
-import { applyPanelFont, panelFontSupports } from './fonts';
+import { panelFontSupports } from './fonts';
+import { applyPanelLook } from './panel-theme';
 import { disposePanelEntity } from './panel-lifecycle';
 import { strings } from './strings';
-import { uiColors } from './theme';
+import { chipLook as themeChipLook, isLargeText, panelScale } from './theme';
 
 const PANEL_ASSET = 'issue-panel';
 const ROOT_ELEMENT = 'issue-panel-root';
@@ -57,10 +60,10 @@ const HOME_ELEMENT = 'issue-panel-home';
 const HINT_ELEMENT = 'issue-panel-hint';
 const NOTE_BOX_ELEMENT = 'issue-panel-note-box';
 const NOTE_ELEMENT = 'issue-panel-note';
-/** The active chip is drawn dark with light text, the others light with dark text (the same look as the active tab of the menu). */
-const CHIP_ACTIVE = { backgroundColor: '#1a1a1a', color: '#ffffff' } as const;
-const CHIP_IDLE = { backgroundColor: uiColors.surface, color: uiColors.ink } as const;
-const HOME_ACTION_IDS: readonly HomeActionId[] = ['open-list', 'open-movein'];
+/** The active chip is drawn dark with light text, the others light with dark text (the same look as the active tab of the menu); the colours follow the contrast preference. */
+const chipLook = themeChipLook;
+/** The two boxes of the row of buttons of `home`, left and right: the layout calls them after the buttons of the roles that see issues. */
+const HOME_ACTION_ELEMENTS: readonly string[] = ['open-list', 'open-movein'];
 const NEW_ELEMENT = 'issue-panel-new';
 const CONTEXT_ELEMENT = 'issue-panel-context';
 const URGENCY_ROW_ELEMENT = 'issue-panel-urg';
@@ -75,6 +78,7 @@ const LIST_EMPTY_ELEMENT = 'issue-panel-list-empty';
 const DETAIL_ELEMENT = 'issue-panel-detail';
 const DETAIL_ACTIONS_ELEMENT = 'issue-panel-dactions';
 const MOVEIN_ELEMENT = 'issue-panel-movein';
+const INFO_ELEMENT = 'issue-panel-info';
 /** Most action buttons of the detail (a resolved issue has two for the tenant: Confirm and Reopen). */
 const DETAIL_ACTION_SLOTS = 2;
 /** The colour of a row's status dot as the style string UIKit takes (`#e5322d`). */
@@ -99,6 +103,8 @@ interface UiDocument {
 export interface HomeModel {
   readonly role: Role;
   readonly issueCount: number;
+  /** The house has a staging preset: the agent's `Furnish` exists (T5.10). */
+  readonly staging: boolean;
 }
 
 interface ChipElements {
@@ -124,7 +130,7 @@ interface DetailElements {
   actions: ChipElements[];
 }
 
-/** The parts of one row of the list: its wrapper (with the heading above the row), the heading, the row, the dot, the text, the urgency. */
+/** The parts of one row of the list: its wrapper (with the heading above the row), the heading, the row, the dot, the text, the status word, the urgency. */
 interface ListRowElements {
   wrapper: UIKit.Container | null;
   heading: UIKit.Container | null;
@@ -132,6 +138,8 @@ interface ListRowElements {
   row: UIKit.Container | null;
   dot: UIKit.Container | null;
   text: UIKit.Text | null;
+  /** The status word next to the dot (the list only; null in the move-in report). */
+  status: UIKit.Text | null;
   urgency: UIKit.Text | null;
 }
 
@@ -146,6 +154,14 @@ interface MoveInElements {
   empty: UIKit.Text | null;
   moreBox: UIKit.Container | null;
   more: UIKit.Text | null;
+}
+
+/** The parts of the info screen (T5.9): the container, the category and room line, the lines of the note and the words `Sample data`. */
+interface InfoElements {
+  box: UIKit.Container | null;
+  meta: UIKit.Text | null;
+  textLines: ChipElements[];
+  sample: UIKit.Text | null;
 }
 
 export class IssuePanel {
@@ -178,6 +194,8 @@ export class IssuePanel {
   private listModel: ListPage | null = null;
   private detailModel: DetailModel | null = null;
   private moveInModel: MoveInPage | null = null;
+  private infoModel: InfoModel | null = null;
+  private readonly info: InfoElements = { box: null, meta: null, textLines: [], sample: null };
   private moveInMore = '';
   private readonly movein: MoveInElements = {
     box: null,
@@ -212,8 +230,9 @@ export class IssuePanel {
   private readonly urgencies = new Map<string, ChipElements>();
   private form: IssueForm | null = null;
   private readonly chips = new Map<Role, ChipElements>();
-  private readonly actions = new Map<HomeActionId, ChipElements>();
-  private homeModel: HomeModel = { role: 'visitor', issueCount: 0 };
+  /** The left and the right box of the row of buttons of `home`. */
+  private readonly actions: ChipElements[] = [];
+  private homeModel: HomeModel = { role: 'visitor', issueCount: 0, staging: false };
   private readonly headPosition = new Vector3();
   private readonly headForward = new Vector3();
   private readonly headQuaternion = new Quaternion();
@@ -223,6 +242,13 @@ export class IssuePanel {
   private yaw = 0;
   /** Bottom centre of the panel and its yaw: where the controls are (valid once `hasFrame`). */
   readonly framePosition = new Vector3();
+  /** The scale the open panel was made with: 1, or 1.25 for large text (fixed at `open`). */
+  private panelScaleValue = 1;
+
+  /** The scale of the open panel: its controls, its centre and its extent grow with it. */
+  get scale(): number {
+    return this.panelScaleValue;
+  }
   /** Yaw of the panel, radians (rotation about +Y; the panel faces +Z, so +Z points back at the user). */
   get frameYaw(): number {
     return this.yaw;
@@ -255,7 +281,9 @@ export class IssuePanel {
     this.headForward.set(0, 0, -1).applyQuaternion(this.headQuaternion);
     this.yaw = yawOfForward(this.headForward.x, this.headForward.z);
     const pitch = pitchOfForward(this.headForward.x, this.headForward.y, this.headForward.z);
-    pinnedMenuAnchor(this.headPosition, this.yaw, this.anchor, pitch);
+    // With large text the whole panel is 1.25 times bigger (3.0 cm text, same layout) and hangs a little farther, centred on the eyes.
+    this.panelScaleValue = panelScale();
+    pinnedMenuAnchor(this.headPosition, this.yaw, this.anchor, pitch, isLargeText());
     slog(`issues panel pitchDeg=${degrees1(pitch)} anchorPitchDeg=${degrees1(pinnedAnchorPitchRad(pitch))}`);
     const entity = this.world.createTransformEntity();
     tagEntity(entity, stableId.ui('issue-panel'));
@@ -298,6 +326,9 @@ export class IssuePanel {
     this.listModel = null;
     this.detailModel = null;
     this.moveInModel = null;
+    this.infoModel = null;
+    this.info.box = this.info.meta = this.info.sample = null;
+    this.info.textLines.length = 0;
     this.clearMoveIn();
     this.clearDetail();
     this.gridRows.length = 0;
@@ -305,7 +336,7 @@ export class IssuePanel {
     this.urgencies.clear();
     this.form = null;
     this.chips.clear();
-    this.actions.clear();
+    this.actions.length = 0;
   }
 
   /** The form of a new issue that the `new` screen shows (null: none). Written in place; kept until the layout is loaded. */
@@ -333,6 +364,12 @@ export class IssuePanel {
   setMoveIn(page: MoveInPage | null, more: string = ''): void {
     this.moveInModel = page;
     this.moveInMore = more;
+    if (this.applied) this.writeScreen();
+  }
+
+  /** The note of an info point that the `info` screen shows (null: none). Written in place; kept until the layout is loaded (T5.9). */
+  setInfo(info: InfoModel | null): void {
+    this.infoModel = info;
     if (this.applied) this.writeScreen();
   }
 
@@ -375,7 +412,7 @@ export class IssuePanel {
     object.rotation.set(0, this.yaw, 0);
     object.position.set(this.anchor.x, this.anchor.y, this.anchor.z);
     this.framePosition.copy(object.position);
-    this.centerOffset.set(PANEL_CENTER.dx, PANEL_CENTER.dy, 0).applyQuaternion(object.quaternion);
+    this.centerOffset.set(PANEL_CENTER.dx * this.panelScaleValue, PANEL_CENTER.dy * this.panelScaleValue, 0).applyQuaternion(object.quaternion);
     object.position.add(this.centerOffset);
     object.updateMatrixWorld(true);
     object.visible = true;
@@ -388,7 +425,7 @@ export class IssuePanel {
     head.getWorldPosition(this.headPosition);
     head.getWorldQuaternion(this.headQuaternion);
     this.headForward.set(0, 0, -1).applyQuaternion(this.headQuaternion);
-    const angle = pinnedConeAngleDeg(this.anchor, this.yaw, this.headPosition, this.headForward, ISSUE_PANEL_EXTENT);
+    const angle = pinnedConeAngleDeg(this.anchor, this.yaw, this.headPosition, this.headForward, scaleExtent(ISSUE_PANEL_EXTENT, this.panelScaleValue));
     slog(`issues panel view maxAngleDeg=${angle.toFixed(1)} distance=${this.headPosition.distanceTo(this.framePosition).toFixed(2)}`);
   }
 
@@ -396,7 +433,7 @@ export class IssuePanel {
     const doc = entity.getValue(PanelDocument, 'document') as UiDocument | undefined;
     const title = doc?.getElementById<UIKit.Text>(TITLE_ELEMENT);
     if (!doc || !title) return;
-    applyPanelFont(doc, ROOT_ELEMENT);
+    applyPanelLook(doc, ROOT_ELEMENT, 'scale');
     // Never hidden by the model or the table that happen to be in front of it (the menu does the same).
     doc.getElementById<UIKit.Container>(ROOT_ELEMENT)?.setProperties({ depthTest: false, renderOrder: PANEL_RENDER_ORDER });
     this.title = title;
@@ -418,6 +455,7 @@ export class IssuePanel {
         row: doc.getElementById<UIKit.Container>(`issue-panel-lr-${i}`),
         dot: doc.getElementById<UIKit.Container>(`issue-panel-ld-${i}`),
         text: doc.getElementById<UIKit.Text>(`issue-panel-lt-${i}`),
+        status: doc.getElementById<UIKit.Text>(`issue-panel-ls-${i}`),
         urgency: doc.getElementById<UIKit.Text>(`issue-panel-lu-${i}`),
       });
     }
@@ -438,8 +476,16 @@ export class IssuePanel {
         row: doc.getElementById<UIKit.Container>(`issue-panel-mvr-${i}`),
         dot: doc.getElementById<UIKit.Container>(`issue-panel-mvd-${i}`),
         text: doc.getElementById<UIKit.Text>(`issue-panel-mvx-${i}`),
+        status: null,
         urgency: doc.getElementById<UIKit.Text>(`issue-panel-mvu-${i}`),
       });
+    }
+    const info = this.info;
+    info.box = doc.getElementById<UIKit.Container>(INFO_ELEMENT);
+    info.meta = doc.getElementById<UIKit.Text>('issue-panel-imeta');
+    info.sample = doc.getElementById<UIKit.Text>('issue-panel-isample');
+    for (let i = 0; i < INFO_TEXT_LINES; i += 1) {
+      info.textLines.push({ box: doc.getElementById<UIKit.Container>(`issue-panel-itl-${i}`), label: doc.getElementById<UIKit.Text>(`issue-panel-itl-${i}-text`) });
     }
     const d = this.detail;
     d.box = doc.getElementById<UIKit.Container>(DETAIL_ELEMENT);
@@ -482,13 +528,16 @@ export class IssuePanel {
     this.hint = doc.getElementById<UIKit.Text>(HINT_ELEMENT);
     this.noteBox = doc.getElementById<UIKit.Container>(NOTE_BOX_ELEMENT);
     this.note = doc.getElementById<UIKit.Text>(NOTE_ELEMENT);
-    for (const role of HOME_ROLES) {
+    for (const role of ROLES) {
       const label = doc.getElementById<UIKit.Text>(`issue-panel-role-${role}-label`);
       label?.setProperties({ text: strings.issues.roles[role] });
-      this.chips.set(role, { box: doc.getElementById<UIKit.Container>(`issue-panel-role-${role}`), label });
+      const box = doc.getElementById<UIKit.Container>(`issue-panel-role-${role}`);
+      // A role that is not available yet has no chip: the other chips keep their places (T5.R3).
+      if (!HOME_ROLES.includes(role)) box?.setProperties({ display: 'none' });
+      else this.chips.set(role, { box, label });
     }
-    for (const id of HOME_ACTION_IDS) {
-      this.actions.set(id, {
+    for (const id of HOME_ACTION_ELEMENTS) {
+      this.actions.push({
         box: doc.getElementById<UIKit.Container>(`issue-panel-${id}`),
         label: doc.getElementById<UIKit.Text>(`issue-panel-${id}-label`),
       });
@@ -510,13 +559,16 @@ export class IssuePanel {
     const detail = screen === 'detail' ? this.detailModel : null;
     const detailShown = detail !== null && !detail.missing;
     const movein = screen === 'movein' ? this.moveInModel : null;
+    const infoModel = screen === 'info' ? this.infoModel : null;
+    const infoShown = infoModel !== null && !infoModel.missing;
     // The title of the form is the name of the fixture (a free spot keeps "New issue"); the list says "Sample data" and its page,
     // the detail says "Issue" or "Issue - Sample data".
-    const title = form?.fixtureName ? clipName(form.fixtureName, TITLE_MAX_LENGTH) : (list?.title ?? detail?.title ?? movein?.title ?? strings.issues.screens[screen]);
+    const title = form?.fixtureName ? clipName(form.fixtureName, TITLE_MAX_LENGTH) : (list?.title ?? detail?.title ?? movein?.title ?? infoModel?.title ?? strings.issues.screens[screen]);
     this.title?.setProperties({ text: title });
     this.footer?.setProperties({ text: isHome ? strings.issues.footer : '', display: isHome ? 'flex' : 'none' });
     this.home?.setProperties({ display: isHome ? 'flex' : 'none' });
-    this.noteBox?.setProperties({ display: isHome || form || list || detailShown || movein ? 'none' : 'flex' });
+    this.noteBox?.setProperties({ display: isHome || form || list || detailShown || movein || infoShown ? 'none' : 'flex' });
+    this.info.box?.setProperties({ display: infoShown ? 'flex' : 'none' });
     this.movein.box?.setProperties({ display: movein ? 'flex' : 'none' });
     this.detail.box?.setProperties({ display: detailShown ? 'flex' : 'none' });
     this.newBox?.setProperties({ display: form ? 'flex' : 'none' });
@@ -534,28 +586,45 @@ export class IssuePanel {
       this.writeForm(form);
       return;
     }
+    if (infoModel) {
+      if (infoShown) this.writeInfo(infoModel);
+      else this.note?.setProperties({ text: infoModel.missingText });
+      return;
+    }
     if (detail) {
       if (detailShown) this.writeDetail(detail);
       else this.note?.setProperties({ text: detail.missingText });
       return;
     }
-    if (!isHome) {
-      this.note?.setProperties({ text: strings.issues.comingSoon });
-      return;
-    }
-    const { role, issueCount } = this.homeModel;
+    const { role, issueCount, staging } = this.homeModel;
     for (const [chipRole, chip] of this.chips) {
-      const look = chipRole === role ? CHIP_ACTIVE : CHIP_IDLE;
+      const look = chipLook(chipRole === role);
       chip.box?.setProperties({ backgroundColor: look.backgroundColor });
       chip.label?.setProperties({ color: look.color });
     }
-    const hint = homeHint(role);
+    const hint = homeHint(role, staging);
     this.hint?.setProperties({ text: hint ? strings.issues.hints[hint] : '' });
-    const shown = homeActions(role);
-    for (const [id, action] of this.actions) {
+    const shown = homeActions(role, staging);
+    const slots = homeSlotIds(role);
+    for (let i = 0; i < this.actions.length; i += 1) {
+      const action = this.actions[i];
+      const id = slots[i];
       // A button the role does not have keeps its place and is not drawn (the other one does not move).
       action.box?.setProperties({ opacity: shown.includes(id) ? undefined : 0 });
-      action.label?.setProperties({ text: id === 'open-list' ? strings.issues.openList(issueCount) : strings.issues.openMoveIn });
+      action.label?.setProperties({ text: this.homeActionText(id, issueCount) });
+    }
+  }
+
+  private homeActionText(id: HomeActionId, issueCount: number): string {
+    switch (id) {
+      case 'open-list':
+        return strings.issues.openList(issueCount);
+      case 'open-movein':
+        return strings.issues.openMoveIn;
+      case 'agent-furnish':
+        return strings.issues.agent.furnish;
+      case 'agent-clear':
+        return strings.issues.agent.clear;
     }
   }
 
@@ -569,15 +638,15 @@ export class IssuePanel {
     if (!form) {
       // The list has `Prev` and `Next` between `Back` and `Close` when there is more than one page (four narrower buttons).
       const paged = list?.paged === true;
-      const width = list ? listBarWidth(paged) : ISSUE_BAR_BUTTON_WIDTH;
+      const width = (list ? listBarWidth(paged) : ISSUE_BAR_BUTTON_WIDTH) * this.panelScaleValue;
       this.back?.setProperties({ width, opacity: backVisible(screen) ? undefined : 0 });
       this.backLabel?.setProperties({ text: strings.issues.back });
       this.closeBox?.setProperties({ display: 'flex', width, opacity: undefined });
       this.closeLabel?.setProperties({ text: strings.issues.close });
       if (list && paged) {
-        this.mid.box?.setProperties({ display: 'flex', width: LIST_BAR_BUTTON_WIDTH });
+        this.mid.box?.setProperties({ display: 'flex', width: LIST_BAR_BUTTON_WIDTH * this.panelScaleValue });
         this.mid.label?.setProperties({ text: list.prevText });
-        this.mid2.box?.setProperties({ display: 'flex', width: LIST_BAR_BUTTON_WIDTH });
+        this.mid2.box?.setProperties({ display: 'flex', width: LIST_BAR_BUTTON_WIDTH * this.panelScaleValue });
         this.mid2.label?.setProperties({ text: list.nextText });
       } else {
         this.mid.box?.setProperties({ display: 'none' });
@@ -588,15 +657,15 @@ export class IssuePanel {
     const cancel = layout.cells.find((cell) => cell.kind === 'cancel');
     const report = layout.cells.find((cell) => cell.kind === 'report');
     const back = layout.cells.find((cell) => cell.kind === 'back');
-    this.back?.setProperties({ width: cancel?.width ?? ISSUE_BAR_BUTTON_WIDTH, opacity: undefined });
+    this.back?.setProperties({ width: (cancel?.width ?? ISSUE_BAR_BUTTON_WIDTH) * this.panelScaleValue, opacity: undefined });
     this.backLabel?.setProperties({ text: strings.issues.form.cancel });
     this.closeBox?.setProperties({
       display: report ? 'flex' : 'none',
-      width: report?.width ?? ISSUE_BAR_BUTTON_WIDTH,
+      width: (report?.width ?? ISSUE_BAR_BUTTON_WIDTH) * this.panelScaleValue,
       opacity: report && !report.enabled ? FAINT_OPACITY : undefined,
     });
     this.closeLabel?.setProperties({ text: strings.issues.form.report });
-    this.mid.box?.setProperties({ display: back ? 'flex' : 'none', width: back?.width ?? ISSUE_BAR_BUTTON_WIDTH });
+    this.mid.box?.setProperties({ display: back ? 'flex' : 'none', width: (back?.width ?? ISSUE_BAR_BUTTON_WIDTH) * this.panelScaleValue });
     this.mid.label?.setProperties({ text: strings.issues.form.back });
   }
 
@@ -628,18 +697,29 @@ export class IssuePanel {
     d.actionsBox?.setProperties({ display: detail.actions.length > 0 ? 'flex' : 'none' });
     for (let i = 0; i < DETAIL_ACTION_SLOTS; i += 1) {
       const action = detail.actions[i];
-      d.actions[i]?.box?.setProperties({ display: action === undefined ? 'none' : 'flex', width: action?.width });
+      d.actions[i]?.box?.setProperties({ display: action === undefined ? 'none' : 'flex', width: action === undefined ? undefined : action.width * this.panelScaleValue });
       if (action !== undefined) d.actions[i]?.label?.setProperties({ text: action.label });
     }
   }
 
+  /** The info screen: the category and room, the lines of the note, and `Sample data` under them. */
+  private writeInfo(info: InfoModel): void {
+    this.info.meta?.setProperties({ text: info.meta });
+    for (let i = 0; i < INFO_TEXT_LINES; i += 1) {
+      const line = info.textLines[i];
+      this.info.textLines[i]?.box?.setProperties({ display: line === undefined ? 'none' : 'flex' });
+      if (line !== undefined) this.info.textLines[i]?.label?.setProperties({ text: line });
+    }
+    this.info.sample?.setProperties({ text: info.sampleText });
+  }
+
   /**
-   * The move-in report: the switch (its label and the word for its state, dark when on like a chosen chip), the entries (a blue dot,
+   * The move-in report: the switch (its label and the word for its state, dark when on like a chosen chip), the entries (a violet dot,
    * the text, the date) and "+n more" when some did not fit.
    */
   private writeMoveIn(page: MoveInPage): void {
     const m = this.movein;
-    const look = page.toggleOn ? CHIP_ACTIVE : CHIP_IDLE;
+    const look = chipLook(page.toggleOn);
     m.toggle?.setProperties({ backgroundColor: look.backgroundColor });
     m.toggleLabel?.setProperties({ text: page.toggleLabel, color: look.color });
     m.toggleState?.setProperties({ text: page.toggleState, color: look.color });
@@ -653,7 +733,7 @@ export class IssuePanel {
       const row = page.rows[i];
       elements.row?.setProperties({ display: row ? 'flex' : 'none' });
       if (!row) continue;
-      const rowLook = row.selected ? CHIP_ACTIVE : CHIP_IDLE;
+      const rowLook = chipLook(row.selected);
       elements.row?.setProperties({ backgroundColor: rowLook.backgroundColor });
       elements.dot?.setProperties({ backgroundColor: hexColor(row.color) });
       elements.text?.setProperties({ text: row.text, color: rowLook.color });
@@ -661,7 +741,7 @@ export class IssuePanel {
     }
   }
 
-  /** The list: up to five rows (a dot in the colour of the status, the text, the urgency), the heading "History" above the first archived one. */
+  /** The list: up to four rows of two lines (a dot in the colour of the status, the status word and the urgency; the text), the heading "History" above the first archived one. */
   private writeList(list: ListPage): void {
     this.listEmptyBox?.setProperties({ display: list.empty ? 'flex' : 'none' });
     this.listEmpty?.setProperties({ text: list.emptyText });
@@ -671,12 +751,13 @@ export class IssuePanel {
       const row: ListRow | undefined = list.rows[i];
       elements.wrapper?.setProperties({ display: row ? 'flex' : 'none' });
       if (!row) continue;
-      const look = row.selected ? CHIP_ACTIVE : CHIP_IDLE;
+      const look = chipLook(row.selected);
       elements.heading?.setProperties({ display: row.heading ? 'flex' : 'none' });
       if (row.heading) elements.headingLabel?.setProperties({ text: list.historyText });
       elements.row?.setProperties({ backgroundColor: look.backgroundColor });
       elements.dot?.setProperties({ backgroundColor: hexColor(row.color) });
       elements.text?.setProperties({ text: row.text, color: look.color });
+      elements.status?.setProperties({ text: row.statusText, color: look.color });
       elements.urgency?.setProperties({ text: row.urgencyLabel, color: look.color });
     }
   }
@@ -705,8 +786,8 @@ export class IssuePanel {
 
   private writeCell(elements: ChipElements | undefined, cell: FormCell, sized: boolean): void {
     if (!elements) return;
-    const look = cell.selected ? CHIP_ACTIVE : CHIP_IDLE;
-    if (sized) elements.box?.setProperties({ display: 'flex', width: cell.width, backgroundColor: look.backgroundColor });
+    const look = chipLook(cell.selected);
+    if (sized) elements.box?.setProperties({ display: 'flex', width: cell.width * this.panelScaleValue, backgroundColor: look.backgroundColor });
     else elements.box?.setProperties({ backgroundColor: look.backgroundColor });
     elements.label?.setProperties({ text: cell.label, color: look.color });
   }

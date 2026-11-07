@@ -31,6 +31,8 @@ export const stableId = {
   door: (id: string): string => make('door', id),
   window: (id: string): string => make('window', id),
   fixture: (id: string): string => make('fixture', id),
+  /** A mesh that stands for many entities of the house at once (`merged:walls`, `merged:thresholds`), see `buildHouse`. */
+  merged: (name: string): string => make('merged', name),
   viewpoint: (id: string): string => make('viewpoint', id),
   ui: (name: string): string => make('ui', name),
   pin: (issueId: string): string => make('pin', issueId),

@@ -86,7 +86,7 @@ function randomAction(r: Rng, state: AppState, issueBias = 0): Action {
     case 2:
     case 3: {
       const id = state.issues.length > 0 && r() < 0.9 ? pickOf(r, state.issues).id : formatIssueId(900);
-      return transitionIssue(id, pickOf(r, TRANSITIONS), pickOf(r, ROLES), stamp(int(r, 60)));
+      return transitionIssue(id, pickOf(r, TRANSITIONS), stamp(int(r, 60)));
     }
     case 4:
       return setRole(pickOf(r, ROLES));
@@ -288,7 +288,7 @@ describe('a state saved by M3, written out by hand (no role-independent new fiel
     expect(state.issues).toEqual([]);
     expect(state.nextIssue).toBe(FIRST_NEW_ISSUE);
     expect(state.issuesSeeded).toBe(false);
-    expect(state.prefs).toEqual({ onboardingStep: 'done', menuOpened: true, moveInVisible: false });
+    expect(state.prefs).toEqual({ onboardingStep: 'done', menuOpened: true, moveInVisible: false, contrast: false, largeText: false, coach: 'done' });
     expect(state.furniture.map((p) => p.id)).toEqual(['furniture:armchair#1']);
     expect(state.nextInstance).toEqual({ armchair: 2 });
     expect(state.view).toEqual({ kind: 'viewpoint', id: 'V1' });

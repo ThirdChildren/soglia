@@ -124,7 +124,7 @@ describe('view in the store (D35)', () => {
 describe('view: serialize / deserialize', () => {
   it('serializes the view right before the issue fields and round-trips', () => {
     const s = reduce(initial(), setView(V1));
-    expect(serialize(s).endsWith('"view":{"kind":"viewpoint","id":"V1"},"issues":[],"nextIssue":14,"issuesSeeded":false}')).toBe(true);
+    expect(serialize(s).endsWith('"view":{"kind":"viewpoint","id":"V1"},"issues":[],"nextIssue":14,"issuesSeeded":false,"sunTime":"2026-12-21T10:00"}')).toBe(true);
     expect(deserialize(serialize(s))).toEqual(s);
     expect(deserialize(serialize(initial()))).toEqual(initial());
   });

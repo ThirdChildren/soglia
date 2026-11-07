@@ -1,0 +1,20 @@
+---
+name: m5-agent
+description: M5 T5.8-T5.10 (info points, diamond pins, info screen, Furnish / Clear with undoable stage step) - decisions, verified numbers, IWER recipes, traps
+metadata:
+  type: project
+---
+
+Built 2026-11-06 on branch `claude/charming-cori-mccw6h` (plan `docs/plans/M5.md`, D57).
+
+- Info points are CONTENT: `loadInfoPoints(houseId)` (src/data/load-issues.ts) shares ONE cached request per house with `loadIssues` (module `Map` of promises); `pickInfoPoints` (src/logic/info-points.ts) skips invalid entries quietly (the seed already warns). They never enter the store. `createPins(..., infoPoints)` and `createIssuePanel(..., infoPoints)` take the list as an argument (no global).
+- Permissions: `view-info` = visitor + agent, `stage` = agent. No role has both pins of issues and info pins, so `layoutInfoPins` is a separate layer.
+- Diamond mesh `pin:info-instances` = LatheGeometry with 4 segments and a 6-point profile (stem, then a diamond); capacity `MAX_INFO_POINTS` 12; pick = same 2 cm radius, `pickPinAt` answers for both layers (info heads appended after the pin heads) and the panel tells them apart with `findInfoPoint`. Log: `pins layer count=0 baseline=0 info=5 role=agent` (info= BEFORE role=).
+- `info` screen: body `issue-panel-info` (meta line bold, 4 text lines of 2.5 cm, `Sample data`), model in src/logic/info-panel.ts (`buildInfoModel`, wraps with `wrapText` and `DETAIL_LINE_WIDTH`), `ctx.infoId` + `syncInfo` in the system, cleared by `syncList` when the screen is not `info`. The geometry test counts font-sizes in the uikitml (now 76).
+- Home for the agent: the two button boxes of the layout are reused (`open-list` box = left, `open-movein` box = right). `homeSlotIds(role)` says what each holds; CONTROL_SLOTS has `agent-furnish` (left) and `agent-clear` (right) at the SAME places. `controlStableId('agent-furnish')` = `ui:agent-furnish` (no `issue-` prefix). `homeActions/homeControls/screenControls/homeHint` got a `staging` boolean (default false); `HomeModel.staging` comes from `hasStaging(house)`.
+- `stageFurniture(pieces, label)`: one history entry `{action:'stage', id: label}` holding the furniture from before; no entry for a Clear of an empty house; `nextInstance` never lowered. Labels used: `furnish:scandinavian`, `clear`. `pickRestorable` keeps `stage` steps (they are named by label, not by a piece id; the old filter would have dropped them). `stagingToPieces(house, style, firstInstance)` numbers pieces from the store counters, so Furnish after Undo gives `#2...`, `chair#5..8` and never reuses an id (QA S5.3 verification 6).
+- `runAgentStaging('furnish'|'clear')` lives in src/systems/furniture.ts (it has house + catalog + store): refusals `no-staging | role-not-allowed | no-catalog` are log lines `agent staging denied action=... reason=...`. The panel closes only on success (`closed via=stage`).
+- IWER pinch with `pinch=grip` (dev file `pinch=grip`): pinch point = set + (-0.029, +0.0015, +0.045), i.e. set the hand to T + (0.029, -0.0015, -0.045); this is NOT the joints calibration of m5-sun-view.md. Always read `[soglia:hands] ... event=pinch-start point=` and correct. A control anchor's `Transform` position is already the pinch target (world) for panel controls; for `pin:*` entities the position is house-local: world = root + scale*(x - cx, y, z - cz) with plan centre (5.5, 3.6) for A.
+- `browser logs` takes at most `count: 200`; the stats line every 2 s scrolls start-up lines out after ~15 s: reload and read at once.
+- Measured (IWER, A, role agent, `time=2026-12-21T10:00`): 14 pieces + 5 diamonds + Issues panel open = 65 calls per view (plan 66); after Furnish the panel is closed and 14 pieces cost the same as K2 + 1. Groups: house 24, furniture 14, ui 15, markers 2, sun 2. B (agent): only Clear, no pins, no 404, `issues seed none reason=no-demo-file`.
+- Trap: committing with `git add -A tests` swept another agent's untracked test files into my commit (undone with `reset --soft`): always `git add` explicit paths when another agent works in the same tree.

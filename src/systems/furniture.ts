@@ -23,8 +23,9 @@ import {
 import { catalogIdOf, reasonKind } from '../logic/furniture-label';
 import type { House } from '../logic/house';
 import type { PlacedPiece, PlacementResult } from '../logic/placement-rules';
-import { setFurniture, type Store } from '../logic/state';
-import { stagingToPieces } from '../logic/staging';
+import { can } from '../logic/permissions';
+import { setFurniture, stageFurniture, type Store } from '../logic/state';
+import { STAGING_STYLE, hasStaging, stagingToPieces } from '../logic/staging';
 import type { FurnitureVisuals } from '../ui/furniture-visuals';
 import { setPieceReason } from './piece-reasons';
 
@@ -109,6 +110,41 @@ export function applyFurnish(
   const results = evaluateAll(house, store.get().furniture, catalog);
   const invalid = [...results.values()].filter((r) => r.status !== 'valid').length;
   slog(`furnish applied style=${style} pieces=${store.get().furniture.length} invalid=${invalid}`);
+}
+
+/** What the agent's Furnish / Clear did: the pieces in the house afterwards, or why it was refused. */
+export type AgentStagingResult =
+  | { readonly ok: true; readonly pieces: number }
+  | { readonly ok: false; readonly reason: 'no-staging' | 'role-not-allowed' | 'no-catalog' };
+
+/**
+ * The agent's Furnish and Clear (T5.10, D57): sets the whole layout in ONE undoable step (`stageFurniture`, a history entry
+ * `stage`), unlike `furnish=` which writes no history. `furnish` puts the staging preset of the house in (the pieces get fresh
+ * instance numbers, so no id of a piece that existed before is reused) and `clear` empties the house. Refused for a role that
+ * may not `stage`, for a house without a preset and while the catalog is missing; the refusal is a log line, never an error.
+ * Logs `agent staging action=furnish style=scandinavian pieces=14`.
+ */
+export function runAgentStaging(action: 'furnish' | 'clear'): AgentStagingResult {
+  const ctx = context;
+  const deny = (reason: 'no-staging' | 'role-not-allowed' | 'no-catalog'): AgentStagingResult => {
+    slog(`agent staging denied action=${action} reason=${reason}`);
+    return { ok: false, reason };
+  };
+  if (!ctx) return deny('no-catalog');
+  const state = ctx.store.get();
+  if (!can(state.role, 'stage')) return deny('role-not-allowed');
+  if (action === 'clear') {
+    ctx.store.dispatch(stageFurniture([], 'clear'));
+    slog('agent staging action=clear pieces=0');
+    return { ok: true, pieces: 0 };
+  }
+  if (!hasStaging(ctx.house)) return deny('no-staging');
+  const known = new Set(ctx.catalog.map((item) => item.id));
+  const pieces = stagingToPieces(ctx.house, STAGING_STYLE, state.nextInstance).filter((piece) => known.has(piece.catalogId));
+  ctx.store.dispatch(stageFurniture(pieces, `furnish:${STAGING_STYLE}`));
+  const count = ctx.store.get().furniture.length;
+  slog(`agent staging action=furnish style=${STAGING_STYLE} pieces=${count}`);
+  return { ok: true, pieces: count };
 }
 
 const DEG_TO_RAD = Math.PI / 180;

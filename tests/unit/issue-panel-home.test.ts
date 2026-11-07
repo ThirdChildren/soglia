@@ -11,6 +11,7 @@ import {
   HOME_GAP_Y,
   HOME_HINT_HEIGHT,
   HOME_HINT_TOP_Y,
+  AGENT_ROLE_AVAILABLE,
   HOME_ROLES,
   HOME_TOP_Y,
   ISSUE_BAR_HEIGHT,
@@ -18,6 +19,7 @@ import {
   ISSUE_PANEL_EXTENT,
   ISSUE_SECTION_GAP,
   controlStableId,
+  homeSlotIds,
   createRoleObserver,
   formatRoleChanged,
   formatRoleSet,
@@ -45,16 +47,55 @@ import { loadJson, readText } from '../helpers/load-json';
 const ALL_ROLES: readonly Role[] = ['visitor', 'agent', 'tenant', 'landlord'];
 
 describe('the controls of home for each role', () => {
-  const chips = ['role-visitor', 'role-agent', 'role-tenant', 'role-landlord'];
+  // The Agent chip is hidden until T5.10 turns AGENT_ROLE_AVAILABLE on (T5.R3): then there are four chips again.
+  const chips = ['visitor', 'agent', 'tenant', 'landlord']
+    .filter((r) => r !== 'agent' || AGENT_ROLE_AVAILABLE)
+    .map((r) => `role-${r}`);
 
-  it('the visitor and the agent have the four chips and Close, nothing else', () => {
-    for (const role of ['visitor', 'agent'] as const) {
-      expect(homeControls(role), role).toEqual([...chips, 'close']);
-      expect(homeActions(role), role).toEqual([]);
+  it.skipIf(AGENT_ROLE_AVAILABLE)('while the Agent role is not available, home has three chips and no Agent chip (T5.R3)', () => {
+    expect(chips).toEqual(['role-visitor', 'role-tenant', 'role-landlord']);
+    for (const role of ALL_ROLES) {
+      expect(homeControls(role)).not.toContain('role-agent');
+      expect(screenControls('home', role)).not.toContain('role-agent');
+    }
+    expect([...HOME_ROLES]).toEqual(['visitor', 'tenant', 'landlord']);
+    // an agent that came in through role=agent still has Close and no buttons
+    expect(homeControls('agent')).toEqual([...chips, 'close']);
+  });
+
+  it('the visitor has the chips and Close, nothing else', () => {
+    expect(homeControls('visitor')).toEqual([...chips, 'close']);
+    expect(homeActions('visitor')).toEqual([]);
+    expect(homeActions('visitor', true)).toEqual([]);
+  });
+
+  it('the agent has Furnish only in a house with staging, and Clear always (no dead button, T5.10)', () => {
+    expect(homeActions('agent', true)).toEqual(['agent-furnish', 'agent-clear']);
+    expect(homeActions('agent', false)).toEqual(['agent-clear']);
+    expect(homeControls('agent', true)).toEqual([...chips, 'agent-furnish', 'agent-clear', 'close']);
+    expect(homeControls('agent', false)).toEqual([...chips, 'agent-clear', 'close']);
+    expect(screenControls('home', 'agent', true)).toEqual(homeControls('agent', true));
+    // Nobody else may stage, whatever the house has.
+    for (const role of ['visitor', 'tenant', 'landlord'] as const) {
+      expect(homeActions(role, true), role).not.toContain('agent-furnish');
+      expect(homeActions(role, true), role).not.toContain('agent-clear');
     }
   });
 
-  it('the tenant and the landlord have the four chips, the list, the move-in report and Close', () => {
+  it('the buttons of the agent take the two places of the row and keep them (Clear stays on the right without Furnish)', () => {
+    expect(homeSlotIds('agent')).toEqual(['agent-furnish', 'agent-clear']);
+    for (const role of ['visitor', 'tenant', 'landlord'] as const) expect(homeSlotIds(role)).toEqual(['open-list', 'open-movein']);
+    expect(CONTROL_SLOTS['agent-furnish']).toEqual({ ...CONTROL_SLOTS['open-list'], id: 'agent-furnish' });
+    expect(CONTROL_SLOTS['agent-clear']).toEqual({ ...CONTROL_SLOTS['open-movein'], id: 'agent-clear' });
+  });
+
+  it('names the buttons of the agent ui:agent-furnish and ui:agent-clear', () => {
+    expect(controlStableId('agent-furnish')).toBe('ui:agent-furnish');
+    expect(controlStableId('agent-clear')).toBe('ui:agent-clear');
+    expect(controlStableId('open-list')).toBe('ui:issue-open-list');
+  });
+
+  it('the tenant and the landlord have the chips, the list, the move-in report and Close', () => {
     for (const role of ['tenant', 'landlord'] as const) {
       expect(homeControls(role), role).toEqual([...chips, 'open-list', 'open-movein', 'close']);
       expect(homeActions(role), role).toEqual(['open-list', 'open-movein']);
@@ -78,15 +119,17 @@ describe('the controls of home for each role', () => {
   });
 
   it('the stable ids are the ones of the plan', () => {
-    expect(HOME_ROLES.map((r) => controlStableId(roleControlId(r)))).toEqual([
-      'ui:issue-role-visitor',
-      'ui:issue-role-agent',
-      'ui:issue-role-tenant',
-      'ui:issue-role-landlord',
-    ]);
+    expect(HOME_ROLES.map((r) => controlStableId(roleControlId(r)))).toEqual(
+      [
+        'ui:issue-role-visitor',
+        'ui:issue-role-agent',
+        'ui:issue-role-tenant',
+        'ui:issue-role-landlord',
+      ].filter((id) => id !== 'ui:issue-role-agent' || AGENT_ROLE_AVAILABLE),
+    );
     expect(controlStableId('open-list')).toBe('ui:issue-open-list');
     expect(controlStableId('open-movein')).toBe('ui:issue-open-movein');
-    expect([...HOME_ROLES]).toEqual([...ROLES]);
+    expect([...HOME_ROLES]).toEqual(ROLES.filter((r) => r !== 'agent' || AGENT_ROLE_AVAILABLE));
   });
 
   it('roleOfControl reads the chips and nothing else', () => {
@@ -105,10 +148,11 @@ describe('the controls of home for each role', () => {
 });
 
 describe('the hint of home', () => {
-  it('the tenant is told how to report, the visitor to pick a role, the agent that its tools come later, the landlord nothing', () => {
+  it('the tenant is told how to report, the visitor to pick a role, the agent what its buttons do, the landlord nothing', () => {
     expect(homeHint('tenant')).toBe('report');
     expect(homeHint('visitor')).toBe('pick-role');
-    expect(homeHint('agent')).toBe('agent-soon');
+    expect(homeHint('agent', true)).toBe('stage');
+    expect(homeHint('agent', false)).toBe('stage-clear');
     expect(homeHint('landlord')).toBeNull();
   });
 
@@ -159,7 +203,7 @@ describe('the slots of home', () => {
   });
 
   it('the chips are two by two, in reading order, and the buttons sit under the hint with the footer below them', () => {
-    const [visitor, agent, tenant, landlord] = HOME_ROLES.map((r) => CONTROL_SLOTS[roleControlId(r)]);
+    const [visitor, agent, tenant, landlord] = ROLES.map((r) => CONTROL_SLOTS[roleControlId(r)]);
     expect(visitor.dy).toBeCloseTo(agent.dy, 12);
     expect(tenant.dy).toBeCloseTo(landlord.dy, 12);
     expect(visitor.dx).toBeLessThan(0);
@@ -195,11 +239,14 @@ describe('the slots of home', () => {
       for (const id of Object.keys(CONTROL_SLOTS) as StaticControlId[]) {
         const hit = pickRect({ x: CONTROL_SLOTS[id].dx, y: CONTROL_SLOTS[id].dy, z: 0 }, slots, frame);
         if (screenControls('home', role).includes(id)) expect(hit?.id, `${role} ${id}`).toBe(id);
-        else if (id !== 'back') expect(hit, `${role} ${id}`).toBeNull();
+        // The two buttons of the agent share the places of Issues and Move-in report: another role's button may sit there.
+        else if (id !== 'back' && !BUTTON_PLACES.includes(id)) expect(hit, `${role} ${id}`).toBeNull();
       }
     }
   });
 });
+
+const BUTTON_PLACES: readonly StaticControlId[] = ['open-list', 'open-movein', 'agent-furnish', 'agent-clear'];
 
 describe('the layout file says the same as the slots', () => {
   const source = readText('public', 'ui', 'issue-panel.uikitml');
@@ -298,12 +345,12 @@ describe('the texts fit where they are drawn', () => {
     expect(2 * 2.4 * 1 + 2 * BORDER).toBeLessThanOrEqual(HOME_ACTION_HEIGHT);
   });
 
-  it('every hint fits the three lines that are kept for it, and "Coming soon" fits one', () => {
+  it('every hint fits the three lines that are kept for it; no text in view says "coming soon"', () => {
     for (const text of Object.values(strings.issues.hints)) {
       expect(lines(text, 2.4, REGULAR, 34.4), text).toBeLessThanOrEqual(3);
     }
     expect(3 * 2.4 * 1).toBeLessThanOrEqual(HOME_HINT_HEIGHT + 1e-9);
-    expect(lines(strings.issues.comingSoon, 2.4, REGULAR, 34.4)).toBe(1);
+    expect(JSON.stringify(strings).toLowerCase()).not.toContain('coming soon');
   });
 });
 

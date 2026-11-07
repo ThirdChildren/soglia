@@ -51,6 +51,13 @@ export const MENU_MAX_WIDTH = 0.38;
  * 0.5-0.8 m). A hand held close to the face pushes the menu away along the line from the head.
  */
 export const MENU_MIN_DISTANCE = 0.5;
+
+/**
+ * The palm menu at large text (1.25 times bigger) is kept farther from the head so that the whole panel fits the 30 degree cone:
+ * the frame is never farther than `MENU_FRAME_MAX_DISTANCE_LARGE` and the panel never nearer than `MENU_MIN_DISTANCE_LARGE`.
+ */
+export const MENU_FRAME_MAX_DISTANCE_LARGE = 0.68;
+export const MENU_MIN_DISTANCE_LARGE = 0.58;
 /**
  * Margin over the 0.50 m of rule 8 for the labels and the hint, in metres: the clamp used to put them at exactly
  * 0.5000 m, so a rounding of a pose could read 0.4999 m. They sit at 0.52 m or more (never beyond their maximum).
@@ -92,6 +99,15 @@ export const PINNED_DROP = 0.2;
 export const PINNED_PITCH_MIN_DEG = -8;
 /** See `PINNED_PITCH_MIN_DEG`. */
 export const PINNED_PITCH_MAX_DEG = 8;
+
+/**
+ * The pinned panels at large text (D58, T5.13, T5.16) are the normal ones made 1.25 times bigger (45 x 47 cm): the same panel with
+ * text of 3.0 cm. The anchor is different so that the whole panel stays in the 30 degree cone: a little farther (0.60 m) and the
+ * panel centred on the eye line (its bottom `PINNED_DROP_LARGE` below the eyes, half its height), so no corner is farther from
+ * the gaze than 28.5 degrees at a level gaze and 29.6 at the ends of the pitch the anchor follows. The frame is 0.64 m from the eyes.
+ */
+export const PINNED_DISTANCE_LARGE = 0.6;
+export const PINNED_DROP_LARGE = 0.235;
 
 // --- The "Palm up for the menu" hint ---------------------------------------------------------
 

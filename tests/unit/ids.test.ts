@@ -12,7 +12,7 @@ interface House {
   fixtures?: { id: string }[];
 }
 
-const SIMPLE_KINDS = ['house', 'room', 'wall', 'door', 'window', 'fixture', 'viewpoint', 'ui', 'pin'] as const;
+const SIMPLE_KINDS = ['house', 'room', 'wall', 'door', 'window', 'fixture', 'merged', 'viewpoint', 'ui', 'pin'] as const;
 
 const BAD_SEGMENTS: [string, string][] = [
   ['an empty string', ''],

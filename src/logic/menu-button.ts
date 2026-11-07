@@ -304,3 +304,52 @@ export function roomSelectionAllowed(inputs: Readonly<RoomSelectionInputs>): boo
     inputs.measureActive === true
   );
 }
+
+// --- The "View" buttons (task T5.5, decision D56 in docs/plans/M5.md) ----------------------------------------------------------
+
+/** Stable ids of the two "View" buttons, a third floor above the "Issues" buttons: they open the View panel with one hand. */
+export const VIEW_BUTTON_IDS: Readonly<Record<ButtonSide, string>> = {
+  left: 'ui:view-button-left',
+  right: 'ui:view-button-right',
+};
+/** Size of a "View" button panel in UIKit units (centimetres): as the "Menu" button (8 x 6). */
+export const VIEW_BUTTON_PANEL = { width: 8, height: 6 } as const;
+export const VIEW_BUTTON_HALF_WIDTH = VIEW_BUTTON_PANEL.width / 200;
+export const VIEW_BUTTON_HALF_HEIGHT = VIEW_BUTTON_PANEL.height / 200;
+/** A "View" button is this much higher than the "Issues" button below it (centre to centre, metres): 1 cm free between the rectangles. */
+export const VIEW_BUTTON_LIFT = 0.07;
+export const VIEW_BUTTON_GAP = VIEW_BUTTON_LIFT - ISSUE_BUTTON_HALF_HEIGHT - VIEW_BUTTON_HALF_HEIGHT;
+
+/**
+ * Places the two "View" buttons above the two "Issues" buttons in `issues` (already placed by `issueButtonAnchors`): the same
+ * ring position and the same yaw, VIEW_BUTTON_LIFT higher. Writes into `out` and returns it.
+ */
+export function viewButtonAnchors(issues: Readonly<ButtonPair>, out: ButtonPair = createButtonPair()): ButtonPair {
+  for (let i = 0; i < 2; i += 1) {
+    const side: ButtonSide = i === 0 ? 'left' : 'right';
+    const button = out[i];
+    button.id = VIEW_BUTTON_IDS[side];
+    button.side = side;
+    button.x = issues[i].x;
+    button.y = issues[i].y + VIEW_BUTTON_LIFT;
+    button.z = issues[i].z;
+    button.yawRad = issues[i].yawRad;
+    button.halfWidth = VIEW_BUTTON_HALF_WIDTH;
+  }
+  return out;
+}
+
+/**
+ * Makes the pick rectangles of `buttons` `factor` times as wide as `halfWidth` (metres): the buttons are wider while the text is
+ * large (the box holds a text of 3.0 cm, D58). A factor that is not at least 1 and finite counts as 1. Allocates nothing.
+ */
+export function widenButtons(buttons: ButtonPair, halfWidth: number, factor: number): ButtonPair {
+  const f = Number.isFinite(factor) && factor >= 1 ? factor : 1;
+  for (let i = 0; i < buttons.length; i += 1) buttons[i].halfWidth = halfWidth * f;
+  return buttons;
+}
+
+/** Body of the `view button view` log line: `view button view distance=0.715 angleDeg=37.6`. */
+export function formatViewButtonView(view: Readonly<ButtonView>): string {
+  return `view button view distance=${view.distance.toFixed(3)} angleDeg=${view.angleDeg.toFixed(1)}`;
+}

@@ -4,8 +4,8 @@
 // WHAT IT IS. The entries of kind `baseline`: the defects that were already in the house the day the tenant moved in (the seed has
 // `baseline-001`, "Scratch on the parquet, present at move-in."). They are NOT issues: no status, no urgency, no actions. The
 // tenant and the landlord see them (`view-move-in`), the landlord read-only. The screen has a switch, "Show on model"
-// (`prefs.moveInVisible`, saved), and the rows: a blue dot (the colour of the pin on the model), the text cut to the width left
-// in its row and the date of the entry (`1 Oct`). The blue pin is on the model only with the switch on (src/logic/pin-layout.ts).
+// (`prefs.moveInVisible`, saved), and the rows: a violet dot (the colour of the pin on the model), the text cut to the width left
+// in its row and the date of the entry (`1 Oct`). The violet pin is on the model only with the switch on (src/logic/pin-layout.ts).
 //
 // SPACE. The same body as the list: the switch (a 4 cm button across the whole width) at the top, then up to four rows of 4 cm
 // (a fifth entry would not leave room for the "+n more" line, and the report has one entry in the demo), then "+n more". Text is
@@ -67,7 +67,7 @@ export interface MoveInRow {
   /** `1 Oct`: the day of the first entry of the history. */
   readonly date: string;
   readonly category: IssueCategory;
-  /** Colour of the dot: the blue of the pin (0xRRGGBB) and its name. */
+  /** Colour of the dot: the violet of the pin (0xRRGGBB) and its name. */
   readonly color: number;
   readonly colorName: StatusColorName;
   readonly sample: boolean;
@@ -214,7 +214,7 @@ export function moveInSlots(page: Pick<MoveInPage, 'rows' | 'denied'>): ControlS
 
 // --- The model layer and the log lines ---------------------------------------------------------------------------------
 
-/** What the blue layer of the model is for this role and preference: shown when the preference is on and there is something to show. */
+/** What the violet layer of the model is for this role and preference: shown when the preference is on and there is something to show. */
 export interface MoveInLayer {
   readonly shown: boolean;
   readonly count: number;
@@ -232,12 +232,12 @@ export function formatMoveInToggle(visible: boolean): string {
   return `movein toggle visible=${visible}`;
 }
 
-/** `movein shown count=1 sample=true` (the blue pins came to the model). */
+/** `movein shown count=1 sample=true` (the violet pins came to the model). */
 export function formatMoveInShown(layer: Pick<MoveInLayer, 'count' | 'sample'>): string {
   return `movein shown count=${layer.count} sample=${layer.sample}`;
 }
 
-/** `movein hidden` (the blue pins left the model). */
+/** `movein hidden` (the violet pins left the model). */
 export function formatMoveInHidden(): string {
   return 'movein hidden';
 }

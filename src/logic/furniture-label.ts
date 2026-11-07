@@ -1,5 +1,6 @@
 // Pure text helpers for furniture: sizes in metres for the menu. No imports from @iwsdk/core or three.
 
+import { currentExtent, extentPair } from './label-scale';
 import type { PanelExtent } from './menu';
 
 /**
@@ -7,6 +8,11 @@ import type { PanelExtent } from './menu';
  * line of text 5.8 cm tall; a little taller to be safe). The view cone check uses it (`anchorInCone`).
  */
 export const REASON_LABEL_EXTENT: PanelExtent = { halfWidth: 0.2, bottom: -0.03, top: 0.03 };
+const REASON_LABEL_EXTENTS = extentPair(REASON_LABEL_EXTENT);
+/** The rectangle of a reason label now: `REASON_LABEL_EXTENT`, or 1.25 times that at large text. */
+export function reasonLabelExtent(): PanelExtent {
+  return currentExtent(REASON_LABEL_EXTENTS);
+}
 
 /**
  * A length in metres for a label: one decimal when that is exact (`2` -> "2.0", `1.6` -> "1.6"),

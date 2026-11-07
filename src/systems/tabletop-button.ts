@@ -35,9 +35,14 @@ import {
 } from '../logic/tabletop-button';
 import { TabletopButtonPanel } from '../ui/tabletop-button-panel';
 import { strings } from '../ui/strings';
+import { LARGE_TEXT_FACTOR } from '../logic/access';
+import { isLargeText } from '../ui/theme';
 import { onPinchStart, pinchClaims, pinchPoint, type Hand } from './pinch-input';
 import { isRealScale, isViewTransitioning } from './view-mode';
 import { requestTabletop } from './viewpoint';
+
+/** The button is wider while the text is large (its text is 3.0 cm), and so is the rectangle of the pinch (D58). */
+const widthFactor = (): number => (isLargeText() ? LARGE_TEXT_FACTOR : 1);
 
 interface TabletopButtonContext {
   panel: TabletopButtonPanel;
@@ -101,7 +106,7 @@ export class TabletopButtonSystem extends createSystem({}) {
       this.anchorNow();
       this.shown = true;
       this.secondsOut = 0;
-      tabletopButtonView(this.current, this.yaw, this.headPosition, this.headForward, this.view);
+      tabletopButtonView(this.current, this.yaw, this.headPosition, this.headForward, this.view, widthFactor());
       slog(formatTabletopButtonShown(this.view));
     } else {
       this.followGaze(delta);
@@ -120,7 +125,7 @@ export class TabletopButtonSystem extends createSystem({}) {
 
   /** Counts the time the button is out of view, anchors it again when it is out for long enough, and moves the glide on. */
   private followGaze(delta: number): void {
-    tabletopButtonView(this.current, this.yaw, this.headPosition, this.headForward, this.view);
+    tabletopButtonView(this.current, this.yaw, this.headPosition, this.headForward, this.view, widthFactor());
     // A button that is too far (the user leaned or moved) is out of view whatever the angle (rule 8: 0.5-0.8 m).
     const out = this.view.distance > TABLETOP_BUTTON_MAX_DISTANCE ? 180 : this.view.centerAngleDeg;
     const step = Number.isFinite(delta) && delta > 0 ? delta : 0;
@@ -165,14 +170,15 @@ export class TabletopButtonSystem extends createSystem({}) {
     // A control of an open menu (or anyone else) has this pinch already: it is not a press on the button.
     if (pinchClaims.ownerOf(hand) !== null) return;
     pinchPoint(hand, this.point);
-    if (!pickTabletopButton(this.point, this.current, this.yaw)) return;
+    if (!pickTabletopButton(this.point, this.current, this.yaw, widthFactor())) return;
     // With a piece in the hand the button does not react: the pinch of the other hand rotates the piece.
     if (pinchClaims.anyClaimed('furniture')) {
       slog('tabletop button ignored reason=piece-held');
       return;
     }
     // The menu has the highest priority: this only fails if the menu already owns the hand (checked above).
-    if (!pinchClaims.claim(hand, 'menu')) return;
+    // The Rotate button comes first (T5.14): a pinch that pressed it is not a second press on a control under it.
+    if (pinchClaims.ownerOf(hand) === 'menu' || !pinchClaims.claim(hand, 'menu')) return;
     slog(`tabletop button pressed hand=${hand}`);
     if (!requestTabletop('button')) pinchClaims.release(hand, 'menu');
   }

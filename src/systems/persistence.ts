@@ -32,6 +32,11 @@ export interface RestoreOutcome {
   parked: readonly PlacedPiece[];
   /** True when the role of the store came from the saved state (not from the URL, not the default), D41. */
   roleRestored: boolean;
+  /** True when the sun time of the store came from the saved state (not from `time=`, not the default), D54. */
+  sunRestored: boolean;
+  /** True when a saved `contrast` / `largeText` of `true` came back (not named in the URL), for the `access ... source=saved` line (D58). */
+  contrastRestored: boolean;
+  textRestored: boolean;
 }
 
 /**
@@ -41,16 +46,21 @@ export interface RestoreOutcome {
  * With `ignoreFurniture` (a staging preset will replace the pieces) only the preferences come back.
  * `parked` (D44): saved pieces of a catalog item that is not available now. They are not put in the store; pass
  * them to `attachPersistence` so every save writes them again.
+ * `catalog` null (T5.R2, D63): the catalog did not load. Everything else comes back as usual (role, issues,
+ * preferences, view, counters) and every saved piece is parked, so the next save writes them again untouched.
  */
 export function restoreSavedState(
   store: Store,
   storage: SafeStorage,
   house: House,
-  catalog: readonly CatalogItem[],
+  catalog: readonly CatalogItem[] | null,
   ignoreFurniture: boolean,
   roleExplicit = false,
+  timeExplicit = false,
+  contrastExplicit = false,
+  textExplicit = false,
 ): RestoreOutcome {
-  const nothing: RestoreOutcome = { parked: [], roleRestored: false };
+  const nothing: RestoreOutcome = { parked: [], roleRestored: false, sunRestored: false, contrastRestored: false, textRestored: false };
   if (!storage.available()) return nothing;
   const key = storageKey(store.get().houseId);
   const saved = storage.get(key);
@@ -60,11 +70,14 @@ export function restoreSavedState(
   }
   const picked = pickRestorable(saved, {
     houseId: store.get().houseId,
-    catalogIds: new Set(catalog.map((item) => item.id)),
+    catalogIds: new Set((catalog ?? []).map((item) => item.id)),
     roomIds: new Set(house.rooms.map((room) => room.id)),
     viewpointIds: new Set(house.viewpoints.map((viewpoint) => viewpoint.id)),
     ignoreFurniture,
     roleExplicit,
+    timeExplicit,
+    contrastExplicit,
+    textExplicit,
   });
   if (picked === null) {
     swarn(`state discarded key=${key} reason=invalid`);
@@ -75,9 +88,19 @@ export function restoreSavedState(
   for (const piece of picked.parked) swarn(`state piece parked id=${piece.id} reason=unknown-catalog`);
   for (const issue of picked.discardedIssues) swarn(`state issue discarded id=${issue.id} reason=${issue.reason}`);
   store.dispatch(restoreSaved(picked));
-  slog(`state restored pieces=${store.get().furniture.length} key=${key}`);
+  if (catalog === null) {
+    slog(`state restored pieces=${store.get().furniture.length} parked=${picked.parked.length} catalog=missing key=${key}`);
+  } else {
+    slog(`state restored pieces=${store.get().furniture.length} key=${key}`);
+  }
   if (store.get().issues.length > 0) slog(`issues restored count=${store.get().issues.length} key=${key}`);
-  return { parked: picked.parked, roleRestored: picked.role !== null };
+  return {
+    parked: picked.parked,
+    roleRestored: picked.role !== null,
+    sunRestored: picked.sunTime !== null,
+    contrastRestored: picked.prefs.contrast === true,
+    textRestored: picked.prefs.largeText === true,
+  };
 }
 
 /**
@@ -113,7 +136,8 @@ function savedPartChanged(prev: AppState, next: AppState): boolean {
     prev.role !== next.role ||
     prev.issues !== next.issues ||
     prev.nextIssue !== next.nextIssue ||
-    prev.issuesSeeded !== next.issuesSeeded
+    prev.issuesSeeded !== next.issuesSeeded ||
+    prev.sunTime !== next.sunTime
   );
 }
 
@@ -140,7 +164,7 @@ export function attachPersistence(store: Store, storage: SafeStorage, parked: re
     const state = store.get();
     slog(
       `state saved key=${key} pieces=${state.furniture.length} bytes=${utf8Length(text)} reason=${reason} ` +
-        `issues=${state.issues.length} role=${state.role} parked=${written}`,
+        `issues=${state.issues.length} role=${state.role} parked=${written} sun=${state.sunTime}`,
     );
   };
 

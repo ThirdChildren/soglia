@@ -23,10 +23,29 @@ describe('public/demo/issues-apartment-a.json', () => {
     expect(errorsOf(validateIssues, loadJson('public/demo', FILE))).toBe('');
   });
 
-  it('has the five entries of the plan: 3 issues, 1 baseline, 1 info', () => {
+  it('has the entries of the plan: 3 issues, 1 baseline, 5 info points (D57)', () => {
     const kinds = demo().map((e) => e.kind).sort();
-    expect(kinds).toEqual(['baseline', 'info', 'issue', 'issue', 'issue']);
-    expect(demo().map((e) => e.id).sort()).toEqual(['baseline-001', 'info-001', 'issue-010', 'issue-012', 'issue-013']);
+    expect(kinds).toEqual(['baseline', 'info', 'info', 'info', 'info', 'info', 'issue', 'issue', 'issue']);
+    expect(demo().map((e) => e.id).sort()).toEqual([
+      'baseline-001',
+      'info-001',
+      'info-002',
+      'info-003',
+      'info-004',
+      'info-005',
+      'issue-010',
+      'issue-012',
+      'issue-013',
+    ]);
+  });
+
+  it('writes every info point as the agent, with a created entry only and no status', () => {
+    for (const e of demo().filter((entry) => entry.kind === 'info')) {
+      expect(e.status, e.id).toBeUndefined();
+      expect(e.history, e.id).toHaveLength(1);
+      expect(e.history[0].by, e.id).toBe('agent');
+      expect(e.history[0].event, e.id).toBe('created');
+    }
   });
 
   it('passes the strict isIssue for every entry, and so does the schema', () => {

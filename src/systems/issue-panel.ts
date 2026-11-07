@@ -9,7 +9,7 @@
 // `issue draft cancelled reason=role`, T4.5-T4.7). The buttons lead to `list` and `movein`.
 //
 // The move-in report (T4.10, D48): `Move-in report` shows the `baseline` entries and the switch `Show on model`
-// (`ui:issue-movein-toggle`, `setMoveIn`, saved); a press on a row selects it and a second press opens its detail (read-only, no
+// (`ui:issue-movein-toggle`, `setMoveIn`, saved); a press on a row opens its detail at once (read-only, no
 // buttons); `Back` from that detail returns to the report, not to the list.
 //
 // It opens with a pinch of one hand on an "Issues" button (src/systems/menu-button.ts calls `openIssuePanel`/`closeIssuePanel`)
@@ -23,8 +23,8 @@
 // free hand inside the rectangle of one claims that hand as `menu` (the highest priority: it never grabs a piece, selects a
 // room or starts a gesture). With a piece in a hand they do not react (the pinch of the other hand rotates the piece).
 //
-// The detail (T4.9, D43, D48): a SECOND press on the row that is already selected (the first selects and puts the ring on the pin)
-// or a short pinch on a pin of the model opens `detail` for that issue. Its action buttons (`ui:issue-action-take-on|resolved|
+// The detail (T4.9, D43, D48): ONE press on a row of the list (T5.R5; it was two) or a short pinch on a pin of the model opens `detail`
+// for that issue, and the pin gets the ring there. Its action buttons (`ui:issue-action-take-on|resolved|
 // confirm|reopen`) are exactly the ones the role may press on the issue now (`availableActions`); a press asks `planTransition`
 // with the role of the store, takes ONE instant from the clock and dispatches `transitionIssue` (the pin changes colour, the
 // detail redraws with the new buttons and history, the state is saved). `Confirm` archives the issue (its pin leaves the model)
@@ -43,6 +43,8 @@
 
 import { createSystem, Vector3, type World } from '@iwsdk/core';
 import { slog, swarn } from '../log';
+import { buildInfoModel, type InfoModel, type InfoTexts } from '../logic/info-panel';
+import { findInfoPoint, formatInfoOpened, type InfoPoint } from '../logic/info-points';
 import type { House } from '../logic/house';
 import type { Vec3Tuple } from '../logic/furniture-pose';
 import {
@@ -58,6 +60,7 @@ import {
 } from '../logic/issue-detail';
 import type { IssueClock } from '../logic/issue-clock';
 import { roomAt } from '../logic/placement-rules';
+import { hasStaging } from '../logic/staging';
 import {
   CONTROL_SLOTS,
   HOME_SCREEN,
@@ -100,7 +103,6 @@ import {
   buildListPage,
   formatListDenied,
   formatListLine,
-  formatRowSelected,
   listSlots,
   listVisibleTo,
   movePage,
@@ -131,6 +133,7 @@ import { strings } from '../ui/strings';
 import { closeOpenMenu, onMenuOpening } from './palm-menu';
 import { panelFontSupports } from '../ui/fonts';
 import { onPinchStart, pinchClaims, pinchPoint, type Hand } from './pinch-input';
+import { runAgentStaging } from './furniture';
 import { pickPinAt, setPinRing } from './pins';
 import { isRealScale, isViewTransitioning } from './view-mode';
 
@@ -143,6 +146,11 @@ const MOVEIN_TEXTS: MoveInTexts = strings.issues.movein;
 /** The texts of the detail: the separator is the middle dot when the panel font has it, else a dash (read when the detail is built). */
 function detailTexts(): DetailTexts {
   return { ...strings.issues.detail, categories: strings.issues.categories, separator: panelFontSupports('\u00b7') ? ' \u00b7 ' : ' - ' };
+}
+
+/** The texts of the info screen: the separator is the middle dot when the panel font has it, else a dash (read when the model is built). */
+function infoTexts(): InfoTexts {
+  return { ...strings.issues.info, categories: strings.issues.categories, separator: panelFontSupports('\u00b7') ? ' \u00b7 ' : ' - ' };
 }
 
 interface IssuePanelContext {
@@ -170,6 +178,10 @@ interface IssuePanelContext {
   moveInModel: MoveInPage | null;
   moveInIssues: unknown;
   moveInVisible: boolean;
+  /** The info points of the house (T5.9, read-only content) and the one the `info` screen shows (null: none). */
+  info: readonly InfoPoint[];
+  infoId: string | null;
+  infoModel: InfoModel | null;
   /** The house (for the room of an issue) and the clock of the history. */
   house: House;
   clock: IssueClock;
@@ -187,16 +199,19 @@ let formHandlers: IssueFormHandlers | null = null;
 type RoleListener = (change: RoleChange) => void;
 const roleListeners = new Set<RoleListener>();
 
-type IssueSelectedListener = (id: string) => void;
-const selectedListeners = new Set<IssueSelectedListener>();
-
 // Shared with the system, which has no constructor arguments: set by `createIssuePanel`.
 let context: IssuePanelContext | null = null;
 // The running system, for the buttons and the life cycle: set by `init`, cleared on teardown.
 let active: IssuePanelSystem | null = null;
 
 /** Creates the panel (closed) and registers the system. Register it after the menu items and the buttons, before the grab. */
-export function createIssuePanel(world: World, store: Store, house: House, clock: IssueClock): void {
+export function createIssuePanel(
+  world: World,
+  store: Store,
+  house: House,
+  clock: IssueClock,
+  info: readonly InfoPoint[] = [],
+): void {
   context = {
     panel: new IssuePanel(world),
     navigator: createScreenNavigator(),
@@ -216,6 +231,9 @@ export function createIssuePanel(world: World, store: Store, house: House, clock
     moveInModel: null,
     moveInIssues: null,
     moveInVisible: false,
+    info,
+    infoId: null,
+    infoModel: null,
     house,
     clock,
   };
@@ -233,18 +251,7 @@ export function onRoleChanged(listener: RoleListener): () => void {
   };
 }
 
-/**
- * Calls `listener` with the id of the issue whose row of the list was pinched (`issues row selected id=…`, also when the row was
- * already selected: that second press opens the detail, T4.9). Returns the unsubscribe function.
- */
-export function onIssueSelected(listener: IssueSelectedListener): () => void {
-  selectedListeners.add(listener);
-  return () => {
-    selectedListeners.delete(listener);
-  };
-}
-
-/** The issue selected in the list or shown in the detail (its row is drawn dark and its pin has the ring), or null. It is cleared when both are left. */
+/** The issue shown in the detail, or the one whose row is drawn dark after `Back` (its pin has the ring), or null. It is cleared when both are left. */
 export function getSelectedIssue(): string | null {
   return context?.selectedId ?? null;
 }
@@ -347,7 +354,7 @@ export class IssuePanelSystem extends createSystem({}) {
     if (!ctx) return;
     const change = ctx.roles.observe(state.role);
     if (ctx.panel.isOpen) {
-      ctx.panel.setHome({ role: state.role, issueCount: issueCount(state.issues) });
+      ctx.panel.setHome({ role: state.role, issueCount: issueCount(state.issues), staging: hasStaging(ctx.house) });
       // The list follows the issues (a new one, a transition): redrawn in place while it is the screen.
       if (!change && ctx.navigator.screen === 'list' && state.issues !== ctx.listIssues) this.syncList(ctx);
       // The detail follows the issue (a transition, a restore): redrawn in place while it is the screen.
@@ -397,7 +404,7 @@ export class IssuePanelSystem extends createSystem({}) {
     closeOpenMenu();
     ctx.navigator.reset();
     const state = ctx.store.get();
-    ctx.panel.setHome({ role: state.role, issueCount: issueCount(state.issues) });
+    ctx.panel.setHome({ role: state.role, issueCount: issueCount(state.issues), staging: hasStaging(ctx.house) });
     ctx.panel.open(this.world.player.head, HOME_SCREEN);
     slog(formatPanelOpened(hand));
     slog(formatScreenLine(HOME_SCREEN));
@@ -442,10 +449,30 @@ export class IssuePanelSystem extends createSystem({}) {
    */
   private syncList(ctx: IssuePanelContext): void {
     const screen = ctx.panel.isOpen ? ctx.navigator.screen : null;
+    if (screen !== 'info' && (ctx.infoModel !== null || ctx.infoId !== null)) {
+      ctx.infoId = null;
+      ctx.infoModel = null;
+      ctx.panel.setInfo(null);
+    }
     if (screen !== 'movein' && ctx.moveInModel !== null) {
       ctx.moveInModel = null;
       ctx.moveInIssues = null;
       ctx.panel.setMoveIn(null);
+    }
+    if (screen === 'info') {
+      // The note of an info point: no list, no detail, no selected pin (the diamonds have no ring).
+      if (ctx.selectedId !== null) {
+        ctx.selectedId = null;
+        setPinRing(null);
+      }
+      ctx.listPage = 0;
+      ctx.listModel = null;
+      ctx.listIssues = null;
+      ctx.lastListLine = '';
+      ctx.panel.setList(null);
+      this.clearDetail(ctx);
+      this.syncInfo(ctx);
+      return;
     }
     if (screen === 'movein') {
       // Back from the detail of a move-in entry: its row stays selected (the ring stays on its pin).
@@ -530,7 +557,7 @@ export class IssuePanelSystem extends createSystem({}) {
   }
 
   /**
-   * Opens the detail of issue `id` (a second press on its row, or a pinch on its pin): the issue is the selected one (the ring is on
+   * Opens the detail of issue `id` (a press on its row, or a pinch on its pin): the issue is the selected one (the ring is on
    * its pin), the panel shows `detail` and the log says `issues screen=detail id=…`.
    */
   private openDetail(ctx: IssuePanelContext, id: string): void {
@@ -551,6 +578,35 @@ export class IssuePanelSystem extends createSystem({}) {
     slog(formatDetailLine(id));
   }
 
+  /** Builds the note of the info point of the `info` screen from the read-only list and gives it to the panel; the buttons are placed again. */
+  private syncInfo(ctx: IssuePanelContext): void {
+    const id = ctx.infoId;
+    if (id === null) return;
+    const state = ctx.store.get();
+    const point = findInfoPoint(ctx.info, id);
+    const room = point === undefined ? null : ctx.house.rooms.find((r) => r.id === roomAt(ctx.house, point.position[0], point.position[2]))?.name ?? null;
+    const model = buildInfoModel(point, id, state.role, room, infoTexts());
+    ctx.infoModel = model;
+    ctx.panel.setInfo(model);
+    ctx.formRev += 1;
+  }
+
+  /**
+   * Opens the note of info point `id` (a pinch on its diamond): the panel shows `info` and the log says `info opened id=…` and
+   * `issues screen=info`. Not while the form is open; a role that may not `view-info` gets the missing note.
+   */
+  private openInfo(ctx: IssuePanelContext, id: string): void {
+    if (!ctx.panel.isOpen) return;
+    if (ctx.navigator.screen === 'new') return;
+    this.dropForm(ctx);
+    ctx.infoId = id;
+    ctx.navigator.go('info');
+    ctx.panel.setScreen('info');
+    this.syncList(ctx);
+    slog(formatInfoOpened(id));
+    slog(formatScreenLine('info'));
+  }
+
   /** A button of the detail was pinched: ask the state machine, dispatch it, log it. `Confirm` goes back to the list. */
   private pressAction(ctx: IssuePanelContext, action: ReturnType<typeof actionOfControl>): void {
     const id = ctx.detailId;
@@ -558,12 +614,12 @@ export class IssuePanelSystem extends createSystem({}) {
     const state = ctx.store.get();
     // One instant for the check and for the change: a fixed clock moves on at every call, and one event is one step.
     const nowIso = ctx.clock.now();
-    const plan = planTransition(state, id, action, state.role, nowIso);
+    const plan = planTransition(state, id, action, nowIso);
     if (!plan.ok) {
       swarn(formatTransitionDenied(id, action, state.role, plan.reason));
       return;
     }
-    ctx.store.dispatch(transitionIssue(id, action, state.role, nowIso));
+    ctx.store.dispatch(transitionIssue(id, action, nowIso));
     slog(formatTransitionLine(id, plan.from, plan.to, state.role, plan.entry.event));
     // An archived issue has no pin and nothing more to do: the panel goes back to the list, where it is now under `History`.
     if (plan.to === 'archived') {
@@ -574,18 +630,9 @@ export class IssuePanelSystem extends createSystem({}) {
     }
   }
 
-  /** A row of the list was pinched: it becomes the selected one, its pin gets the ring, the listeners hear of it; pinched again, it opens. */
-  private selectRow(ctx: IssuePanelContext, id: string): void {
-    // The second press on the selected row opens its detail (T4.9): the first selects and rings the pin, the second goes in.
-    const already = ctx.selectedId === id;
-    if (!already) {
-      ctx.selectedId = id;
-      setPinRing(id);
-      this.syncList(ctx);
-      slog(formatRowSelected(id));
-    }
-    for (const listener of [...selectedListeners]) listener(id);
-    if (already) this.openDetail(ctx, id);
+  /** A row of the list (or of the move-in report) was pinched: its detail opens at once, with the ring on its pin (T5.R5). */
+  private pressRow(ctx: IssuePanelContext, id: string): void {
+    this.openDetail(ctx, id);
   }
 
   /** The form of `new` (the long pinch has just made the draft): set it, log its step. */
@@ -639,7 +686,7 @@ export class IssuePanelSystem extends createSystem({}) {
     if (screen === 'list' && ctx.listModel) return listSlots(ctx.listModel);
     if (screen === 'detail' && ctx.detailModel) return detailSlots(ctx.detailModel);
     if (screen === 'movein' && ctx.moveInModel) return moveInSlots(ctx.moveInModel);
-    return screenControls(screen, ctx.store.get().role).map((id) => CONTROL_SLOTS[id]);
+    return screenControls(screen, ctx.store.get().role, hasStaging(ctx.house)).map((id) => CONTROL_SLOTS[id]);
   }
 
   /** Makes the anchors of the controls of the current screen and puts them (and their pick slots) in the plane of the panel. */
@@ -663,8 +710,10 @@ export class IssuePanelSystem extends createSystem({}) {
         anchor = new MenuAnchor(this.world, controlStableId(id));
         this.anchors.set(id, anchor);
       }
-      pinnedPanelPoint(ctx.panel.framePosition, yaw, base.dx, base.dy, this.spot);
-      this.pickSlots.push({ id, x: this.spot.x, y: this.spot.y, z: this.spot.z, halfWidth: base.halfWidth, halfHeight: base.halfHeight });
+      // With large text the whole panel is bigger (`ctx.panel.scale`): the places and the sizes of the controls grow with it.
+      const k = ctx.panel.scale;
+      pinnedPanelPoint(ctx.panel.framePosition, yaw, base.dx * k, base.dy * k, this.spot);
+      this.pickSlots.push({ id, x: this.spot.x, y: this.spot.y, z: this.spot.z, halfWidth: base.halfWidth * k, halfHeight: base.halfHeight * k });
       const object = anchor.object;
       if (object) {
         object.position.set(this.spot.x, this.spot.y, this.spot.z);
@@ -710,7 +759,8 @@ export class IssuePanelSystem extends createSystem({}) {
       return;
     }
     // The menu has the highest priority: this only fails if the menu already owns the hand (checked above).
-    if (!pinchClaims.claim(hand, 'menu')) return;
+    // The Rotate button comes first (T5.14): a pinch that pressed it is not a second press on a control under it.
+    if (pinchClaims.ownerOf(hand) === 'menu' || !pinchClaims.claim(hand, 'menu')) return;
     slog(`issues control pressed id=${controlStableId(hit.id)} hand=${hand}`);
     if (ctx.navigator.screen === 'new' && ctx.form) {
       this.pressForm(ctx, ctx.form, hit.id);
@@ -725,7 +775,7 @@ export class IssuePanelSystem extends createSystem({}) {
       const row = rowOfControl(hit.id);
       if (row !== null) {
         const id = rowIssueId(list, row);
-        if (id !== null) this.selectRow(ctx, id);
+        if (id !== null) this.pressRow(ctx, id);
         return;
       }
       if (hit.id === 'page-prev' || hit.id === 'page-next') {
@@ -747,7 +797,7 @@ export class IssuePanelSystem extends createSystem({}) {
       const row = rowOfControl(hit.id);
       if (row !== null) {
         const id = moveInRowId(ctx.moveInModel, row);
-        if (id !== null) this.selectRow(ctx, id);
+        if (id !== null) this.pressRow(ctx, id);
         return;
       }
     }
@@ -765,6 +815,10 @@ export class IssuePanelSystem extends createSystem({}) {
       this.syncList(ctx);
       ctx.panel.setScreen(target);
       if (target !== 'list') slog(formatScreenLine(target));
+      return;
+    }
+    if (hit.id === 'agent-furnish' || hit.id === 'agent-clear') {
+      this.pressStage(hit.id === 'agent-furnish' ? 'furnish' : 'clear');
       return;
     }
     if (hit.id === 'open-list') {
@@ -786,6 +840,14 @@ export class IssuePanelSystem extends createSystem({}) {
   }
 
   /**
+   * `Furnish` or `Clear` (T5.10): the whole layout in one gesture, one undo step. The panel closes so the house can be seen;
+   * a refusal (logged by `runAgentStaging`) leaves it open.
+   */
+  private pressStage(action: 'furnish' | 'clear'): void {
+    if (runAgentStaging(action).ok) this.close('stage');
+  }
+
+  /**
    * A short pinch on a pin of the model (D46): the pin nearest to the pinch point within 2 cm takes the hand as `menu` (the highest
    * priority, as a button does) and opens the detail of its issue, opening the panel when it is closed. Nothing happens for a role
    * without pins, at real scale, while a piece is held, while the tape measure is on, or while the view changes.
@@ -798,14 +860,17 @@ export class IssuePanelSystem extends createSystem({}) {
     this.pinTuple[2] = this.point.z;
     const id = pickPinAt(this.pinTuple);
     if (id === null) return;
-    if (!pinchClaims.claim(hand, 'menu')) return;
+    // The Rotate button comes first (T5.14): a pinch that pressed it is not a second press on a control under it.
+    if (pinchClaims.ownerOf(hand) === 'menu' || !pinchClaims.claim(hand, 'menu')) return;
     slog(formatPinPressed(id, hand));
     if (!ctx.panel.isOpen) this.open(hand);
     if (!ctx.panel.isOpen) {
       pinchClaims.release(hand, 'menu');
       return;
     }
-    this.openDetail(ctx, id);
+    // A cyan diamond opens the note of an info point, any other pin the detail of its issue.
+    if (findInfoPoint(ctx.info, id) !== undefined) this.openInfo(ctx, id);
+    else this.openDetail(ctx, id);
   }
 
   /** A press on a button of the form: choose (category, phrase, urgency), step back, cancel or report. */

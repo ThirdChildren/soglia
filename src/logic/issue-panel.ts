@@ -16,8 +16,8 @@ import type { Issue } from './issues';
 import { ROLES, type Role } from './params';
 import { can } from './permissions';
 
-/** The screens of the panel (the log line says `issues screen=new` for the form to report an issue). */
-export const ISSUE_SCREENS = ['home', 'new', 'list', 'detail', 'movein'] as const;
+/** The screens of the panel (the log line says `issues screen=new` for the form to report an issue; `info` is the note of an info point, T5.9). */
+export const ISSUE_SCREENS = ['home', 'new', 'list', 'detail', 'movein', 'info'] as const;
 export type IssueScreen = (typeof ISSUE_SCREENS)[number];
 
 /** The screen the panel opens at. */
@@ -46,12 +46,19 @@ export function backVisible(screen: IssueScreen): boolean {
   return backTarget(screen) !== null;
 }
 
-/** The roles of the grid of `home`, in reading order (two per row): the same order as `ROLES`. */
-export const HOME_ROLES: readonly Role[] = ROLES;
+/**
+ * True once the Agent role has something to do: it has the info points and the buttons Furnish and Clear (T5.10 turned it on).
+ * While it was false the chip was hidden, so nothing in view said "coming soon" (T5.R3, D63). Typed `boolean`, not the literal,
+ * so the branches stay checked.
+ */
+export const AGENT_ROLE_AVAILABLE: boolean = true;
+
+/** The roles that have a chip on `home`, in reading order (two per row): the order of `ROLES` without the ones not available yet. */
+export const HOME_ROLES: readonly Role[] = ROLES.filter((role) => role !== 'agent' || AGENT_ROLE_AVAILABLE);
 
 /** The id of a role chip (`role-tenant`) and the two buttons of `home`. */
 export type RoleControlId = `role-${Role}`;
-export type HomeActionId = 'open-list' | 'open-movein';
+export type HomeActionId = 'open-list' | 'open-movein' | 'agent-furnish' | 'agent-clear';
 /** The controls with a fixed place: the bar (`back`, `close`), the role chips and the two buttons of `home`. */
 export type StaticControlId = 'back' | 'close' | RoleControlId | HomeActionId;
 /**
@@ -83,18 +90,32 @@ export function roleOfControl(id: IssueControlId): Role | null {
 
 /**
  * The buttons that `home` has for `role`, read from the permission table: `Issues (n)` for who sees the issues (`view-pins`),
- * `Move-in report` for who sees the report (`view-move-in`). A role with neither (visitor, agent) has no buttons at all.
+ * `Move-in report` for who sees the report (`view-move-in`), and for who may `stage` (the agent) `Furnish` and `Clear`. `Furnish`
+ * exists only when the house has a staging preset (`staging`): there is no dead button (D57). The visitor has no buttons at all.
  */
-export function homeActions(role: Role): readonly HomeActionId[] {
+export function homeActions(role: Role, staging: boolean = false): readonly HomeActionId[] {
   const actions: HomeActionId[] = [];
   if (can(role, 'view-pins')) actions.push('open-list');
   if (can(role, 'view-move-in')) actions.push('open-movein');
+  if (can(role, 'stage')) {
+    if (staging) actions.push('agent-furnish');
+    actions.push('agent-clear');
+  }
   return actions;
 }
 
-/** The controls of `home` for `role`, in the order of the layout: the four chips, the buttons, `Close`. */
-export function homeControls(role: Role): readonly StaticControlId[] {
-  return [...HOME_ROLES.map(roleControlId), ...homeActions(role), 'close'];
+/**
+ * The two places of the row of buttons of `home` (left, right) and what each holds for `role`: `Issues` and `Move-in report`, or for
+ * the agent `Furnish` and `Clear`. The places do not move when a button is missing (Clear stays on the right in a house without
+ * staging), so the same pinch always lands on the same button.
+ */
+export function homeSlotIds(role: Role): readonly [HomeActionId, HomeActionId] {
+  return can(role, 'stage') ? ['agent-furnish', 'agent-clear'] : ['open-list', 'open-movein'];
+}
+
+/** The controls of `home` for `role`, in the order of the layout: the chips (the available roles), the buttons, `Close`. */
+export function homeControls(role: Role, staging: boolean = false): readonly StaticControlId[] {
+  return [...HOME_ROLES.map(roleControlId), ...homeActions(role, staging), 'close'];
 }
 
 /**
@@ -102,25 +123,28 @@ export function homeControls(role: Role): readonly StaticControlId[] {
  * pinched. Only `home` depends on the role; `Back` is drawn (and can be pinched) outside `home`. The form `new` has none of
  * the static ones: its buttons come from `formControls` (src/logic/issue-form.ts), which depends on the step.
  */
-export function screenControls(screen: IssueScreen, role: Role): readonly StaticControlId[] {
-  if (screen === 'home') return homeControls(role);
+export function screenControls(screen: IssueScreen, role: Role, staging: boolean = false): readonly StaticControlId[] {
+  if (screen === 'home') return homeControls(role, staging);
   if (screen === 'new') return [];
   return ['back', 'close'];
 }
 
-/** Stable id of a control (`ui:issue-back`, `ui:issue-close`, `ui:issue-role-tenant`, `ui:issue-open-list`). */
+/**
+ * Stable id of a control (`ui:issue-back`, `ui:issue-close`, `ui:issue-role-tenant`, `ui:issue-open-list`). The two buttons of the
+ * agent are `ui:agent-furnish` and `ui:agent-clear`: they are not about issues.
+ */
 export function controlStableId(id: IssueControlId): string {
-  return `ui:issue-${id}`;
+  return id.startsWith('agent-') ? `ui:${id}` : `ui:issue-${id}`;
 }
 
-/** What the line under the chips says: how to report (who can), pick a role (the visitor), or that the agent has no tool yet. */
-export type HomeHint = 'report' | 'pick-role' | 'agent-soon';
+/** What the line under the chips says: how to report (who can), pick a role (the visitor), or what Furnish / Clear do (the agent). */
+export type HomeHint = 'report' | 'pick-role' | 'stage' | 'stage-clear';
 
-/** The hint of `home` for `role`, or null when it needs none (the landlord). */
-export function homeHint(role: Role): HomeHint | null {
+/** The hint of `home` for `role`, or null when it needs none (the landlord). The agent's depends on whether `Furnish` exists. */
+export function homeHint(role: Role, staging: boolean = false): HomeHint | null {
   if (can(role, 'create')) return 'report';
+  if (can(role, 'stage')) return staging ? 'stage' : 'stage-clear';
   if (role === 'visitor') return 'pick-role';
-  if (role === 'agent') return 'agent-soon';
   return null;
 }
 
@@ -288,6 +312,9 @@ export const CONTROL_SLOTS: Readonly<Record<StaticControlId, ControlSlot>> = {
   'role-landlord': chipSlot('landlord', 3),
   'open-list': slot('open-list', -HALF_PITCH, ACTION_CENTRE_Y, HOME_ACTION_WIDTH, HOME_ACTION_HEIGHT),
   'open-movein': slot('open-movein', HALF_PITCH, ACTION_CENTRE_Y, HOME_ACTION_WIDTH, HOME_ACTION_HEIGHT),
+  // The agent's buttons take the two places of the row (T5.10): an agent has neither Issues nor the move-in report.
+  'agent-furnish': slot('agent-furnish', -HALF_PITCH, ACTION_CENTRE_Y, HOME_ACTION_WIDTH, HOME_ACTION_HEIGHT),
+  'agent-clear': slot('agent-clear', HALF_PITCH, ACTION_CENTRE_Y, HOME_ACTION_WIDTH, HOME_ACTION_HEIGHT),
 };
 
 // --- Log lines --------------------------------------------------------------------------------------------------------
@@ -298,7 +325,7 @@ export function formatScreenLine(screen: IssueScreen): string {
 }
 
 /** Why the panel closed (the `via=` of the `issues panel closed` line, D47 contract). */
-export type IssuePanelCloseVia = 'button' | 'close' | 'report' | 'menu' | 'suspend' | 'view';
+export type IssuePanelCloseVia = 'button' | 'close' | 'report' | 'menu' | 'panel' | 'suspend' | 'view' | 'stage';
 
 export function formatPanelClosed(via: IssuePanelCloseVia): string {
   return `issues panel closed via=${via}`;

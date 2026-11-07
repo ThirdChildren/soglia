@@ -7,7 +7,7 @@
 import { PanelDocument, PanelUI, type Entity, type Object3D, type UIKit, type World } from '@iwsdk/core';
 import { tagEntity } from '../components/tag-entity';
 import { stableId } from '../logic/ids';
-import { applyPanelFont } from './fonts';
+import { applyPanelLook } from './panel-theme';
 import { disposePanelEntity } from './panel-lifecycle';
 
 const PANEL_ASSET = 'measure-label';
@@ -55,7 +55,7 @@ export class MeasureLabelPanel {
     const element = doc?.getElementById<UIKit.Text>(TEXT_ELEMENT);
     if (!doc || !element) return;
     if (!this.fontApplied) {
-      applyPanelFont(doc, ROOT_ELEMENT);
+      applyPanelLook(doc, ROOT_ELEMENT, 'scale');
       doc.getElementById<UIKit.Container>(ROOT_ELEMENT)?.setProperties({
         depthTest: false,
         renderOrder: MEASURE_LABEL_RENDER_ORDER,

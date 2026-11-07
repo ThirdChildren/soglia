@@ -2,13 +2,15 @@
 
 > **Changelog 2026-11-02**: scenario creato dal piano M4 (D33 aggiornata, D46, D47); estende `qa/scenarios/M3-budget.md` (K1–K8) con K9–K12. Il caso peggiore di M3 misurato è K4 = 71 per vista.
 
+> **Changelog 2026-11-06 (T5.RA, gate di M5)**: il gruppo `house` passa da **24 a 8** (A) e **7** (B) (mesh `merged:walls` e `merged:thresholds`; entità `wall:*` e `door:*` ancore senza mesh) e ogni conteggio sotto scende di **16** per vista; verifica 4 (`house` 24 ± 2) → **8 ± 1**. Le previsioni sono storiche (blocca solo > 100); i valori attuali sono in `qa/scenarios/M5-budget.md`.
+
 **Milestone**: M4 · **Tipo**: PC (emulatore IWER via MCP `iwsdk-runtime`); gli fps sono **solo informativi** · **Regola di `CLAUDE.md`**: 3 (prestazioni)
 Prerequisiti di implementazione: T4.4, T4.6a, T4.R1, T4.12 e tutti i task che aggiungono elementi permanenti. Stesse regole di lettura di `qa/scenarios/M3-budget.md` (`callsPerView = calls / views`, la fonte con un pannello aperto è la riga `[soglia:stats]`, mai `scene_get_render_stats`). Convenzioni: `qa/scenarios/M4-issue-create.md`.
 
 ## Precondizioni
 - Esecuzioni consecutive (`dev-params.local.txt`, `browser_reload_page`, `xr_accept_session`, `xr_set_input_mode hand`, attesa 7 s, testa (0; 1,6; 0)):
   - **E1–E5**: come `qa/scenarios/M3-budget.md` (ruolo `visitor`).
-  - **E6** (inquilino, 14 pezzi, segnaposto del seme + 1): `house=apartment-a&role=tenant&reset=1&seed=1&debug=1&pinch=grip&furnish=scandinavian&time=2026-11-04T10:00`; creare `issue-014` sulla lavatrice (S4.1 passi 2–4) e accendere il verbale (S4.5 passo 2): 5 segnaposto, 4 rossi/arancioni/verdi e 1 blu.
+  - **E6** (inquilino, 14 pezzi, segnaposto del seme + 1): `house=apartment-a&role=tenant&reset=1&seed=1&debug=1&pinch=grip&furnish=scandinavian&time=2026-11-04T10:00`; creare `issue-014` sulla lavatrice (S4.1 passi 2–4) e accendere il verbale (S4.5 passo 2): 5 segnaposto, 4 rossi/arancioni/verdi e 1 viola (il verbale era blu fino a T5.R4; correzione 2026-11-06).
 - **Casi**:
   - `K1`–`K8`: come M3 (E1–E5), ora con i pulsanti "Issues" (+2 stimati).
   - `K9` E6, menu e pannello chiusi, scala 0,05. `K10` E6 con il pannello Issues aperto sull'elenco (`ui:issue-button-right`, `ui:issue-open-list`), attesa 3 s.

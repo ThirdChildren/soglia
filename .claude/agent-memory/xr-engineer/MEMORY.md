@@ -21,3 +21,10 @@
 - [M2 gate round 2](m2-gate-round2.md) — min 0.50 m clamp, dimmed menu, rect pick, alloc-free placement, licences; measured numbers, traps
 - [M2 rerun 2 fixes](m2-rerun2-fixes.md) — pinch never closes menu, async panel dispose trap, one-panel menu + anchors, UIKit opacity inheritance, label cone
 - [M4 issues UI](m4-issues-ui.md) — in-place UIKit screens, instanced pins, long pinch claims, role from store, parked pieces, Tabletop button, pitched pinned menu
+- [M5 Block R](m5-block-r.md) — T5.R1-R6: two-line list rows (why), agent chip constant, violet baseline, no-catalog persistence, debug-only params
+- [M5 sun + View panel](m5-sun-view.md) — T5.1-T5.7: sun algorithm and golden values, light patches, dial, View buttons/panel, IWER pinch calibration (set + 0,-0.0245,-0.012), measured draw calls
+- [M5 agent (T5.8-T5.10)](m5-agent.md) — info points as read-only content, diamond pins, `info` screen, Furnish/Clear with undoable `stage` step, IWER `pinch=grip` calibration, measured 65 calls
+- [M5 accessibility, Rotate, coach (T5.11-T5.15)](m5-access.md) — `applyPanelLook` walk (originals WeakMap, modes none/font/layout), explicit URL vs saved, View large layout + rebuild, widened fixed buttons, Rotate must register first (+ menu claim guards), coach placement traps; second round: uniform `scale` mode for Issues/menu/labels, large pinned anchor, UIKit peek traps
+- [M5 gate A/B fixes](m5-gate-ab-fixes.md) — coach clock pause on panels, T5.RA merged walls/thresholds (K18 84 -> 68), sun marker visibility, A2 sliver is physical, K18 recipe
+- [M5 gate C2/D fixes](m5-gate-cd-fixes.md) — Rotate hidden while a menu/panel is open (F-D-2), UIKit font race + atlas preload (F-D-1), Vite deep-import trap and recovery
+- [M5 review warnings](m5-review-warnings.md) — View note "Simplified light" (box beside Close), coach text forced into the 30 deg cone (0.22 m from button, 29.99 deg), Rotate 12 s restart after cover closes, fonts parallel + 1.5 s, DEBT rows

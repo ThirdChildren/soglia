@@ -8,8 +8,8 @@
 import { PanelDocument, PanelUI, type Entity, type UIKit, type World } from '@iwsdk/core';
 import { tagEntity } from '../components/tag-entity';
 import { TABLETOP_BUTTON_ID } from '../logic/tabletop-button';
-import { applyPanelFont } from './fonts';
-import { uiColors } from './theme';
+import { applyPanelLook } from './panel-theme';
+import { getUiColors } from './theme';
 
 const PANEL_ASSET = 'tabletop-button';
 const ROOT_ELEMENT = 'tabletop-button-root';
@@ -24,6 +24,8 @@ interface UiDocument {
 export class TabletopButtonPanel {
   private readonly entity: Entity;
   private applied = false;
+  private root: UIKit.Container | null = null;
+  private label: UIKit.Text | null = null;
 
   constructor(
     world: World,
@@ -64,14 +66,21 @@ export class TabletopButtonPanel {
     const doc = this.entity.getValue(PanelDocument, 'document') as UiDocument | undefined;
     const text = doc?.getElementById<UIKit.Text>(TEXT_ELEMENT);
     if (!doc || !text) return;
-    applyPanelFont(doc, ROOT_ELEMENT);
-    doc.getElementById<UIKit.Container>(ROOT_ELEMENT)?.setProperties({
-      backgroundColor: uiColors.surface,
-      borderColor: uiColors.ink,
-      depthTest: false,
-      renderOrder: BUTTON_RENDER_ORDER,
-    });
-    text.setProperties({ text: this.text, color: uiColors.ink });
+    applyPanelLook(doc, ROOT_ELEMENT, 'layout');
+    this.root = doc.getElementById<UIKit.Container>(ROOT_ELEMENT);
+    this.root?.setProperties({ depthTest: false, renderOrder: BUTTON_RENDER_ORDER });
+    this.label = text;
+    text.setProperties({ text: this.text });
     this.applied = true;
+    this.paint();
+  }
+
+  /** Gives the button the colours of the preference that is on. Returns how many things it recoloured (0 before the layout has loaded). */
+  private paint(): number {
+    if (!this.applied || !this.root || !this.label) return 0;
+    const colors = getUiColors();
+    this.root.setProperties({ backgroundColor: colors.surface, borderColor: colors.border });
+    this.label.setProperties({ color: colors.ink });
+    return 1;
   }
 }

@@ -11,13 +11,16 @@ import { attachStats } from './debug/stats';
 import { loadCatalog } from './data/load-catalog';
 import { loadMyFurniture, type LoadMyFurnitureResult } from './data/load-my-furniture';
 import { loadHouse } from './data/load-house';
+import { loadInfoPoints } from './data/load-issues';
 import { createSafeStorage } from './data/storage';
-import { slog, swarn } from './log';
+import { describeError, slog, swarn } from './log';
 import { formatParamsLine, hasInvalidHouse, mergeParams, parseParams } from './logic/params';
 import { mergeCatalog, menuSections } from './logic/catalog';
 import { planRadius } from './logic/house-layout';
-import { createInitialState, createStore, setMiniature, setMiniatureOffset } from './logic/state';
+import { createInitialState, createStore, setMiniature, setMiniatureOffset, setSunTime } from './logic/state';
 import { createIssueClock, observeIssues } from './logic/issue-clock';
+import { defaultSunTime, sunLogLine } from './logic/sun-time';
+import type { SunTimeSource } from './logic/sun-time';
 import { applyFurnish, createFurniture } from './systems/furniture';
 import { buildHouse } from './systems/house-builder';
 import { installLocalControllers } from './systems/local-controllers';
@@ -29,6 +32,7 @@ import { createFurnitureReasons } from './systems/furniture-reasons';
 import { createMeasure } from './systems/measure';
 import { createIssueCreate } from './systems/issue-create';
 import { createIssuePanel } from './systems/issue-panel';
+import { createViewPanel } from './systems/view-panel';
 import { createMenuButton } from './systems/menu-button';
 import { createMenuItems, setMenuTabData } from './systems/menu-items';
 import { attachLifecycle } from './systems/lifecycle';
@@ -51,6 +55,7 @@ import { installPinchInput } from './systems/pinch-input';
 import { createRoomLabel } from './systems/room-label';
 import { createTabletopButton } from './systems/tabletop-button';
 import { createPins } from './systems/pins';
+import { createSun } from './systems/sun';
 import { createViewpoint } from './systems/viewpoint';
 import { isRealScale } from './systems/view-mode';
 import { createFadeOverlay } from './ui/fade-overlay';
@@ -58,6 +63,10 @@ import { ErrorPanelSystem, showErrorPanel } from './ui/error-panel';
 import { loadPanelFonts } from './ui/fonts';
 import { FurnitureVisuals } from './ui/furniture-visuals';
 import { strings } from './ui/strings';
+import { startupAccessLines } from './logic/access';
+import { installAccess } from './systems/access';
+import { createCoach } from './systems/coach';
+import { createRotateButton } from './systems/rotate-button';
 
 async function start(): Promise<void> {
   const devFileParams = await loadDevParams();
@@ -83,10 +92,10 @@ async function start(): Promise<void> {
   installLocalControllers(world);
   world.registerSystem(ErrorPanelSystem);
   world.registerSystem(PanelDisposalSystem);
-  await loadPanelFonts();
+  // The fonts load alongside the house and the catalog (below); no panel is built before all of them are there.
+  const fontsReady = loadPanelFonts();
   slog('world ready');
   if (params.debug) attachStats(world);
-  if (params.glyphs) showGlyphTest(world);
 
   // `failmy=1` (with `debug=1`): the file of the own pieces is not even requested, as if it failed (D44).
   let myLoad: Promise<LoadMyFurnitureResult>;
@@ -96,7 +105,16 @@ async function start(): Promise<void> {
   } else {
     myLoad = loadMyFurniture();
   }
-  const [result, catalogResult, myResult] = await Promise.all([loadHouse(params.house), loadCatalog(), myLoad]);
+  // `failcatalog=1` (with `debug=1`): the catalog is not even requested, as if it failed (T5.R2).
+  let catalogLoad: ReturnType<typeof loadCatalog>;
+  if (params.failcatalog) {
+    slog('debug failcatalog=1: catalog.json is not loaded');
+    catalogLoad = Promise.resolve({ ok: false, errors: ['failcatalog'] });
+  } else {
+    catalogLoad = loadCatalog();
+  }
+  const [result, catalogResult, myResult] = await Promise.all([loadHouse(params.house), catalogLoad, myLoad, fontsReady]);
+  if (params.glyphs) showGlyphTest(world);
   // The catalog the whole app works with: the catalog items plus the user's own pieces (T3.8, D34). A failed load of
   // the own pieces only hides their tab; an own id that the catalog already uses is left out (the catalog wins).
   const merged = catalogResult.ok ? mergeCatalog(catalogResult.items, myResult.ok ? myResult.items : []) : null;
@@ -108,14 +126,59 @@ async function start(): Promise<void> {
     // An explicit `role=` beats the saved role (D41); without one the saved role comes back, else `visitor`.
     const roleExplicit = explicit.includes('role');
     let roleRestored = false;
-    if (merged) {
-      const restored = restoreSavedState(store, storage, result.house, merged.items, params.furnish !== 'none', roleExplicit);
+    // An explicit `time=` beats the saved sun time (D54, D62); without one the saved time comes back, else now.
+    const timeExplicit = explicit.includes('time');
+    let sunRestored = false;
+    // Likewise `contrast=` and `text=` beat the saved accessibility preferences, `0` and `normal` too (D58).
+    const contrastExplicit = explicit.includes('contrast');
+    const textExplicit = explicit.includes('text');
+    let contrastSaved = false;
+    let textSaved = false;
+    // Also without a catalog (T5.R2): role, issues and preferences come back and are saved; the saved pieces stay parked.
+    {
+      const restored = restoreSavedState(
+        store,
+        storage,
+        result.house,
+        merged ? merged.items : null,
+        params.furnish !== 'none',
+        roleExplicit,
+        timeExplicit,
+        contrastExplicit,
+        textExplicit,
+      );
       roleRestored = restored.roleRestored;
+      sunRestored = restored.sunRestored;
+      contrastSaved = restored.contrastRestored;
+      textSaved = restored.textRestored;
       persistence = attachPersistence(store, storage, restored.parked);
     }
     slog(`role set ${store.get().role} source=${roleExplicit ? 'url' : roleRestored ? 'saved' : 'default'}`);
+    const { prefs } = store.get();
+    for (const line of startupAccessLines({
+      contrast: prefs.contrast,
+      largeText: prefs.largeText,
+      contrastExplicit,
+      textExplicit,
+      contrastSaved,
+      textSaved,
+    })) {
+      slog(line);
+    }
+    // The theme before anything is built (the model, the panels), then it follows the store (D58).
+    installAccess(store);
+    // The sun time: `time=` (already in the store), else the saved one, else the local time of the house now (D54).
+    const { lat, lon } = result.house.location;
+    let sunSource: SunTimeSource = timeExplicit ? 'url' : 'saved';
+    if (!timeExplicit && !sunRestored) {
+      sunSource = 'default';
+      store.dispatch(setSunTime(defaultSunTime(Date.now(), lat, lon)));
+    }
+    slog(sunLogLine(store.get().sunTime, sunSource, lat, lon));
     // The demo issues come once, after the restore and after the saving started, so the seed is saved too (D42).
     await seedDemoIssues(store);
+    // The info points of the agent (T5.9): read-only content of the same file, never in the store.
+    const infoPoints = await loadInfoPoints(result.house.id);
     // The clock for the history of the issues (D42): fixed by `time=`, else the real time. The systems that write
     // history take it from here; it first learns the dates that already exist, so it never goes back before them.
     const issueClock = createIssueClock(params.time, Date.now);
@@ -128,10 +191,15 @@ async function start(): Promise<void> {
     const built = buildHouse(world, result.house, miniature.root);
     // Light anchors for the fixtures of the house (no mesh): the places where an issue can snap (T4.3).
     createFixtureAnchors(world, result.house, built.entity);
+    // The sun (T5.4): the dial around the model and the patches of light on the floors, before the buttons.
+    createSun(world, store, result.house, built.entity);
     // The joints first: pinch input and the palm menu read their sample in the same frame.
     installHandJoints(world, params.pinch);
     installPinchInput(world);
     if (params.debug) attachHandsLog(world);
+    // The Rotate button (T5.14) hangs above a piece, over the menu if the menu is open: its pinch is a `menu` claim, and its listener
+    // must be the FIRST, so a control under it (the menu, the piece, a room) never gets the pinch that is meant for the button.
+    if (merged) createRotateButton(world, store, merged.items);
     createMiniatureGesture(world, store, planRadius(result.house));
     createRoomLabel(world, store, result.house);
     createOnboarding(world, store);
@@ -145,7 +213,7 @@ async function start(): Promise<void> {
       if (state.miniature === appliedMiniature) return;
       appliedMiniature = state.miniature;
       if (isRealScale()) return;
-      syncMiniature(miniature.root, state.miniature.scale, state.miniature.offset);
+      syncMiniature(miniature.root, state.miniature.scale, state.miniature.offset, state.miniature.yawDeg);
     });
     // Without a catalog the house is still usable: no furniture (the menu will say so, T2.12).
     if (merged && catalogResult.ok) {
@@ -159,7 +227,11 @@ async function start(): Promise<void> {
     // The way back from real scale with one hand (T4.R1): same place in the order, since a pinch on it is a `menu` claim.
     createTabletopButton(world);
     // The Issues panel (T4.6a): its Close/Back controls are a `menu` claim too, so it goes after the menu and the buttons.
-    createIssuePanel(world, store, result.house, issueClock);
+    createIssuePanel(world, store, result.house, issueClock, infoPoints);
+    // The View panel (T5.5): its controls are a `menu` claim too, so it goes right after the Issues panel.
+    createViewPanel(world, store, result.house);
+    // The coach of the first minute (T5.15): not interactive; it reads the menu buttons and the release of a piece, so it goes after them.
+    createCoach(world, store);
     // The tape measure claims the pinch above the grab (and below the menu): register it after the menu, before the grab (T3.14).
     createMeasure(world, store, result.house, merged ? merged.items : [], built.entity, miniature.root);
     // The long pinch (T4.5): after the tape measure (a point wins), before the grab (it waits for the claims of the later systems).
@@ -181,7 +253,7 @@ async function start(): Promise<void> {
     const fadeOverlay = createFadeOverlay(world);
     createViewpoint(world, store, result.house, miniature.root, built.entity, fadeOverlay);
     // The pins of the issues (T4.4): one instanced mesh and a light entity per visible issue, after the viewpoint markers.
-    createPins(world, store, result.house, built.entity, miniature.root);
+    createPins(world, store, result.house, built.entity, miniature.root, infoPoints);
     if (params.debug) attachPinDraftKey(result.house);
     // After the menu, the grab and the markers: their pinch listeners run first, so a pinch on a menu item, a piece or a marker is never a pan.
     createMiniaturePan(world, store, result.house);
@@ -206,5 +278,6 @@ async function start(): Promise<void> {
 }
 
 start().catch((error: unknown) => {
-  console.error(error);
+  // The last resort: one prefixed warning with the message intact, not a bare `console.error` (T5.R6).
+  swarn(`start failed: ${describeError(error)}`);
 });

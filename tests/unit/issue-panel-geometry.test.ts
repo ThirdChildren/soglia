@@ -21,6 +21,7 @@ import {
 } from '../../src/logic/menu-button';
 import {
   CONTROL_SLOTS,
+  HOME_ROLES,
   HOME_SCREEN,
   ISSUE_BAR_BUTTON_WIDTH,
   ISSUE_BAR_HEIGHT,
@@ -148,10 +149,11 @@ describe('the text is at least 2.4 cm and fits where it is drawn', () => {
     const all = [...sizes(panelSource), ...sizes(buttonSource)];
     // title, footer, Back, Close, the four chips, the hint, the two buttons of home, the note of the other screens, and the button (13);
     // the form of a new issue (T4.7): the context line, eight boxes of the grid, three urgencies, the summary and the middle Back (14)
-    // the list (T4.8): five headings, five texts and five urgencies, the empty text and the middle Next (17)
+    // the list (T4.8, T5.R4): four headings, four texts, four status words and four urgencies, the empty text and the middle Next (18)
     // the detail (T4.9): the status, the urgency, the category and room, a second line for the room, three lines of text, three history lines, "more" and two buttons (13)
     // the move-in report (T4.10): the switch (label and state), four rows of a text and a date, the empty text and "+n more" (12)
-    expect(all.length).toBe(69);
+    // the info screen (T5.9): the category and room, four lines of the note and the words "Sample data" (6)
+    expect(all.length).toBe(76);
     for (const size of all) expect(size).toBeGreaterThanOrEqual(ISSUE_MIN_TEXT_SIZE);
   });
 
@@ -242,8 +244,8 @@ describe('the panel is in the cone of 30 degrees at 0.5-0.65 m for the whole win
 });
 
 describe('the model of the screens', () => {
-  it('has the five screens and starts at home', () => {
-    expect([...ISSUE_SCREENS]).toEqual(['home', 'new', 'list', 'detail', 'movein']);
+  it('has the six screens and starts at home', () => {
+    expect([...ISSUE_SCREENS]).toEqual(['home', 'new', 'list', 'detail', 'movein', 'info']);
     expect(HOME_SCREEN).toBe('home');
     for (const screen of ISSUE_SCREENS) expect(isIssueScreen(screen)).toBe(true);
     for (const bad of ['', 'form', 'HOME', null, undefined, 3]) expect(isIssueScreen(bad)).toBe(false);
@@ -260,8 +262,8 @@ describe('the model of the screens', () => {
   });
 
   it('the controls of a screen: Close always, Back outside home; the ids are the stable ids of the plan', () => {
-    // `home` also has the four role chips (and the buttons of the role): the exact sets per role are in issue-panel-home.test.ts.
-    expect(screenControls('home', 'visitor')).toEqual(['role-visitor', 'role-agent', 'role-tenant', 'role-landlord', 'close']);
+    // `home` also has the role chips (and the buttons of the role): the exact sets per role are in issue-panel-home.test.ts.
+    expect(screenControls('home', 'visitor')).toEqual([...HOME_ROLES.map((r) => `role-${r}`), 'close']);
     for (const screen of ISSUE_SCREENS.filter((s) => s !== 'home' && s !== 'new')) {
       for (const role of ['visitor', 'agent', 'tenant', 'landlord'] as const) expect(screenControls(screen, role)).toEqual(['back', 'close']);
     }

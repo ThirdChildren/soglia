@@ -1,5 +1,7 @@
 # S3.5 · Sedia a rotelle e passeggino
 
+> **Changelog 2026-11-06** (decisione dell'utente sul riporto 6 del gate di M4; piano M5): passo 3: il passeggino non si posa più a +0,06 m dalla sedia (punto non libero): prima del passo 3 la sedia a rotelle si toglie con Undo (`ui:menu-undo`, `furniture:wheelchair#1` sparisce) e il passeggino va sul punto originale `P_BATH`. Nessun criterio cambia.
+
 **Milestone**: M3 · **Tipo**: PC (emulatore IWER via MCP `iwsdk-runtime`) · **Regola di `CLAUDE.md`**: 9 (accessibilità)
 Prerequisiti di implementazione: T3.5 (scheda `fit`), T3.7, T3.8, T3.9. Vedi `docs/plans/M3.md`, D34. Convenzioni comuni (pose, `D_GRIP`, `Q_UP`, regola di gate): `qa/scenarios/M3-persistence.md`; sequenze di presa e letture: `qa/scenarios/M3-fit-sofa-a.md`.
 
@@ -12,7 +14,7 @@ Prerequisiti di implementazione: T3.5 (scheda `fit`), T3.7, T3.8, T3.9. Vedi `do
 ## Passi
 1. **Scheda "fit"**: menu aperto, pizzico su `ui:menu-tab-fit`; `ecs_find_entities` con `^ui:menu-item-`; log `pattern: "menu"`. Verificare che la scheda `items` ha ancora 14 voci in 3 pagine (`ui:menu-tab-items`).
 2. **Sedia a rotelle verso il bagno di A (S3.5 del ROADMAP)**: presa di `ui:menu-item-wheelchair`, trasporto a `P_BATH − D_GRIP`, attesa 0,6 s, senza rilasciare. Letture: log `pattern: "fit|furniture"`; `ecs_find_entities` con `^ui:fit-`; `FitMarker` di ogni marcatore; `Furniture` del pezzo; `ui_inspect` su `ui:fit-label`; `browser_screenshot` → allegare. Rilascio nel bagno (`furniture placed … room=bathroom`), poi `ecs_find_entities` con `^furniture:`.
-3. **Passeggino verso lo stesso bagno**: scheda "fit", presa di `ui:menu-item-stroller`, trasporto a `P_BATH − D_GRIP` spostato di +0,06 m in x (per non sovrapporsi alla sedia), attesa 0,6 s, senza rilasciare: log `pattern: "fit"`, etichetta, marcatori. Rilascio fuori dalla casa (POUT1 = (0,463; 1,393; −0,487)).
+3. **Passeggino verso lo stesso bagno**: prima annullare la posa della sedia (menu aperto, pizzico su `ui:menu-undo`; `ecs_find_entities` `^furniture:` → 0), poi scheda "fit", presa di `ui:menu-item-stroller`, trasporto a `P_BATH − D_GRIP` (stesso punto, nessuno spostamento: il bagno è libero), attesa 0,6 s, senza rilasciare: log `pattern: "fit"`, etichetta, marcatori. Rilascio fuori dalla casa (POUT1 = (0,463; 1,393; −0,487)).
 4. **Sedia a rotelle verso il soggiorno e lo studio (bordo esatto)**: presa di nuovo `wheelchair`, `P_LIV − D_GRIP`, attesa 0,6 s: log; poi (stessa presa) `xr_animate_to` a `P_STUDY − D_GRIP`, attesa 0,6 s: log. Rilascio fuori.
 5. **Casa B**: riscrivere `dev-params.local.txt` con `house=apartment-b`, reload, accept, mani; presa di `wheelchair`, `P_BATH_B − D_GRIP`, attesa 0,6 s: log, etichetta; rilascio fuori.
 6. **Pezzi normali**: tornare in A (file con `house=apartment-a`, `reset=1`), posare `wheelchair` nel bagno e `stroller` in soggiorno: `ecs_find_entities` con `^furniture:` (id `furniture:wheelchair#1`, `furniture:stroller#1`); prova di collisione: portare la sedia a rotelle sopra il passeggino già posato → riga `furniture status … reasons=overlaps-furniture with=furniture:stroller#1` (le sedute rispettano la regola dei pezzi, D34).

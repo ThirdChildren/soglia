@@ -3,12 +3,17 @@
 // the right arrow and almost-equal (see CREDITS.md, tools/font-gen and assets-src/fonts).
 // The atlases are local files in public/fonts, so nothing is fetched from a CDN.
 //
-// `loadPanelFonts()` runs once at start-up and checks the files. If anything is missing or invalid,
-// the panels keep UIKit's bundled Inter (ASCII only) and the app logs `[soglia] font fallback`.
+// `loadPanelFonts()` runs once at start-up, alongside the loading of the house and the catalog (src/index.ts awaits all of them before
+// any panel is built), and checks the files. If anything is missing or invalid,
+// the panels keep UIKit's bundled Inter (ASCII only) and the app logs `[soglia] font fallback`. When the files are good it also
+// loads both atlases into UIKit's font cache BEFORE any panel exists (`font preload ready`): UIKit keeps the font a text had until
+// the new one has arrived, so without this a panel whose text was written before our atlas was loaded laid it out with the bundled
+// ASCII font and warned `Missing glyph info for character "×"` (M5 gate finding F-D-1, intermittent).
 // `applyPanelFont(doc, rootId)` hands the family to one panel document (it flows down to the text).
 
-import type { UIKit } from '@iwsdk/core';
+import { Object3D, UIKit } from '@iwsdk/core';
 import { slog, swarn } from '../log';
+import { preloadFonts } from '../logic/font-preload';
 import {
   BUNDLED_CHARSET,
   missingGlyphs,
@@ -44,6 +49,23 @@ export function panelFontSupports(text: string): boolean {
   return missingGlyphs(text, panelFontCharset()).length === 0;
 }
 
+/**
+ * Puts the atlas at `url` into UIKit's font cache (the cache itself is not exported, and a deep import of it breaks UIKit's module
+ * order): a text that asks for this very url makes UIKit fetch it, and `fontSignal` says when it is there. A text only works once
+ * it has a parent (any object, it need not be in the scene), so each probe hangs on a bare `Object3D`. The probes are kept in
+ * `probes` and disposed when the wait is over.
+ */
+const probes: { probe: UIKit.Text; holder: Object3D; stop: () => void }[] = [];
+function warmUiKitFont(url: string, onLoad: () => void): void {
+  const probe = new UIKit.Text({ text: ' ', fontFamilies: { [PANEL_FONT_FAMILY]: { normal: url } } });
+  const holder = new Object3D();
+  holder.add(probe);
+  const stop = probe.fontSignal.subscribe((font) => {
+    if (font) onLoad();
+  });
+  probes.push({ probe, holder, stop });
+}
+
 async function checkWeight(file: string): Promise<FontAtlasInfo> {
   const jsonUrl = `${baseUrl()}${file}.json`;
   const response = await fetch(jsonUrl);
@@ -66,8 +88,10 @@ export async function loadPanelFonts(): Promise<void> {
   try {
     const families: Record<string, string> = {};
     let all = '';
-    for (const weight of WEIGHTS) {
-      const info = await checkWeight(weight.file);
+    // Both weights are checked at the same time (the start-up is a few round trips shorter); the log keeps the weight order.
+    const infos = await Promise.all(WEIGHTS.map((weight) => checkWeight(weight.file)));
+    for (const [index, weight] of WEIGHTS.entries()) {
+      const info = infos[index];
       families[weight.name] = `${baseUrl()}${weight.file}.json`;
       all += info.charset;
       slog(
@@ -75,6 +99,16 @@ export async function loadPanelFonts(): Promise<void> {
           `atlas=${info.width}x${info.height} glyphs=${info.glyphs}`,
       );
     }
+    // The toolkit loads the atlas by this very url, so the cache entry is the one the panels ask for later.
+    const urls = Object.values(families);
+    const preload = await preloadFonts(urls, warmUiKitFont);
+    for (const { probe, holder, stop } of probes.splice(0)) {
+      stop();
+      holder.remove(probe);
+      probe.dispose();
+    }
+    if (preload.missing.length > 0) swarn(`font preload incomplete missing=${preload.missing.length}`);
+    else slog(`font preload ready atlases=${preload.loaded.length}`);
     fontFamilies = { [PANEL_FONT_FAMILY]: families };
     charset = all;
   } catch (error) {

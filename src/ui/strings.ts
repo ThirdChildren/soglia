@@ -68,6 +68,34 @@ export const strings = {
   viewpoint: {
     tabletopButton: 'Tabletop',
   },
+  /** The coach of the first minute (M5, D60): two short lines, one for each step. */
+  coach: {
+    menuButton: 'Pinch Menu',
+    grab: 'Drop it in the house',
+  },
+  /** The button above a piece that was just put down: it turns the piece a quarter turn, with one hand (M5, D59). */
+  rotate: {
+    button: 'Rotate',
+  },
+  /** The View panel and its buttons (M5, D56): sun, zoom and turn of the model. */
+  view: {
+    /** The third floor of fixed buttons beside the model, above "Issues": they open and close the View panel with one hand. */
+    button: 'View',
+    title: 'View',
+    close: 'Close',
+    rows: { zoom: 'Zoom', turn: 'Turn', month: 'Month', hour: 'Hour', contrast: 'Contrast', text: 'Text' },
+    /** The values of the two switches (D58). */
+    switches: { on: 'On', off: 'Off', normal: 'Normal', large: 'Large' },
+    less: '-',
+    more: '+',
+    /** `Sun 14° SE` (`deg` when the local panel font has no degree sign). */
+    sun: (altitudeDeg: number, compass: string, ascii = false): string => `Sun ${altitudeDeg}${ascii ? ' deg' : '\u00b0'} ${compass}`,
+    sunDown: 'Sun below the horizon',
+    /** Left of Close: the sun patches are a simplified light (D55): only the floor, only through windows, no shadows. */
+    light: 'Simplified light',
+    /** `15°`. */
+    turn: (degrees: string, ascii = false): string => `${degrees}${ascii ? ' deg' : '\u00b0'}`,
+  },
   /** The Issues panel and its buttons (M4, D47, D50). */
   issues: {
     /** The fixed buttons beside the model (T4.6a), above the "Menu" ones: they open and close the Issues panel with one hand. */
@@ -90,7 +118,13 @@ export const strings = {
     hints: {
       report: 'Hold a pinch on an appliance or a spot to report an issue.',
       'pick-role': 'Pick Tenant to report an issue or Landlord to manage them.',
-      'agent-soon': 'Info points for agents are coming soon.',
+      stage: 'Furnish sets up the house in one pinch. Undo brings it back.',
+      'stage-clear': 'Clear empties the house. Undo brings it back.',
+    },
+    /** The agent's buttons on `home` (T5.10, D57): a whole layout in one gesture, one undo step. */
+    agent: {
+      furnish: 'Furnish',
+      clear: 'Clear',
     },
     /** The categories and the phrases of the form of a new issue (D40): the tables live in src/logic/issue-text.ts, which builds the saved sentence from the same labels. */
     categories: CATEGORY_LABELS,
@@ -114,6 +148,8 @@ export const strings = {
       empty: 'No issues yet',
       history: 'History',
       sampleData: 'Sample data',
+      /** The status next to the dot of a row: a word, so the colour is never the only sign. */
+      status: { open: 'Open', in_progress: 'Progress', resolved: 'Resolved', archived: 'Archived' },
       urgency: { low: 'Low', medium: 'Medium', urgent: 'Urgent' },
       prev: 'Prev',
       next: 'Next',
@@ -156,8 +192,12 @@ export const strings = {
       back: 'Back',
       close: 'Close',
     },
-    /** Body of a screen that has no content yet (shown only for the instant before its model is written). */
-    comingSoon: 'Coming soon',
+    /** An info point of the agent (T5.9, D57): the screen a pinch on a cyan diamond opens. Every note is made up, so it says so. */
+    info: {
+      title: 'Info',
+      sampleData: 'Sample data',
+      missing: 'Info not found',
+    },
     /** Title of each screen. */
     screens: {
       home: 'Issues',
@@ -165,6 +205,7 @@ export const strings = {
       list: 'Issues',
       detail: 'Issue',
       movein: 'Move-in report',
+      info: 'Info',
     },
   },
   reason,

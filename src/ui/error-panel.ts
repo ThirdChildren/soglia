@@ -16,7 +16,7 @@ import {
 import { ErrorPanelContent } from '../components/error-panel-content';
 import { tagEntity } from '../components/tag-entity';
 import { stableId } from '../logic/ids';
-import { applyPanelFont } from './fonts';
+import { applyPanelLook } from './panel-theme';
 
 /** Manifest id of the layout (see src/assets.ts). */
 const PANEL_ASSET = 'error-panel';
@@ -56,7 +56,7 @@ export class ErrorPanelSystem extends createSystem({
           | { getElementById: <T>(id: string) => T | null }
           | undefined;
         if (!doc) return;
-        applyPanelFont(doc, 'error-panel-root');
+        applyPanelLook(doc, 'error-panel-root');
         const message = doc.getElementById<UIKit.Text>('error-message');
         const hint = doc.getElementById<UIKit.Text>('error-hint');
         message?.setProperties({ text: entity.getValue(ErrorPanelContent, 'message') as string });

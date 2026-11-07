@@ -1,7 +1,9 @@
 // Pure URL / dev-file parameter parsing: no imports from @iwsdk/core or three.
-// Recognised keys: house, role, reset, seed, time, debug, mr, glyphs, furnish, failmodels, failmy, pinch.
+// Recognised keys: house, role, reset, seed, time, debug, mr, glyphs, furnish, failmodels, failmy, failcatalog, pinch.
 // Unknown values fall back to the default and produce a warning returned as data;
 // the caller decides how to log it.
+
+import { SUN_MAX_YEAR, SUN_MIN_YEAR } from './sun';
 
 export const ROLES = ['visitor', 'agent', 'tenant', 'landlord'] as const;
 export type Role = (typeof ROLES)[number];
@@ -12,6 +14,10 @@ export type FurnishStyle = (typeof FURNISH_STYLES)[number];
 /** Where the pinch point and the palm come from (decision D31): `auto` = hand joints when present, else the grip. */
 export const PINCH_MODES = ['auto', 'grip', 'joints'] as const;
 export type PinchMode = (typeof PINCH_MODES)[number];
+
+/** `text=normal|large`: the size of the text of panels and labels (D58). */
+export const TEXT_SIZES = ['normal', 'large'] as const;
+export type TextSize = (typeof TEXT_SIZES)[number];
 
 export type ParamKey =
   | 'house'
@@ -25,7 +31,10 @@ export type ParamKey =
   | 'furnish'
   | 'failmodels'
   | 'failmy'
-  | 'pinch';
+  | 'failcatalog'
+  | 'pinch'
+  | 'contrast'
+  | 'text';
 
 export type ParamsSource = 'url' | 'dev-file' | 'default';
 
@@ -43,7 +52,7 @@ export interface Params {
   debug: boolean;
   /** `mr=1`: request mixed reality (passthrough) instead of VR. */
   mr: boolean;
-  /** `glyphs=1`: show the glyph test panel (`ui:glyph-test`), a development aid. */
+  /** `glyphs=1`: show the glyph test panel (`ui:glyph-test`), a development aid. Only honoured together with `debug=1` (T5.R6). */
   glyphs: boolean;
   /** `furnish=scandinavian`: start with the staging preset of the house (development aid, D23). */
   furnish: FurnishStyle;
@@ -58,10 +67,20 @@ export interface Params {
    */
   failmy: boolean;
   /**
+   * `failcatalog=1`: do not load `catalog.json`, as if it failed (404), to try that the app still restores and saves
+   * the role, issues, preferences and view, and keeps the saved pieces parked (T5.R2, D63; development aid). Only
+   * honoured together with `debug=1`, like `failmy`.
+   */
+  failcatalog: boolean;
+  /**
    * `pinch=auto|grip|joints` (development aid, D31): `auto` (default) and `joints` use the hand joints when the
    * session provides them; `grip` always uses the grip space, as in M2 (to re-run the older QA scenarios).
    */
   pinch: PinchMode;
+  /** `contrast=1|0`: high-contrast colours (D58). Named in the URL or the dev file it beats the saved preference, `0` included. */
+  contrast: boolean;
+  /** `text=large|normal`: large text, 3.0 cm (D58). Named in the URL or the dev file it beats the saved preference. */
+  text: TextSize;
 }
 
 export interface ParsedParams {
@@ -76,7 +95,7 @@ export interface ParsedParams {
 export interface MergedParams {
   params: Params;
   /**
-   * The keys that were named on purpose, in the URL or in the dev file (a valid value; `failmodels` / `failmy` dropped
+   * The keys that were named on purpose, in the URL or in the dev file (a valid value; `failmodels` / `failmy` / `failcatalog` / `glyphs` dropped
    * for lack of `debug=1` are not here). An explicit `role` beats the saved one (D41).
    */
   explicit: readonly ParamKey[];
@@ -97,7 +116,10 @@ export const DEFAULT_PARAMS: Readonly<Params> = Object.freeze({
   furnish: 'none',
   failmodels: false,
   failmy: false,
+  failcatalog: false,
   pinch: 'auto',
+  contrast: false,
+  text: 'normal',
 });
 
 /** Letters, digits, `_` and `-` only: no dots, slashes, spaces or markup. */
@@ -151,14 +173,25 @@ const FIELD_PARSERS: { [K in ParamKey]: (raw: string) => FieldResult<Params[K]> 
     if (!m || !isRealDateTime(m)) {
       return { ok: false, reason: 'expected a local date-time like 2026-12-21T10:00' };
     }
+    // The sun module covers these years only; a time outside them would be accepted here and silently replaced there.
+    const year = Number(m[1]);
+    if (year < SUN_MIN_YEAR || year > SUN_MAX_YEAR) {
+      return { ok: false, reason: `year must be between ${SUN_MIN_YEAR} and ${SUN_MAX_YEAR}` };
+    }
     return { ok: true, value: raw };
   },
   failmodels: parseFlag,
   failmy: parseFlag,
+  failcatalog: parseFlag,
   pinch: (raw) =>
     (PINCH_MODES as readonly string[]).includes(raw)
       ? { ok: true, value: raw as PinchMode }
       : { ok: false, reason: `expected one of ${PINCH_MODES.join(', ')}` },
+  contrast: parseFlag,
+  text: (raw) =>
+    (TEXT_SIZES as readonly string[]).includes(raw)
+      ? { ok: true, value: raw as TextSize }
+      : { ok: false, reason: `expected one of ${TEXT_SIZES.join(', ')}` },
 };
 
 const KEYS = Object.keys(FIELD_PARSERS) as ParamKey[];
@@ -237,6 +270,16 @@ export function mergeParams(
     explicit.splice(explicit.indexOf('failmy'), 1);
     warnings.push('param failmy ignored: needs debug=1');
   }
+  if (params.failcatalog && !params.debug) {
+    params.failcatalog = false;
+    explicit.splice(explicit.indexOf('failcatalog'), 1);
+    warnings.push('param failcatalog ignored: needs debug=1');
+  }
+  if (params.glyphs && !params.debug) {
+    params.glyphs = false;
+    explicit.splice(explicit.indexOf('glyphs'), 1);
+    warnings.push('param glyphs ignored: needs debug=1');
+  }
   return { params, explicit, source, warnings };
 }
 
@@ -248,7 +291,10 @@ export function formatParamsLine(source: ParamsSource, p: Params): string {
   // Only when they differ from the default, so the line stays the one the QA scenarios know.
   const withFail = p.failmodels ? `${line} failmodels=true` : line;
   const withMy = p.failmy ? `${withFail} failmy=true` : withFail;
-  return p.pinch === 'auto' ? withMy : `${withMy} pinch=${p.pinch}`;
+  const withCatalog = p.failcatalog ? `${withMy} failcatalog=true` : withMy;
+  const withPinch = p.pinch === 'auto' ? withCatalog : `${withCatalog} pinch=${p.pinch}`;
+  const withContrast = p.contrast ? `${withPinch} contrast=1` : withPinch;
+  return p.text === 'large' ? `${withContrast} text=large` : withContrast;
 }
 
 /** True when the warnings include a discarded `house` value (the app then logs that it kept the default home). */

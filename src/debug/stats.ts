@@ -14,7 +14,7 @@
 //                       under `world.player` (input visuals: controller/hand glTF models, ray cursor) belongs
 //                       to the framework and is excluded; if it has a texture above the budget it is reported
 //                       on a separate `[soglia] framework: ...` line instead (it never fails the app budget).
-//   groups line       : `[soglia:stats:groups] house=.. furniture=.. hands=.. ui=.. markers=.. other=..` (task T3.4):
+//   groups line       : `[soglia:stats:groups] house=.. furniture=.. hands=.. ui=.. markers=.. sun=.. other=..` (task T3.4, `sun` since M5):
 //                       visible meshes found by walking the scene (an object hidden anywhere up its chain is skipped;
 //                       the frustum is not tested), grouped by the nearest named ancestor (`classifyGroup`), and
 //                       everything under `world.player` counts as `hands`. It is an ESTIMATE of where the calls

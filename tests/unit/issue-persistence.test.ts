@@ -51,7 +51,9 @@ const busy = (): AppState =>
     initial('tenant'),
     seedIssues(demo()),
     addIssue(mine()),
-    transitionIssue('issue-014', 'take-on', 'landlord', '2026-11-04T10:01:00.000Z', 'Tomorrow.'),
+    setRole('landlord'),
+    transitionIssue('issue-014', 'take-on', '2026-11-04T10:01:00.000Z', 'Tomorrow.'),
+    setRole('tenant'),
     setMoveIn(true),
   );
 const asJson = (s: AppState): Record<string, unknown> => JSON.parse(serialize(s));
@@ -124,7 +126,7 @@ describe('a state saved by M3 (without the new fields)', () => {
     expect(state?.issues).toEqual([]);
     expect(state?.nextIssue).toBe(14);
     expect(state?.issuesSeeded).toBe(false);
-    expect(state?.prefs).toEqual({ onboardingStep: 'done', menuOpened: true, moveInVisible: false });
+    expect(state?.prefs).toEqual({ onboardingStep: 'done', menuOpened: true, moveInVisible: false, contrast: false, largeText: false, coach: 'grab' });
   });
 
   it('restores as "not seeded yet", so the seed comes once', () => {

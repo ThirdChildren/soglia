@@ -10,6 +10,7 @@ import type { Issue, StoredIssue } from './issues';
 import { applyTransition } from './issue-state';
 import type { IssueAction, TransitionDenied, TransitionResult } from './issue-state';
 import { can, isRole } from './permissions';
+import { FALLBACK_SUN_TIME, parseSunTime, stepHour, stepMonth, sunTimeFromParam } from './sun-time';
 
 export type { PlacedPiece, StoredIssue };
 
@@ -27,10 +28,18 @@ export const ZOOM_MAX = 0.12;
 export const ONBOARDING_STEPS = ['pinch', 'two-hands', 'done'] as const;
 export type OnboardingStep = (typeof ONBOARDING_STEPS)[number];
 
+/** The coach after the first onboarding (M5, T5.15, D60): pinch the Menu button, then drop the first piece in the house, then nothing. */
+export const COACH_STEPS = ['menu-button', 'grab', 'done'] as const;
+export type CoachStep = (typeof COACH_STEPS)[number];
+
+/** The sun time when nothing was asked or saved and the house has not computed one yet (the real default is `defaultSunTime`). */
+export const DEFAULT_SUN_TIME = FALLBACK_SUN_TIME;
+
 /** Undo keeps this many furniture states (D17). */
 export const HISTORY_LIMIT = 20;
 
-export type FurnitureAction = 'place' | 'move' | 'remove';
+/** `stage` is a whole layout set at once by the agent (Furnish / Clear, T5.10): one undo step for all of it. */
+export type FurnitureAction = 'place' | 'move' | 'remove' | 'stage';
 
 /** The furniture BEFORE an undoable action, with what that action was (used by `undo` and its log line). */
 export interface FurnitureSnapshot {
@@ -105,6 +114,12 @@ export interface AppState {
     readonly menuOpened: boolean;
     /** Show the move-in (`baseline`) pins on the model (D48). Saved. */
     readonly moveInVisible: boolean;
+    /** High-contrast colours for the panels and the model (M5, D58). Saved; `contrast=` in the URL wins over the saved value. */
+    readonly contrast: boolean;
+    /** Large text (3.0 cm instead of 2.4) in the panels and the labels (M5, D58). Saved; `text=` in the URL wins. */
+    readonly largeText: boolean;
+    /** The step of the coach that shows the Menu button and the first piece (M5, D60). Saved. */
+    readonly coach: CoachStep;
   };
   /** Furniture placed in the house, in order of last placement or move (the evaluation order of collisions). */
   readonly furniture: readonly PlacedPiece[];
@@ -122,10 +137,19 @@ export interface AppState {
   readonly nextIssue: number;
   /** True once the demo seed has been put in (once per saved state, D42). */
   readonly issuesSeeded: boolean;
+  /** The local time of the house the sun is shown at (D54): `YYYY-MM-DDTHH:MM`, always a real date-time. Saved. */
+  readonly sunTime: string;
 }
 
 /** The saved preferences as a restore may give them: `moveInVisible` can be absent (an older state). */
-export type RestorePrefs = Pick<AppState['prefs'], 'onboardingStep' | 'menuOpened'> & { readonly moveInVisible?: boolean };
+export type RestorePrefs = Pick<AppState['prefs'], 'onboardingStep' | 'menuOpened'> & {
+  readonly moveInVisible?: boolean;
+  /** Absent: the preference stays as the session has it (an older state, or the URL named it: `contrast=`, D58). */
+  readonly contrast?: boolean;
+  readonly largeText?: boolean;
+  /** Absent: the coach stays as the session has it (an older state: `deserialize` already chose the step). */
+  readonly coach?: CoachStep;
+};
 
 export type Action =
   | { readonly type: 'setMiniature'; readonly scale: number; readonly yawDeg: number }
@@ -143,11 +167,15 @@ export type Action =
       readonly type: 'transitionIssue';
       readonly id: string;
       readonly action: IssueAction;
-      readonly role: Role;
       readonly nowIso: string;
       readonly note?: string;
     }
   | { readonly type: 'setMoveIn'; readonly visible: boolean }
+  | { readonly type: 'setCoach'; readonly step: CoachStep }
+  | { readonly type: 'setContrast'; readonly on: boolean }
+  | { readonly type: 'setLargeText'; readonly on: boolean }
+  | { readonly type: 'setSunTime'; readonly sunTime: string }
+  | { readonly type: 'stepSunTime'; readonly unit: SunStepUnit; readonly delta: number }
   | {
       readonly type: 'placeFurniture';
       readonly catalogId: string;
@@ -167,6 +195,7 @@ export type Action =
   | { readonly type: 'removeFurniture'; readonly id: string }
   | { readonly type: 'undo' }
   | { readonly type: 'setFurniture'; readonly pieces: readonly PlacedPiece[] }
+  | { readonly type: 'stageFurniture'; readonly pieces: readonly PlacedPiece[]; readonly label: string }
   | {
       readonly type: 'restoreSaved';
       readonly furniture: readonly PlacedPiece[];
@@ -181,7 +210,11 @@ export type Action =
       readonly issues?: readonly StoredIssue[];
       readonly nextIssue?: number;
       readonly issuesSeeded?: boolean;
+      /** Absent or null: the sun time stays as it is (the URL named one, or nothing was saved). */
+      readonly sunTime?: string | null;
     };
+
+export type SunStepUnit = 'hour' | 'month';
 
 /** Action creators. */
 export function setMiniature(scale: number, yawDeg: number): Action {
@@ -234,14 +267,38 @@ export function addIssue(issue: Issue): Action {
   return { type: 'addIssue', issue };
 }
 /**
- * Applies a status action to the issue `id` as `role` at `nowIso` (`applyTransition`): on success the status and
- * the history of that issue change, on any denial nothing changes. The reason is not visible through `dispatch`:
- * a caller that needs it asks `planTransition` first.
+ * Applies a status action to the issue `id` as the role of the store (`state.role`) at `nowIso` (`applyTransition`):
+ * on success the status and the history of that issue change, on any denial nothing changes. The role is NOT an
+ * argument (T5.R1): an action for a role other than the current one cannot be expressed. The reason is not visible
+ * through `dispatch`: a caller that needs it asks `planTransition` first.
  */
-export function transitionIssue(id: string, action: IssueAction, role: Role, nowIso: string, note?: string): Action {
+export function transitionIssue(id: string, action: IssueAction, nowIso: string, note?: string): Action {
   return note === undefined
-    ? { type: 'transitionIssue', id, action, role, nowIso }
-    : { type: 'transitionIssue', id, action, role, nowIso, note };
+    ? { type: 'transitionIssue', id, action, nowIso }
+    : { type: 'transitionIssue', id, action, nowIso, note };
+}
+/** Sets the sun time (D54). Text that is not a real `YYYY-MM-DDTHH:MM` is ignored; the same time again changes nothing. Not undoable. */
+export function setSunTime(sunTime: string): Action {
+  return { type: 'setSunTime', sunTime };
+}
+/**
+ * Steps the sun time by `delta` hours (wrapping 24 on the same day) or months (wrapping Dec to Jan in the same year,
+ * the day clamped to the month). An unknown unit or a delta that is not a finite integer is ignored. Not undoable.
+ */
+export function stepSunTime(unit: SunStepUnit, delta: number): Action {
+  return { type: 'stepSunTime', unit, delta };
+}
+/** Moves the coach to `step` (D60). A step that does not exist is ignored. */
+export function setCoach(step: CoachStep): Action {
+  return { type: 'setCoach', step };
+}
+/** High contrast on or off (D58). Not a boolean: ignored. */
+export function setContrast(on: boolean): Action {
+  return { type: 'setContrast', on };
+}
+/** Large text on or off (D58). Not a boolean: ignored. */
+export function setLargeText(on: boolean): Action {
+  return { type: 'setLargeText', on };
 }
 /** Show or hide the move-in pins on the model (D48). Not a boolean: ignored. */
 export function setMoveIn(visible: boolean): Action {
@@ -269,6 +326,15 @@ export function setFurniture(pieces: readonly PlacedPiece[]): Action {
   return { type: 'setFurniture', pieces };
 }
 /**
+ * Replaces all furniture with `pieces` as ONE undoable step (the agent's Furnish and Clear, T5.10, D57): the history gets an entry
+ * `stage` named `label` that holds the furniture from before, so Undo brings it all back at once. Invalid or duplicate pieces are
+ * dropped, at most MAX_PIECES. Instance counters never go down (a piece id is not handed out twice). Nothing happens, and no history
+ * entry is written, when both the old and the new furniture are empty or `label` is empty.
+ */
+export function stageFurniture(pieces: readonly PlacedPiece[], label: string): Action {
+  return { type: 'stageFurniture', pieces, label };
+}
+/**
  * Puts back the saved part of a state (D29, D44): furniture, instance counters, undo history, the preferences and,
  * when given, the view, the role (not when null or absent: the URL named one, D41), the issues, their counter and
  * the seed flag. Nothing else changes (the model position and the selected room stay as the session set them).
@@ -284,6 +350,7 @@ export function restoreSaved(saved: {
   issues?: readonly StoredIssue[];
   nextIssue?: number;
   issuesSeeded?: boolean;
+  sunTime?: string | null;
 }): Action {
   return { type: 'restoreSaved', ...saved };
 }
@@ -300,7 +367,14 @@ export function createInitialState(params: Params): AppState {
     role: params.role,
     miniature: { scale: SCALE, yawDeg: 0, offset: [0, 0] },
     selectedRoomId: null,
-    prefs: { onboardingStep: 'pinch', menuOpened: false, moveInVisible: false },
+    prefs: {
+      onboardingStep: 'pinch',
+      menuOpened: false,
+      moveInVisible: false,
+      contrast: params.contrast,
+      largeText: params.text === 'large',
+      coach: 'menu-button',
+    },
     furniture: [],
     nextInstance: {},
     history: [],
@@ -309,6 +383,7 @@ export function createInitialState(params: Params): AppState {
     issues: [],
     nextIssue: FIRST_NEW_ISSUE,
     issuesSeeded: false,
+    sunTime: sunTimeFromParam(params.time) ?? DEFAULT_SUN_TIME,
   };
 }
 
@@ -399,19 +474,19 @@ export type IssueTransitionOutcome =
 
 /**
  * Asks, without changing anything, what `transitionIssue` with these arguments would do: the new issue and the
- * history entry on success, the reason on a denial. The reducer uses the same function, so the answer is the effect.
+ * history entry on success, the reason on a denial. The acting role is `state.role`. The reducer uses the same
+ * function, so the answer is the effect.
  */
 export function planTransition(
   state: AppState,
   id: string,
   action: IssueAction,
-  role: Role,
   nowIso: string,
   note?: string,
 ): IssueTransitionOutcome {
   const issue = state.issues.find((i) => i.id === id);
   if (issue === undefined) return { ok: false, reason: 'not-found' };
-  return applyTransition<StoredIssue>(issue, action, role, nowIso, note);
+  return applyTransition<StoredIssue>(issue, action, state.role, nowIso, note);
 }
 
 const CATALOG_ID_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
@@ -550,6 +625,29 @@ export function reduce(state: AppState, action: Action): AppState {
       if (typeof action.visible !== 'boolean' || action.visible === state.prefs.moveInVisible) return state;
       return { ...state, prefs: { ...state.prefs, moveInVisible: action.visible } };
     }
+    case 'setCoach': {
+      if (!(COACH_STEPS as readonly string[]).includes(action.step) || action.step === state.prefs.coach) return state;
+      return { ...state, prefs: { ...state.prefs, coach: action.step } };
+    }
+    case 'setContrast': {
+      if (typeof action.on !== 'boolean' || action.on === state.prefs.contrast) return state;
+      return { ...state, prefs: { ...state.prefs, contrast: action.on } };
+    }
+    case 'setLargeText': {
+      if (typeof action.on !== 'boolean' || action.on === state.prefs.largeText) return state;
+      return { ...state, prefs: { ...state.prefs, largeText: action.on } };
+    }
+    case 'setSunTime': {
+      const sunTime = parseSunTime(action.sunTime);
+      if (sunTime === null || sunTime === state.sunTime) return state;
+      return { ...state, sunTime };
+    }
+    case 'stepSunTime': {
+      if (action.unit !== 'hour' && action.unit !== 'month') return state;
+      if (!Number.isInteger(action.delta) || action.delta === 0) return state;
+      const sunTime = action.unit === 'hour' ? stepHour(state.sunTime, action.delta) : stepMonth(state.sunTime, action.delta);
+      return sunTime === state.sunTime ? state : { ...state, sunTime };
+    }
     case 'seedIssues': {
       if (state.issuesSeeded || !Array.isArray(action.issues)) return state;
       const wanted = action.issues.filter((i) => isIssue(i) && (i.kind === 'issue' || i.kind === 'baseline'));
@@ -567,7 +665,7 @@ export function reduce(state: AppState, action: Action): AppState {
       return { ...state, issues, nextIssue: nextIssueFor(state.nextIssue, issues) };
     }
     case 'transitionIssue': {
-      const result = planTransition(state, action.id, action.action, action.role, action.nowIso, action.note);
+      const result = planTransition(state, action.id, action.action, action.nowIso, action.note);
       if (!result.ok) return state;
       return { ...state, issues: state.issues.map((i) => (i.id === action.id ? result.issue : i)) };
     }
@@ -626,6 +724,17 @@ export function reduce(state: AppState, action: Action): AppState {
       if (furniture.length === 0 && state.furniture.length === 0 && nextInstance === state.nextInstance) return state;
       return { ...state, furniture, nextInstance };
     }
+    case 'stageFurniture': {
+      if (!Array.isArray(action.pieces) || typeof action.label !== 'string' || action.label.length === 0) return state;
+      const furniture = sanitizePieces(action.pieces);
+      if (furniture.length === 0 && state.furniture.length === 0) return state;
+      return {
+        ...state,
+        furniture,
+        nextInstance: withInstancesOf(state.nextInstance, furniture),
+        history: pushHistory(state.history, { action: 'stage', id: action.label, furniture: state.furniture }),
+      };
+    }
     case 'restoreSaved': {
       const { prefs } = action;
       if (!Array.isArray(action.furniture) || !Array.isArray(action.history)) return state;
@@ -647,11 +756,19 @@ export function reduce(state: AppState, action: Action): AppState {
         furniture,
         nextInstance,
         history,
-        prefs: { onboardingStep: prefs.onboardingStep, menuOpened: prefs.menuOpened, moveInVisible },
+        prefs: {
+          onboardingStep: prefs.onboardingStep,
+          menuOpened: prefs.menuOpened,
+          moveInVisible,
+          contrast: typeof prefs.contrast === 'boolean' ? prefs.contrast : state.prefs.contrast,
+          largeText: typeof prefs.largeText === 'boolean' ? prefs.largeText : state.prefs.largeText,
+          coach: (COACH_STEPS as readonly string[]).includes(prefs.coach as string) ? (prefs.coach as CoachStep) : state.prefs.coach,
+        },
         view,
         issues,
         nextIssue: nextIssueFor(counter, issues),
         issuesSeeded: typeof action.issuesSeeded === 'boolean' ? action.issuesSeeded : state.issuesSeeded,
+        sunTime: (typeof action.sunTime === 'string' ? parseSunTime(action.sunTime) : null) ?? state.sunTime,
       };
     }
     default:
@@ -714,7 +831,9 @@ export function deserialize(json: string): AppState | null {
 }
 
 /** `deserialize` that also says which saved issues were left out (the caller logs them). */
-export function deserializeWithReport(json: string): { state: AppState; discardedIssues: DiscardedIssue[] } | null {
+export function deserializeWithReport(
+  json: string,
+): { state: AppState; discardedIssues: DiscardedIssue[]; savedSunTime: string | null } | null {
   if (typeof json !== 'string') return null;
   let data: unknown;
   try {
@@ -768,12 +887,25 @@ export function deserializeWithReport(json: string): { state: AppState; discarde
   }
   // Added in M4: absent means hidden; a broken value also means hidden (a convenience, not worth the whole state).
   const moveInVisible = prefs.moveInVisible === true;
+  // Added in M5 (D58): absent or broken means off (a convenience, not worth the whole state).
+  const contrast = prefs.contrast === true;
+  const largeText = prefs.largeText === true;
 
   let furniture: PlacedPiece[] = [];
   if ('furniture' in data) {
     if (!Array.isArray(data.furniture)) return null;
     furniture = sanitizePieces(data.furniture);
   }
+
+  // Added in M5 (D60): a state of before the coach (or a broken value) starts where its user is: pieces in the house mean the coach
+  // has nothing left to teach, an opened menu means the Menu button is known, else the coach starts from the beginning.
+  const coach: CoachStep = (COACH_STEPS as readonly string[]).includes(prefs.coach as string)
+    ? (prefs.coach as CoachStep)
+    : furniture.length > 0
+      ? 'done'
+      : menuOpened
+        ? 'grab'
+        : 'menu-button';
 
   let nextInstance: Record<string, number> = {};
   if ('nextInstance' in data) {
@@ -795,7 +927,7 @@ export function deserializeWithReport(json: string): { state: AppState; discarde
     for (const entry of data.history) {
       if (
         !isRecord(entry) ||
-        !(entry.action === 'place' || entry.action === 'move' || entry.action === 'remove') ||
+        !(entry.action === 'place' || entry.action === 'move' || entry.action === 'remove' || entry.action === 'stage') ||
         typeof entry.id !== 'string' ||
         !Array.isArray(entry.furniture)
       ) {
@@ -820,6 +952,8 @@ export function deserializeWithReport(json: string): { state: AppState; discarde
   }
   const nextIssue = nextIssueFor(typeof data.nextIssue === 'number' ? data.nextIssue : FIRST_NEW_ISSUE, issues);
   const issuesSeeded = data.issuesSeeded === true;
+  // Added in M5 (D62): absent or broken means "none saved" (the caller then uses the default), never a rejection.
+  const savedSunTime = 'sunTime' in data ? parseSunTime(data.sunTime) : null;
 
   return {
     state: {
@@ -828,7 +962,7 @@ export function deserializeWithReport(json: string): { state: AppState; discarde
       role: role as Role,
       miniature: { scale: clampScale(scale), yawDeg: yawDeg + 0, offset },
       selectedRoomId,
-      prefs: { onboardingStep: step as OnboardingStep, menuOpened, moveInVisible },
+      prefs: { onboardingStep: step as OnboardingStep, menuOpened, moveInVisible, contrast, largeText, coach },
       furniture,
       nextInstance,
       history,
@@ -837,7 +971,9 @@ export function deserializeWithReport(json: string): { state: AppState; discarde
       issues,
       nextIssue,
       issuesSeeded,
+      sunTime: savedSunTime ?? DEFAULT_SUN_TIME,
     },
     discardedIssues,
+    savedSunTime,
   };
 }

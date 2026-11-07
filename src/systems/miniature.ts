@@ -25,7 +25,7 @@ import { slog } from '../log';
 import { BASE_RADIUS, BASE_TOP } from '../logic/constants';
 import { MINIATURE_ROOT_ID, TABLE_PLINTH_ID } from '../logic/ids';
 import { computeAnchor, SCALE, yawFromForward } from '../logic/placement';
-import { palette } from '../ui/theme';
+import { getPalette, onAccessChange } from '../ui/theme';
 
 /** The base is BASE_RADIUS (9 real metres: 0.45 m in the world at 1:20) wide and 0.02 m thick in the world at 1:20. */
 const PLINTH_THICKNESS = 0.02;
@@ -88,11 +88,18 @@ export function getMiniatureAnchor(out: { x: number; y: number; z: number }): { 
   return out;
 }
 
-/** Puts the model at `anchor + offset` (the height of the anchor) with `scale`. Allocation-free. */
-export function syncMiniature(root: Entity, scale: number, offset: readonly [number, number]): void {
+/**
+ * Puts the model at `anchor + offset` (the height of the anchor) with `scale` and, when given, turned by `yawDeg` about the vertical axis
+ * (the View panel turns the model from the store, T5.6). Allocation-free.
+ */
+export function syncMiniature(root: Entity, scale: number, offset: readonly [number, number], yawDeg?: number): void {
   const object = root.object3D;
   if (!object) return;
   if (Math.abs(object.scale.x - scale) > 1e-6) object.scale.setScalar(scale);
+  if (yawDeg !== undefined && Number.isFinite(yawDeg)) {
+    const yawRad = (yawDeg * Math.PI) / 180;
+    if (Math.abs(object.rotation.y - yawRad) > 1e-6) object.rotation.set(0, yawRad, 0);
+  }
   object.position.set(anchor.x + offset[0], anchor.y, anchor.z + offset[1]);
 }
 
@@ -176,7 +183,12 @@ export function createMiniature(world: World, onPlaced?: PlacedListener): Miniat
     PLINTH_THICKNESS / SCALE,
     48,
   );
-  const material = new MeshStandardMaterial({ color: palette.base, roughness: 1, metalness: 0 });
+  const material = new MeshStandardMaterial({ color: getPalette().base, roughness: 1, metalness: 0 });
+  // The contrast preference darkens the table under the model where it is.
+  onAccessChange(() => {
+    material.color.setHex(getPalette().base);
+    return 1;
+  });
   const mesh = new Mesh(geometry, material);
   mesh.position.y = PLINTH_TOP - PLINTH_THICKNESS / SCALE / 2;
   const plinth = world.createTransformEntity(mesh, root);

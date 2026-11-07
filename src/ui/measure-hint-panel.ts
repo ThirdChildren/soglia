@@ -7,7 +7,7 @@ import { PanelDocument, PanelUI, Vector3, type Entity, type Object3D, type UIKit
 import { tagEntity } from '../components/tag-entity';
 import { stableId } from '../logic/ids';
 import { yawTowardHead } from '../logic/view-fit';
-import { applyPanelFont } from './fonts';
+import { applyPanelLook } from './panel-theme';
 import { disposePanelEntity } from './panel-lifecycle';
 
 const PANEL_ASSET = 'measure-hint';
@@ -77,7 +77,7 @@ export class MeasureHintPanel {
     const doc = entity.getValue(PanelDocument, 'document') as UiDocument | undefined;
     const text = doc?.getElementById<UIKit.Text>(TEXT_ELEMENT);
     if (!doc || !text) return;
-    applyPanelFont(doc, ROOT_ELEMENT);
+    applyPanelLook(doc, ROOT_ELEMENT, 'scale');
     doc.getElementById<UIKit.Container>(ROOT_ELEMENT)?.setProperties({
       depthTest: false,
       renderOrder: HINT_RENDER_ORDER,

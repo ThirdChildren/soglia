@@ -5,3 +5,7 @@
 - [M2 furniture/menu sequences](reference_m2_furniture_sequences.md) — 3x2 menu grid coords, same-hand page flips (works, rerun 3), dimmed menu, budget numbers, grab/place/rotate/undo, pan/zoom, ui_inspect font sizes, F-A menu-hand pinch selects a room
 - [M3 gate traps](reference_m3_gate_traps.md) — runtime restart, v2 menu poses, viewpoint marker vs zoom recipe, pinned menu window, MCP latency, expected M3 differences
 - [M4 gate traps](reference_m4_gate_traps.md) — IWER grip offset at rest vs settled, long pinch, Issues buttons/panel entities, move-in default off, state log changes, framework warn
+- [M5 gate traps](reference_m5_gate_traps.md) — CLI helper-lib pitfalls (cd in sourced file), regex-log traps, info-pin head offset, coach 20 s timing, sun patches behind V1, budget readings, W1/W2 findings
+
+- [M5 rerun recipes](reference_m5_rerun_recipes.md) — lib.sh overwrite/variable traps, coach v9 and K18 scripts, post-T5.RA budget numbers, merged-wall checks, V1/B coordinates, measure F1/F2
+- [M5 C2+D recipes](reference_m5_c2d_recipes.md) — palm-menu pinch offsets (right hand = plain grip), `I` var trap, pinch counter windows, ipx selectors, rotate-vs-undo overlap, intermittent glyph warn, demo route
