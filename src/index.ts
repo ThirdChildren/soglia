@@ -1,6 +1,6 @@
 import { World } from '@iwsdk/core';
 import projectOptions from 'virtual:iwsdk-project';
-import { loadDevParams } from './data/dev-params';
+import { loadDevParamsFile } from './data/dev-params';
 import { attachHandsLog } from './debug/hands-log';
 import { attachLifecycleKeys } from './debug/lifecycle-keys';
 import { attachMenuKey } from './debug/menu-key';
@@ -9,6 +9,7 @@ import { attachStateLog } from './debug/state-log';
 import { showGlyphTest } from './debug/glyph-test';
 import { attachEnvProbe } from './debug/env-probe';
 import { attachStats } from './debug/stats';
+import { installTuning } from './debug/tuning';
 import { loadCatalog } from './data/load-catalog';
 import { loadMyFurniture, type LoadMyFurnitureResult } from './data/load-my-furniture';
 import { loadHouse } from './data/load-house';
@@ -70,7 +71,8 @@ import { createCoach } from './systems/coach';
 import { createRotateButton } from './systems/rotate-button';
 
 async function start(): Promise<void> {
-  const devFileParams = await loadDevParams();
+  const devFile = await loadDevParamsFile();
+  const devFileParams = devFile ? devFile.parsed : null;
   const { params, source, warnings, explicit } = mergeParams(
     parseParams(window.location.search),
     devFileParams,
@@ -96,6 +98,9 @@ async function start(): Promise<void> {
   // The fonts load alongside the house and the catalog (below); no panel is built before all of them are there.
   const fontsReady = loadPanelFonts();
   slog('world ready');
+  // The tuning knobs of M6 (D66): `t_<name>` in the URL and in the params file, the live file `tuning.local.txt`, `foveation`.
+  // Only with `debug=1`; without it the keys are ignored with a warning. Before the systems, which read the values when they decide.
+  installTuning(world, { debug: params.debug, search: window.location.search, devFileText: devFile ? devFile.text : null });
   if (params.debug) {
     attachStats(world);
     // The browser-features probe (T6.A5): feature detection only, two `[soglia:env]` lines.
