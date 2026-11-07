@@ -4,10 +4,14 @@
 
 export { CUT_HEIGHT } from './constants';
 export { SCALE, ZOOM_MAX, ZOOM_MIN } from './state';
+import { getTuning, TUNING_DEFAULTS } from './tuning';
 
-/** Distance in front of the head and below it, in metres (world units). To be tuned on the headset. */
-export const ANCHOR_FORWARD = 0.45;
-export const ANCHOR_DOWN = 0.25;
+/**
+ * Distance in front of the head and below it, in metres (world units). These are the defaults of the knobs `anchorForward` and
+ * `anchorDown` (tuning registry, D66): `computeAnchor` reads the value in use.
+ */
+export const ANCHOR_FORWARD = TUNING_DEFAULTS.anchorForward;
+export const ANCHOR_DOWN = TUNING_DEFAULTS.anchorDown;
 
 export interface HeadPose {
   /** Head position in world metres. */
@@ -35,8 +39,8 @@ export interface Anchor {
  * Only depends on the head pose, not on the floor height.
  */
 export function computeAnchor(pose: HeadPose, options: AnchorOptions = {}): Anchor {
-  const forward = options.forward ?? ANCHOR_FORWARD;
-  const down = options.down ?? ANCHOR_DOWN;
+  const forward = options.forward ?? getTuning().anchorForward;
+  const down = options.down ?? getTuning().anchorDown;
   const [hx, hy, hz] = pose.head;
   const fx = -Math.sin(pose.yawRad);
   const fz = -Math.cos(pose.yawRad);

@@ -14,6 +14,7 @@ import {
   PINNED_PITCH_MAX_DEG,
   PINNED_PITCH_MIN_DEG,
 } from './menu-thresholds';
+import { getTuning } from './tuning';
 import type { Point3Like } from './view-fit';
 
 export { PINNED_DISTANCE, PINNED_DISTANCE_LARGE, PINNED_DROP, PINNED_DROP_LARGE, PINNED_PITCH_MAX_DEG, PINNED_PITCH_MIN_DEG };
@@ -68,8 +69,10 @@ export function pinnedMenuAnchor(
   pitchRad = 0,
   large = false,
 ): Point3Like {
-  const distance = large ? PINNED_DISTANCE_LARGE : PINNED_DISTANCE;
-  const drop = large ? PINNED_DROP_LARGE : PINNED_DROP;
+  // The knobs `pinnedDistance` and `pinnedDrop` (D66) move the normal panel; the large-text one has its own geometry (D58).
+  const tuning = getTuning();
+  const distance = large ? PINNED_DISTANCE_LARGE : tuning.pinnedDistance;
+  const drop = large ? PINNED_DROP_LARGE : tuning.pinnedDrop;
   const usable = Number.isFinite(head.x + head.y + head.z);
   const hx = usable ? head.x : FALLBACK_HEAD.x;
   const hy = usable ? head.y : FALLBACK_HEAD.y;

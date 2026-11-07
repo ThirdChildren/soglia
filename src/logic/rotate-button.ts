@@ -20,12 +20,13 @@ import type { PanelExtent } from './menu';
 import type { PlacedPiece } from './placement-rules';
 import { rotateStep } from './furniture-pose';
 import { moveFurniture, type Action } from './state';
+import { getTuning, TUNING_DEFAULTS } from './tuning';
 import type { ConeFit } from './view-fit';
 
 /** Stable id of the button. */
 export const ROTATE_BUTTON_ID = 'ui:rotate-button';
 /** How long the button stays after a piece is put down, seconds; a press starts the time again. */
-export const ROTATE_WINDOW_SECONDS = 12;
+export const ROTATE_WINDOW_SECONDS = TUNING_DEFAULTS.rotateWindow;
 /** Size of the panel in UIKit units (cm): public/ui/rotate-button.uikitml says the same (a test keeps them equal). */
 export const ROTATE_BUTTON_PANEL = { width: 11, height: 5 } as const;
 /** The button around its centre, metres. */
@@ -115,7 +116,7 @@ export function rotateDecision(window: RotateWindow, inputs: Readonly<RotateInpu
   const elapsed = inputs.now - window.startedAt;
   if (!Number.isFinite(elapsed) || elapsed < 0) return { end: null, visible: false };
   if (inputs.covered) return { end: null, visible: false };
-  if (elapsed > ROTATE_WINDOW_SECONDS) return { end: 'timeout', visible: false };
+  if (elapsed > getTuning().rotateWindow) return { end: 'timeout', visible: false };
   return { end: null, visible: true };
 }
 

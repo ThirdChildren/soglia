@@ -1,6 +1,9 @@
 // Palm-up detection for the palm menu (task T2.11, decision D18). Pure logic: no imports from
 // @iwsdk/core or three, so it can be tested. The system reads the grip pose of each hand and calls
 // these functions with plain numbers.
+//
+// The thresholds are knobs of the tuning registry (D66): the functions read `getTuning()` where they decide, the constants
+// re-exported below are the defaults.
 
 import {
   MENU_LIFT,
@@ -11,6 +14,7 @@ import {
   PALM_OPEN_DEG,
   PALM_OPEN_HOLD_SECONDS,
 } from './menu-thresholds';
+import { getTuning } from './tuning';
 
 export type PalmHand = 'left' | 'right';
 
@@ -104,9 +108,9 @@ export function updatePalmDetector(
   const angle = palmAngleDeg(normalY);
 
   if (detector.state === 'closed') {
-    if (angle < PALM_OPEN_DEG && !pinching && mayOpen) {
+    if (angle < getTuning().palmOpenDeg && !pinching && mayOpen) {
       if (detector.since === null) detector.since = now;
-      if (now - detector.since >= PALM_OPEN_HOLD_SECONDS) {
+      if (now - detector.since >= getTuning().palmOpenHold) {
         detector.state = 'open';
         detector.since = null;
       }
@@ -116,9 +120,9 @@ export function updatePalmDetector(
     return detector.state;
   }
 
-  if (angle > PALM_CLOSE_DEG) {
+  if (angle > getTuning().palmCloseDeg) {
     if (detector.since === null) detector.since = now;
-    if (now - detector.since >= PALM_CLOSE_HOLD_SECONDS) {
+    if (now - detector.since >= getTuning().palmCloseHold) {
       detector.state = 'closed';
       detector.since = null;
     }
@@ -166,7 +170,7 @@ export function createMenuGate(clock: () => number): MenuGate {
       }
       if (busy[hand]) {
         busy[hand] = false;
-        unlockAt[hand] = now + MENU_RELEASE_GUARD_SECONDS;
+        unlockAt[hand] = now + getTuning().releaseGuard;
       }
       return now >= unlockAt[hand];
     },
