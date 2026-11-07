@@ -9,6 +9,7 @@ import { attachStateLog } from './debug/state-log';
 import { showGlyphTest } from './debug/glyph-test';
 import { attachEnvProbe } from './debug/env-probe';
 import { attachDebugHud } from './debug/hud';
+import { installLogTail } from './debug/log-tail';
 import { attachStats } from './debug/stats';
 import { installTuning } from './debug/tuning';
 import { loadCatalog } from './data/load-catalog';
@@ -78,6 +79,8 @@ async function start(): Promise<void> {
     parseParams(window.location.search),
     devFileParams,
   );
+  // The tail of the log for the headset panel (T6.A7): first of all, so the whole start-up is in it. Only with `debug=1`.
+  if (params.debug) installLogTail();
   slog(formatParamsLine(source, params));
   for (const warning of warnings) swarn(warning);
   if (hasInvalidHouse(warnings)) swarn('invalid house id ignored');

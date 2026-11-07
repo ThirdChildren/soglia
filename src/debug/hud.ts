@@ -15,6 +15,7 @@ import { createSystem, Vector3, type World } from '@iwsdk/core';
 import { slog } from '../log';
 import {
   createHudPlacement,
+  HUD_TAIL_LINES,
   hudLines,
   placeHud,
   type HudHand,
@@ -25,6 +26,8 @@ import { getMiniatureAnchor, getMiniatureAnchorYaw, onMiniatureReplaced } from '
 import { onPinchStart } from '../systems/pinch-input';
 import { DebugHudPanel } from '../ui/debug-hud';
 import { strings } from '../ui/strings';
+import { tailLines } from '../logic/log-tail';
+import { getLogTail } from './log-tail';
 import { hudFeed, resetHudFeed } from './hud-feed';
 
 /** Seconds between two refreshes of the text. */
@@ -85,6 +88,7 @@ export class DebugHudSystem extends createSystem({}) {
       if (this.hasPlace && this.anchorMoved()) this.placePanel();
       hudFeed.leftSource = this.sourceOf('left');
       hudFeed.rightSource = this.sourceOf('right');
+      tailLines(getLogTail(), HUD_TAIL_LINES, hudFeed.tail);
       this.panel.setLines(hudLines(hudFeed, strings.debug.hud));
     }
     this.panel.update();
