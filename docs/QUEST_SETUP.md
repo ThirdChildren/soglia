@@ -490,9 +490,9 @@ riprodurlo (è il lavoro di `quest-integrator`; il codice lo tocca poi `xr-engin
 - Elenco completo delle prove: `docs/DEVICE_CHECKLIST.md` (per milestone) e le righe di
   `qa/device/DEBT.md`. Ordine consigliato se il tempo è poco: prima le voci con priorità **alta**,
   per milestone da M1 a M5 (sono la maggior parte; Claude può ordinarle con te).
-- Realtà mista: tagliata dalla demo da M5 (vedi `docs/ROADMAP.md`). La riga corrispondente della
-  checklist (M5) è da riallineare prima di usarla: chiede ancora la realtà mista in due stanze e le
-  "ombre del sole", che in M5 sono diventate chiazze di luce.
+- Realtà mista: tagliata dalla demo e **fuori dal gate** (decisione D74 di `docs/plans/M6.md`, conferma
+  di M5). La checklist è stata riallineata il 2026-11-07 (niente realtà mista, "chiazze di luce" al posto
+  delle ombre, tastiera e microfono non applicabili).
 - **Report**: un file per sessione in `qa/device/`, nome `M<n>-<AAAA-MM-GG>.md` (per la prova di
   fumo: `M6-2026-11-10.md`). Formato, come da `quest-integrator`:
 
@@ -585,11 +585,76 @@ vere. Per le prove di Soglia usa il percorso normale delle sezioni 4-7.
 
 ## 11. Strumenti di M6
 
-> Segnaposto. Il piano M6 (`docs/plans/M6.md`) è scritto da un altro agente in parallelo e non
-> esisteva quando ho scritto questa guida. Potrebbe aggiungere script npm (ad esempio per servire il
-> sito sulla rete locale o per raccogliere le misure) e parametri di taratura (soglie del pizzico,
-> distanza e altezza del plastico, dimensione del testo). Quando il piano esiste, completare qui:
->
-> - nuovi script `npm run ...` e cosa fanno;
-> - nuovi parametri URL di taratura, con valori e unità;
-> - dove si annotano i valori misurati.
+> **Stato (2026-11-07)**: il piano M6 (`docs/plans/M6.md`) li ha definiti, ma **al momento della
+> scrittura nessuno è ancora implementato**: la fase A del piano (7-9 novembre) li costruisce. Prima di
+> usare un comando o un parametro di questa sezione controlla che esista (`npm run` senza argomenti
+> elenca gli script; la colonna "Task" dice quale task lo consegna). Se un nome è cambiato durante
+> l'implementazione, il task T6.A11 del piano riallinea questa sezione con la realtà: fidati del
+> codice, non di questo testo.
+
+### 11.1 Script npm `quest:*` (task T6.A8, T6.A10)
+
+Tutti accettano `--dry-run` (stampano i comandi `adb` senza eseguirli) e `--serial <numero>`; se `adb`
+vede più di un dispositivo, lo script **si ferma** e chiede il numero di serie (non ne sceglie uno).
+Messaggi e codice sono in inglese.
+
+| Comando | Cosa fa | Task |
+|---|---|---|
+| `npm run quest:check` | elenca il visore (`adb devices`), modello e batteria, i collegamenti `adb reverse` attivi e lo stato del server (`dev status`); termina con un messaggio chiaro se non c'è il visore | T6.A8 |
+| `npm run quest:serve` | `npx @iwsdk/cli dev up --no-open` e stampa gli URL (porta letta da `dev status`) | T6.A8 |
+| `npm run quest:reverse` / `quest:unreverse` | `adb reverse tcp:<porta> tcp:<porta>` / `adb reverse --remove` | T6.A8 |
+| `npm run quest:open -- <preset\|url> [--mode vr\|browser]` | apre l'URL nel Quest Browser dal PC. `--mode vr` prova l'avvio diretto in VR (`ovrweb://vr?uri=...`, da verificare sul visore), `--mode browser` usa l'intento Android `VIEW`. I preset sono in `qa/device/presets.json` | T6.A8 |
+| `npm run quest:links` | stampa i preset con gli URL e scrive `qa/device/links.md`; con la pagina di avvio, genera anche `public/dev/quest.html` (solo sviluppo, esclusa dalla build) | T6.A8, T6.A10 |
+| `npm run quest:tune -- nome=valore ...` | scrive `tuning.local.txt` (ignorato da git); il server di sviluppo lo rilegge ogni 2 s e l'app applica i valori **senza ricaricare**. `quest:tune -- --clear` torna ai default | T6.A8 |
+| `npm run quest:console` | salva su file (`qa/device/logs/`) la console del Quest Browser; usa il protocollo di debug se il PC ha Node 22+ (`WebSocket` globale), altrimenti `adb logcat`; altrimenti vale `chrome://inspect` (sezione 5.1). Da verificare sul visore | T6.A8 |
+| `npm run quest:perf -- [--seconds 10]` | traccia di prestazioni con `npx metavr perf capture` sull'app del browser; salva in `qa/device/traces/` (ignorata da git). Sottocomandi e flag da verificare con `npx metavr perf --help` | T6.A8 |
+| `npm run quest:capture -- shot\|video` | screenshot o registrazione con `npx metavr capture` (o `adb pull` come in 5.2) | T6.A8 |
+| `npm run quest:preview` | `npm run build` + `vite preview` (HTTP sulla porta 4173) per le misure finali di fps su build di produzione; con `adb reverse tcp:4173 tcp:4173` si apre `http://localhost:4173/?debug=1` (`localhost` in HTTP è un contesto sicuro, senza avviso del certificato: da verificare) | T6.A8 |
+
+### 11.2 Parametri di taratura e di diagnostica (solo con `debug=1`)
+
+Sono letti da `src/logic/tuning.ts` e `src/logic/params.ts` (task T6.A1-T6.A7, T6.A9). Senza
+`debug=1` sono ignorati con un avviso `[soglia] tuning ignored ... reason=needs-debug`. Un valore fuori
+limite viene ricondotto al limite più vicino e scritto in console (`tuning clamped`).
+
+| Parametro | Default | Limiti | Unità | Si applica |
+|---|---|---|---|---|
+| `hud` | `1` (con `debug=1`) | `0` / `1` | – | `hud=0` spegne il pannello di statistiche nel visore |
+| `t_longPress` | 0,8 | 0,4 - 1,6 | s | subito (pizzico prolungato) |
+| `t_longPressMove` | 0,015 | 0,005 - 0,04 | m | subito |
+| `t_pinchWait` | 0,15 | 0 - 0,4 | s | subito (attesa del punto di pizzico dai giunti) |
+| `t_pinRadius` | 0,02 | 0,01 - 0,05 | m del mondo | subito (presa dei segnaposto) |
+| `t_viewpointRadius` | 0,025 | 0,01 - 0,06 | m del mondo | subito (presa dei marcatori dei punti di vista) |
+| `t_pickMargin` | 0,015 | 0,005 - 0,05 | m del mondo | subito (presa dei pezzi) |
+| `t_pickDepth` | 0,05 | 0,02 - 0,10 | m | subito (profondità di selezione di voci e pulsanti) |
+| `t_settleMs` | 150 | 0 - 400 | ms | subito (assestamento del pizzico a due mani e della traslazione) |
+| `t_deadZone` | 0,005 | 0,001 - 0,02 | m | subito (zona morta dei gesti) |
+| `t_palmOpenDeg` / `t_palmCloseDeg` | 35 / 55 | 20-50 / 40-75 (chiusura > apertura) | gradi | subito |
+| `t_palmOpenHold` / `t_palmCloseHold` | 0,4 / 0,25 | 0,2-1,0 / 0,1-0,8 | s | subito |
+| `t_pinnedDistance` / `t_pinnedDrop` | 0,55 / 0,20 | 0,45-0,75 / 0,05-0,35 | m | alla prossima apertura del menu o del pannello |
+| `t_anchorForward` / `t_anchorDown` | 0,45 / 0,25 | 0,35-0,65 / 0,10-0,40 | m | al prossimo posizionamento (avvio sessione o `Recenter`) |
+| `t_rotateWindow` / `t_coachTimeout` | 12 / 20 | 6-30 / 8-60 | s | alla prossima comparsa |
+| `t_longPressSettle`, `t_fixtureSnap`, `t_measureSnap`, `t_releaseGuard`, `t_buttonRing` | 0,15 s, 0,02 m, 0,012 m, 0,3 s, 0,45 m | vedi `docs/plans/M6.md` | s / m | **opzionali**: esistono solo se T6.A2/T6.A3 li cablano (controlla la riga `tuning table`) |
+| `t_foveation` | non impostato | 0 - 1 | – | subito (`renderer.xr.setFoveation`, solo se esiste) |
+| `t_fovMask` | 0 (spento) | 20 - 55 | gradi (semiangolo) | subito (maschera nera che simula un campo visivo stretto, `debug:fov-mask`) |
+
+Esempio: `https://localhost:8081/?debug=1&t_longPress=1.1&t_palmOpenHold=0.6`. Dal PC, mentre sei nel
+visore e senza ricaricare: `npm run quest:tune -- longPress=1.1 palmOpenHold=0.6`. L'elenco
+aggiornato dei nomi, dei limiti e dei default è la tabella in `src/logic/tuning.ts` (la prima riga di
+log `tuning table` la stampa).
+
+### 11.3 Cosa si vede nel visore con `debug=1`
+
+- Un pannello `ui:debug-hud` accanto al plastico: fps e tempo per frame (media, p95, massimo), chiamate per vista,
+  triangoli, sorgente dei giunti (`joints`/`grip`), le ultime righe di log (anche `warn`) e il riepilogo della sessione
+  (fps minimo, frame peggiore). Si legge senza togliere il visore. Per le **misure finali** usa `hud=0`: il pannello
+  costa qualche chiamata (il suo costo è nel gruppo `hud` di `[soglia:stats:groups]`).
+- In console: `[soglia:env]` (user agent breve, IWER sì/no, funzioni del browser, frequenza di aggiornamento, tempo
+  di avvio), `[soglia:frames]` (media, p95, massimo e frame oltre il budget in ogni finestra di 2 s) e
+  `[soglia:stats:summary]` (riepilogo ogni 10 s e alla sospensione).
+
+### 11.4 Dove si annotano i valori misurati
+
+Un file per sessione, `qa/device/M6-<AAAA-MM-GG>-S<n>.md`, con il modello del piano M6 (sezione "Fase B"): per ogni
+manopola il valore provato, il numero di prove e l'esito; i valori scelti come nuovi default li applica
+`xr-engineer` (commit `fix(tuning): ...`), non si cambiano di nascosto.
