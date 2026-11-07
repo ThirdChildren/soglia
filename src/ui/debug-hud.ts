@@ -13,6 +13,12 @@ const PANEL_ASSET = 'debug-hud';
 const LINE_PREFIX = 'debug-hud-line-';
 const ROOT_ELEMENT = 'debug-hud-root';
 
+/**
+ * Drawn above the narrow-view mask (`debug:fov-mask`, 2 000 000), so that a person judging the field of view can still read the
+ * numbers (the panel is a measuring tool, not part of what the mask judges). The depth test stays on.
+ */
+export const DEBUG_HUD_RENDER_ORDER = 3_000_000;
+
 interface UiDocument {
   getElementById: <T>(id: string) => T | null;
 }
@@ -82,6 +88,10 @@ export class DebugHudPanel {
         if (!this.lookApplied) {
           // The font and the contrast theme only: a measuring tool does not grow with the large-text preference.
           applyPanelLook(doc, ROOT_ELEMENT, 'none');
+          doc?.getElementById<UIKit.Container>(ROOT_ELEMENT)?.setProperties({ renderOrder: DEBUG_HUD_RENDER_ORDER });
+          for (let i = 0; i < HUD_MAX_LINES; i++) {
+            doc.getElementById<UIKit.Text>(LINE_PREFIX + i)?.setProperties({ renderOrder: DEBUG_HUD_RENDER_ORDER + 1 });
+          }
           this.lookApplied = true;
         }
         for (let i = 0; i < HUD_MAX_LINES; i++) {

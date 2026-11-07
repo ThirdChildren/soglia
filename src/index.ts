@@ -8,6 +8,7 @@ import { attachPinDraftKey } from './debug/pin-draft-key';
 import { attachStateLog } from './debug/state-log';
 import { showGlyphTest } from './debug/glyph-test';
 import { attachEnvProbe } from './debug/env-probe';
+import { attachFovMask } from './debug/fov-mask';
 import { attachDebugHud } from './debug/hud';
 import { installLogTail } from './debug/log-tail';
 import { attachStats } from './debug/stats';
@@ -112,6 +113,8 @@ async function start(): Promise<void> {
     // The statistics panel in the headset (T6.A8); `hud=0` turns it off for the final measures (D71): no entity, no cost.
     if (params.hud) attachDebugHud(world);
     else slog('hud hidden reason=hud0');
+    // The narrow-view mask (T6.A10): a mesh only while `t_fovMask` is above 0 and a session runs.
+    attachFovMask(world);
   }
 
   // `failmy=1` (with `debug=1`): the file of the own pieces is not even requested, as if it failed (D44).

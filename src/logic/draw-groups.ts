@@ -51,6 +51,8 @@ export function classifyGroup(name: string | null | undefined): DrawGroup {
   const kind = name.slice(0, colon);
   if (HOUSE_KINDS.has(kind)) return 'house';
   if (kind === 'furniture') return 'furniture';
+  // Debug-only objects (the narrow-view mask `debug:fov-mask`, T6.A10) are counted with the statistics panel: `hud=0` and no mask take both out.
+  if (kind === 'debug') return 'hud';
   if (kind === 'viewpoint' || kind === 'pin') return 'markers';
   // M5: the dial (`sun:dial`, `sun:marker`) and the patches of light (`light:patches`, `light:<window>`), D55.
   if (kind === 'sun' || kind === 'light') return 'sun';
