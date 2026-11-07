@@ -7,6 +7,7 @@ import { attachMenuKey } from './debug/menu-key';
 import { attachPinDraftKey } from './debug/pin-draft-key';
 import { attachStateLog } from './debug/state-log';
 import { showGlyphTest } from './debug/glyph-test';
+import { attachEnvProbe } from './debug/env-probe';
 import { attachStats } from './debug/stats';
 import { loadCatalog } from './data/load-catalog';
 import { loadMyFurniture, type LoadMyFurnitureResult } from './data/load-my-furniture';
@@ -95,7 +96,11 @@ async function start(): Promise<void> {
   // The fonts load alongside the house and the catalog (below); no panel is built before all of them are there.
   const fontsReady = loadPanelFonts();
   slog('world ready');
-  if (params.debug) attachStats(world);
+  if (params.debug) {
+    attachStats(world);
+    // The browser-features probe (T6.A5): feature detection only, two `[soglia:env]` lines.
+    attachEnvProbe(world, performance.now());
+  }
 
   // `failmy=1` (with `debug=1`): the file of the own pieces is not even requested, as if it failed (D44).
   let myLoad: Promise<LoadMyFurnitureResult>;
