@@ -5,7 +5,7 @@
 // session, where the pinch point comes from (joints or grip) and the last pinch, and (T6.A7) the tail of the log.
 //   * Only while a session runs: `hud shown distance=..` when it appears, `hud hidden reason=no-session` when the session ends,
 //     `hud hidden reason=hud0` once at start-up when `hud=0` turned it off (no panel, no entity, no cost).
-//   * Placed once per session, to the LEFT of the model (src/logic/debug-hud.ts), and again when the model is placed again; it does
+//   * Placed once per session, above the line of sight and ahead of the model (src/logic/debug-hud.ts), and again when the model is placed again; it does
 //     not follow the head.
 //   * One update a second (the figures themselves come every 2 s from the stats system), and the text is written only when it changed.
 //   * Its draw calls are counted apart (`hud=` in `[soglia:stats:groups]`): take `hud=0` for every final measure.

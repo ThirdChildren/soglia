@@ -2,28 +2,33 @@
 // @iwsdk/core or three: `src/debug/hud.ts` feeds it and `src/ui/debug-hud.ts` draws it.
 //
 // The panel is a debugging tool, not an interface of the app: it is exempt from the view cone (rule 8), and says so. It stays where
-// it was put (world coordinates, not the head), to the LEFT of the model, 0.55..0.85 m from the head and at least 0.5 m from the
-// centre of the model, turned toward the head about the vertical axis. One text per line (the glyphs of all of them are ONE draw call, the box another),
+// it was put (world coordinates, not the head), ABOVE the line of sight and straight ahead of the model, 0.7 m from the head, clear of
+// the fixed buttons and of the pinned panels (A4 of the M6 PC gate), turned toward the head about the vertical axis. One text per line (the glyphs of all of them are ONE draw call, the box another),
 // up to HUD_MAX_LINES short lines; they are written at most once a second and only when one changed.
 
 import type { FrameClass } from './frame-stats';
 
-/** Distance range from the head, metres (D68). */
+/** Distance range from the head, metres (D68; the plan asks 0.6..0.8 for the HUD, the spec range is 0.55..0.85). */
 export const HUD_MIN_DISTANCE = 0.55;
 export const HUD_MAX_DISTANCE = 0.85;
-/** A panel outside the range is pulled to these, a little inside it, so that rounding in a log line never reads 0.85 or 0.55. */
-export const HUD_FAR_LIMIT = 0.8;
-export const HUD_NEAR_LIMIT = 0.6;
+/** The panel is put this far from the head, metres: inside 0.6..0.8, and 0.7 keeps the 1.6 cm text readable. */
+export const HUD_DISTANCE = 0.7;
+/**
+ * The panel sits straight ahead of the heading of the user who placed the model (not beside it), ABOVE their line of sight: its
+ * centre is this many degrees above the horizontal as seen from the head. Why there (A4 of the M6 PC gate): the fixed buttons
+ * (Menu, Issues, View) sit at about 38 degrees to each side, between 8 degrees below and 5 degrees above the eye line, and the
+ * pinned menu, the Issues panel and the View panel fill about +-18 degrees to the sides and up to 18 degrees (22 with large text)
+ * above the eye line. The one free place near the 30 degree cone is above all of them: from this elevation the bottom edge of
+ * the panel is at HUD_CLEAR_ELEVATION_DEG or more, and the model (29 degrees BELOW the eye line at the default placement) is never covered.
+ */
+export const HUD_ELEVATION_DEG = 34;
+/** The lowest edge of the panel is at least this far above the eye line (degrees) at the default head: above the pinned panels, large text included. */
+export const HUD_CLEAR_ELEVATION_DEG = 22;
+/** Size of the panel when all its lines are shown, metres (the layout is 36 cm wide, 11 lines of 1.6 cm x 1.3 plus padding). */
+export const HUD_PANEL_WIDTH = 0.36;
+export const HUD_PANEL_HEIGHT = 0.26;
 /** The panel centre is never nearer than this to the anchor of the model, metres (it is never over the model). */
 export const HUD_MIN_MODEL_DISTANCE = 0.5;
-/**
- * Where the panel is put, from the anchor of the model: this far to the left, this far beyond it (away from the user) and this
- * much higher, metres. Beyond, not level with it: level with the model it would be 53 degrees off the line of sight (the edge of
- * the field of view); beside and behind it is about 36 degrees, a glance and not a turn of the head.
- */
-export const HUD_LATERAL = 0.55;
-export const HUD_DEPTH = 0.3;
-export const HUD_RISE = 0.18;
 /** Longest line of the log tail on the panel (characters; the panel is about 36 cm wide). */
 export const HUD_LINE_CHARS = 40;
 /** Lines of the log tail shown at most. */
@@ -171,8 +176,9 @@ export function createHudPlacement(): HudPlacement {
 }
 
 /**
- * Where the panel goes: to the left of the model (seen by the user who placed it, `anchorYawRad` is their heading: 0 looks toward
- * -z), a little above the table, then pulled along the line from the head into HUD_NEAR_LIMIT..HUD_FAR_LIMIT (inside HUD_MIN_DISTANCE..HUD_MAX_DISTANCE).
+ * Where the panel goes: HUD_DISTANCE metres from the head, straight ahead of the heading of the user who placed the model
+ * (`anchorYawRad`: 0 looks toward -z), HUD_ELEVATION_DEG above the horizontal (see there), turned toward the head about the vertical
+ * axis. It does not depend on the model except for the heading and for `modelDistance`, which is only reported.
  * Allocation-free: writes into `out`. Non-finite inputs give a placement near the origin, never NaN.
  */
 export function placeHud(anchor: Readonly<HudPoint>, anchorYawRad: number, head: Readonly<HudPoint>, out: HudPlacement): HudPlacement {
@@ -183,24 +189,12 @@ export function placeHud(anchor: Readonly<HudPoint>, anchorYawRad: number, head:
   const hx = Number.isFinite(head.x) ? head.x : 0;
   const hy = Number.isFinite(head.y) ? head.y : 1.6;
   const hz = Number.isFinite(head.z) ? head.z : 0;
-  // The right of the user is (cos yaw, 0, -sin yaw) and their forward is (-sin yaw, 0, -cos yaw): to the left of the model and beyond it.
-  let x = ax - Math.cos(yaw) * HUD_LATERAL - Math.sin(yaw) * HUD_DEPTH;
-  let y = ay + HUD_RISE;
-  let z = az + Math.sin(yaw) * HUD_LATERAL - Math.cos(yaw) * HUD_DEPTH;
-  // Pulled along the line from the head into the allowed range of distances.
-  const dx = x - hx;
-  const dy = y - hy;
-  const dz = z - hz;
-  const d = Math.hypot(dx, dy, dz);
-  if (d > 1e-9) {
-    const wanted = Math.min(HUD_FAR_LIMIT, Math.max(HUD_NEAR_LIMIT, d));
-    if (wanted !== d) {
-      const k = wanted / d;
-      x = hx + dx * k;
-      y = hy + dy * k;
-      z = hz + dz * k;
-    }
-  }
+  const elevation = (HUD_ELEVATION_DEG * Math.PI) / 180;
+  const level = HUD_DISTANCE * Math.cos(elevation);
+  // The forward of the user is (-sin yaw, 0, -cos yaw).
+  const x = hx - Math.sin(yaw) * level;
+  const y = hy + HUD_DISTANCE * Math.sin(elevation);
+  const z = hz - Math.cos(yaw) * level;
   out.x = x;
   out.y = y;
   out.z = z;
