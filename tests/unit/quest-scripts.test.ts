@@ -25,6 +25,9 @@ import {
   formatCommand,
   formatTuningFile,
   isSogliaLine,
+  keepLogcatEntry,
+  LOGCAT_FILTER_NOTE,
+  parseLogcatConsole,
   parseArgs,
   parseBattery,
   parseDevStatus,
@@ -405,6 +408,23 @@ describe('console channels', () => {
     expect(isSogliaLine('Uncaught TypeError')).toBe(true);
     expect(isSogliaLine('other noise')).toBe(false);
   });
+  it('keeps the soglia lines, uncaught exceptions and errors of a logcat console and drops the rest', () => {
+    const line = (level: string, text: string) => `11-07 12:00:00.100 I/chromium( 1234): [${level}:CONSOLE(45)] "${text}", source: https://localhost:8081/src/index.ts (45)`;
+    const kept = (level: string, text: string, all = false) => {
+      const entry = parseLogcatConsole(line(level, text));
+      return entry !== null && keepLogcatEntry(entry, all);
+    };
+    expect(parseLogcatConsole(line('WARNING', 'x'))).toEqual({ level: 'WARNING', text: 'x' });
+    expect(parseLogcatConsole('11-07 12:00:01.000 W/other( 1): hello')).toBeNull();
+    expect(kept('INFO', '[soglia] world ready')).toBe(true);
+    expect(kept('INFO', '[soglia:stats] fps=72')).toBe(true);
+    expect(kept('WARNING', '[soglia] param time ignored')).toBe(true);
+    expect(kept('ERROR', 'THREE.WebGLRenderer: Context Lost.')).toBe(true);
+    expect(kept('INFO', 'Uncaught TypeError: x is not a function')).toBe(true);
+    expect(kept('INFO', 'three.js noise')).toBe(false);
+    expect(kept('WARNING', 'some framework warning')).toBe(false);
+    expect(kept('INFO', 'three.js noise', true)).toBe(true);
+  });
 });
 
 describe('the scripts in --dry-run', () => {
@@ -444,7 +464,11 @@ describe('the scripts in --dry-run', () => {
     expect(consoleDry.code).toBe(0);
     expect(consoleDry.out).toContain('qa/device/logs/console-');
     expect(consoleDry.out).toContain('localabstract:chrome_devtools_remote');
-    expect(runScript('console', ['--dry-run', '--channel', 'logcat']).out).toContain('adb logcat');
+    const logcatDry = runScript('console', ['--dry-run', '--channel', 'logcat']).out;
+    expect(logcatDry).toContain('adb logcat');
+    expect(logcatDry).toContain(LOGCAT_FILTER_NOTE);
+    expect(logcatDry).toContain('[soglia');
+    expect(runScript('console', ['--dry-run', '--channel', 'logcat', '--all']).out).toContain('keeps every console line');
     const preview = runScript('preview', ['--dry-run']);
     expect(preview.out).toContain('npm run build');
     expect(preview.out).toContain('4173');
@@ -479,6 +503,36 @@ describe('the scripts in --dry-run', () => {
     const ok = runScript('reverse', ['--serial', 'BBB222', '--port', '8081'], env);
     expect(ok.code).toBe(0);
     expect(ok.out).toContain('BBB222');
+  });
+  it.skipIf(process.platform === 'win32')('a dry run with two devices and no --serial stops like the real run', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'fake-adb-'));
+    writeFileSync(
+      join(dir, 'adb'),
+      '#!/bin/sh\ncase "$*" in\n  "devices -l") printf "List of devices attached\\nAAA111 device\\nBBB222 device\\n\\n";;\n  *) echo ok;;\nesac\n',
+    );
+    chmodSync(join(dir, 'adb'), 0o755);
+    const env = { PATH: `${dir}:${process.env.PATH ?? ''}` };
+    for (const script of [['open', 'smoke'], ['reverse'], ['unreverse'], ['console', '--channel', 'logcat'], ['perf'], ['capture', 'shot']]) {
+      const port = ['open', 'reverse', 'unreverse'].includes(script[0]) ? ['--port', '8081'] : [];
+      const stopped = runScript(script[0], [...script.slice(1), '--dry-run', ...port], env);
+      expect(stopped.code, script.join(' ')).toBe(1);
+      expect(stopped.err, script.join(' ')).toContain('--serial');
+      expect(stopped.out, script.join(' ')).not.toContain('[dry-run]');
+    }
+    const named = runScript('open', ['smoke', '--dry-run', '--port', '8081', '--serial', 'BBB222'], env);
+    expect(named.code).toBe(0);
+    expect(named.out).toContain('adb -s BBB222 shell');
+  });
+  it.skipIf(process.platform === 'win32')('a dry run with one device uses it, and with no adb still prints the command', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'fake-adb-'));
+    writeFileSync(join(dir, 'adb'), '#!/bin/sh\ncase "$*" in\n  "devices -l") printf "List of devices attached\\nONLY1 device\\n\\n";;\n  *) echo ok;;\nesac\n');
+    chmodSync(join(dir, 'adb'), 0o755);
+    const one = runScript('open', ['smoke', '--dry-run', '--port', '8081'], { PATH: `${dir}:${process.env.PATH ?? ''}` });
+    expect(one.code).toBe(0);
+    expect(one.out).toContain('adb -s ONLY1 shell');
+    const none = runScript('open', ['smoke', '--dry-run', '--port', '8081'], { PATH: '' });
+    expect(none.code).toBe(0);
+    expect(none.out).toContain('adb shell');
   });
 });
 

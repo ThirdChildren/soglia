@@ -6,7 +6,8 @@
 //   cdp     if the global WebSocket exists (Node 22+): `adb forward tcp:9222 localabstract:chrome_devtools_remote`,
 //           then the Chromium debugging protocol: console calls, exceptions, browser log entries and, for the "no CDN
 //           request" check, network requests to hosts other than the page's own.
-//   logcat  otherwise (or if the forward fails): `adb logcat` filtered on the `[soglia` lines.
+//   logcat  otherwise (or if the forward fails): `adb logcat -s chromium:I` read by the script, which keeps
+//           the `[soglia` lines, uncaught exceptions and ERROR-level entries (`--all`: every console line).
 // If neither works, chrome://inspect (docs/QUEST_SETUP.md section 5.1) is always valid.
 // UNVERIFIED on the headset: the name of the debugging socket (--socket), and that the Quest Browser writes its
 // console to logcat.
@@ -21,8 +22,9 @@ import {
   clockStamp,
   consoleLogName,
   formatCdpMessage,
-  isSogliaLine,
-  parseLogcatLine,
+  keepLogcatEntry,
+  LOGCAT_FILTER_NOTE,
+  parseLogcatConsole,
   pickPageTarget,
 } from './lib.mjs';
 import { LOGS_DIR, ROOT, args, ensureDir, fail, resolveSerial, run, showDry, start } from './runtime.mjs';
@@ -56,6 +58,7 @@ if (flags['dry-run']) {
     console.log('[dry-run] if the forward fails, falls back to:');
   }
   showDry(logcat);
+  console.log(flags.all ? '# logcat keeps every console line (--all)' : LOGCAT_FILTER_NOTE);
   process.exit(0);
 }
 
@@ -86,8 +89,8 @@ function runLogcat() {
     const lines = buffer.split(/\r?\n/);
     buffer = lines.pop() ?? '';
     for (const line of lines) {
-      const text = parseLogcatLine(line);
-      if (text !== null && (flags.all || isSogliaLine(text))) emit(text);
+      const entry = parseLogcatConsole(line);
+      if (entry !== null && keepLogcatEntry(entry, Boolean(flags.all))) emit(entry.text);
     }
   });
   child.stderr.on('data', (chunk) => emit(`adb: ${chunk.toString('utf8').trim()}`));

@@ -86,12 +86,22 @@ const ADB_MISSING =
   'adb was not found on this PC. Install it (Fedora: sudo dnf install android-tools) and see docs/QUEST_SETUP.md section 1.';
 
 /**
- * The serial to use. With `--dry-run` nothing is run: the serial is `--serial` or null. Otherwise `adb devices -l`
- * is read and `pickSerial` decides; with no adb, no device, an unauthorized device or more than one device the
- * script ends with a clear message.
+ * The serial to use. `adb devices -l` is read and `pickSerial` decides; with no adb, no device, an unauthorized device or more
+ * than one device the script ends with a clear message. With `--dry-run` nothing is changed, so the read still happens (it is
+ * read-only) but only to stop the same way the real run would when several devices are connected and `--serial` is missing:
+ * a preview must not print a command that the real run refuses. With no adb, no device or an unusable one, a dry run
+ * goes on with `--serial` or with no serial, so it still works on a PC without a headset.
  */
 export function resolveSerial(serialOption, dryRun) {
-  if (dryRun) return serialOption ?? null;
+  if (dryRun) {
+    if (serialOption) return serialOption;
+    const listed = run(adbCommand(null, 'devices', '-l'), { timeoutMs: 15000 });
+    if (!listed.ok) return null;
+    const picked = pickSerial(parseDevices(listed.stdout), undefined);
+    if (picked.ok) return picked.serial;
+    if (picked.code === 'multiple') fail(picked.message);
+    return null;
+  }
   const out = run(adbCommand(null, 'devices', '-l'), { timeoutMs: 15000 });
   if (out.missing) fail(ADB_MISSING);
   if (!out.ok) fail(`adb devices failed: ${firstLine(out.stderr || out.stdout)}`);

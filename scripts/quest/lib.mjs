@@ -655,17 +655,41 @@ export function formatCdpMessage(message, options = {}) {
 }
 
 /**
- * The console text from one `adb logcat -v time` line written by Chromium (`[INFO:CONSOLE(45)] "text", source: url (45)`).
+ * The level and the console text of one `adb logcat -v time` line written by Chromium (`[INFO:CONSOLE(45)] "text", source: url (45)`).
  * Returns null for any other line.
+ * @param {string} line
+ * @returns {{ level: string, text: string } | null}
+ */
+export function parseLogcatConsole(line) {
+  const m = /\[(INFO|WARNING|ERROR|VERBOSE|DEBUG):CONSOLE(?:\(\d+\))?\]\s+"([\s\S]*)",\s+source:/.exec(String(line ?? ''));
+  return m ? { level: m[1], text: m[2] } : null;
+}
+
+/**
+ * The console text from one `adb logcat -v time` line written by Chromium. Returns null for any other line.
  * @param {string} line
  * @returns {string | null}
  */
 export function parseLogcatLine(line) {
-  const m = /\[(?:INFO|WARNING|ERROR|VERBOSE|DEBUG):CONSOLE(?:\(\d+\))?\]\s+"([\s\S]*)",\s+source:/.exec(String(line ?? ''));
-  return m ? m[1] : null;
+  const entry = parseLogcatConsole(line);
+  return entry ? entry.text : null;
 }
 
-/** True for a console text worth saving when logcat is the channel (every `[soglia` line and uncaught errors). */
+/** True for a console text worth saving when logcat is the channel (every `[soglia` line and uncaught exceptions). */
 export function isSogliaLine(text) {
   return /\[soglia/.test(text) || /Uncaught|Unhandled/.test(text);
 }
+
+/**
+ * True for a console entry of the logcat channel that is kept: every `[soglia` line, uncaught exceptions and every entry the page
+ * wrote at the ERROR level (`console.error`: the framework's own errors do not start with `[soglia`). `all` keeps everything.
+ * @param {{ level: string, text: string }} entry
+ * @param {boolean} [all]
+ */
+export function keepLogcatEntry(entry, all = false) {
+  return all || entry.level === 'ERROR' || isSogliaLine(entry.text);
+}
+
+/** The line the dry run prints to say what the logcat channel keeps (the filter runs in the script, not in `adb logcat`). */
+export const LOGCAT_FILTER_NOTE =
+  '# logcat keeps the console lines that start with "[soglia", uncaught exceptions and errors (--all keeps every console line)';
