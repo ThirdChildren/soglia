@@ -2,7 +2,7 @@
 // outside a cone of that half angle, to judge the narrow field of view of the Meta VR Glasses with a wider headset (task T6.A10,
 // src/logic/fov-mask.ts has the geometry and its limits: parallax between the eyes is about 1.2 degrees at 1.5 m).
 //
-//   * One mesh, `debug:fov-mask`: 1 draw call, only while the knob is above 0 AND an XR session runs; nothing exists otherwise.
+//   * One mesh, `debug:fov-mask`: 1 draw call (single pass: a transparent DoubleSide material would cost 2), only while the knob is above 0 AND an XR session runs; nothing exists otherwise.
 //   * It follows the head (position and orientation of `world.player.head` in session: the XR camera only gets the pose after the
 //     systems run), ignores the depth buffer, is transparent (so it is drawn after the UIKit panels) and has a very high render order.
 //   * `fov-mask on halfAngleDeg=30` when it appears (or the angle changes), `fov-mask off` when it goes away.
@@ -80,6 +80,9 @@ export class FovMaskSystem extends createSystem({}) {
       depthWrite: false,
       fog: false,
     });
+    // A transparent DoubleSide material is drawn in two passes (back faces, then front faces): 2 calls per view for a flat ring, of
+    // which the `hud` group only counted 1 (A3 of the M6 PC gate). One pass is enough: nothing is behind the ring to sort.
+    material.forceSinglePass = true;
     const mesh = new Mesh(geometry, material);
     mesh.renderOrder = RENDER_ORDER;
     mesh.frustumCulled = false;
