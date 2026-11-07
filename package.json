@@ -15,7 +15,18 @@
     "typecheck": "tsc --noEmit && tsc --noEmit -p tests/tsconfig.json",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "quest:check": "node scripts/quest/check.mjs",
+    "quest:serve": "node scripts/quest/serve.mjs",
+    "quest:reverse": "node scripts/quest/reverse.mjs",
+    "quest:unreverse": "node scripts/quest/unreverse.mjs",
+    "quest:open": "node scripts/quest/open.mjs",
+    "quest:links": "node scripts/quest/links.mjs",
+    "quest:tune": "node scripts/quest/tune.mjs",
+    "quest:console": "node scripts/quest/console.mjs",
+    "quest:perf": "node scripts/quest/perf.mjs",
+    "quest:capture": "node scripts/quest/capture.mjs",
+    "quest:preview": "node scripts/quest/preview.mjs"
   },
   "dependencies": {
     "@iwsdk/core": "1.0.1",

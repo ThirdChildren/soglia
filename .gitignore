@@ -46,3 +46,10 @@ pids/
 
 # Dev-only parameter override read by the app in development (see src/data/dev-params.ts)
 dev-params.local.txt
+
+# Quest tooling (task T6.A9): traces, console logs, captures and the generated link list stay local
+qa/device/traces/
+qa/device/logs/
+qa/device/captures/
+qa/device/links.md
+tuning.local.txt

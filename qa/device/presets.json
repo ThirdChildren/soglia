@@ -1,0 +1,14 @@
+[
+  {"id": "smoke", "title": "First check: house A, clean state, debug on", "query": "house=apartment-a&role=visitor&reset=1&seed=1&debug=1"},
+  {"id": "a-clean", "title": "House A, clean state, no debug (what a visitor sees)", "query": "house=apartment-a&role=visitor&reset=1&seed=1"},
+  {"id": "b-clean", "title": "House B, clean state, no debug (what a visitor sees)", "query": "house=apartment-b&role=visitor&reset=1&seed=1"},
+  {"id": "tenant", "title": "Tenant role with the demo issues, clean state", "query": "house=apartment-a&role=tenant&reset=1&seed=1&debug=1&time=2026-12-21T10:00"},
+  {"id": "landlord", "title": "Landlord role with the demo issues, clean state", "query": "house=apartment-a&role=landlord&reset=1&seed=1&debug=1&time=2026-12-21T10:00"},
+  {"id": "agent", "title": "Agent role, clean state", "query": "house=apartment-a&role=agent&reset=1&seed=1&debug=1&time=2026-12-21T10:00"},
+  {"id": "sun-winter-10", "title": "Sun on the winter solstice at 10:00", "query": "house=apartment-a&role=visitor&reset=1&seed=1&debug=1&time=2026-12-21T10:00"},
+  {"id": "sun-summer-14", "title": "Sun on the summer solstice at 14:00", "query": "house=apartment-a&role=visitor&reset=1&seed=1&debug=1&time=2026-06-21T14:00"},
+  {"id": "contrast-text", "title": "High contrast and large text", "query": "house=apartment-a&role=visitor&reset=1&seed=1&debug=1&contrast=1&text=large"},
+  {"id": "grip", "title": "Pinch point from the grip, not the hand joints", "query": "house=apartment-a&role=visitor&reset=1&seed=1&debug=1&pinch=grip"},
+  {"id": "perf-worst", "title": "Furnished tenant house for the worst-case frame cost, HUD off", "query": "house=apartment-a&role=tenant&reset=1&seed=1&debug=1&hud=0&furnish=scandinavian&time=2026-12-21T10:00"},
+  {"id": "resume", "title": "Reopen without resetting: the saved state must come back", "query": "house=apartment-a&debug=1"}
+]
