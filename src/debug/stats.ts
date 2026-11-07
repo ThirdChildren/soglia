@@ -30,6 +30,7 @@
 
 import { createSystem, type Material, type Object3D, type World } from '@iwsdk/core';
 import { slog, swarn } from '../log';
+import { hudFeed } from './hud-feed';
 import {
   classifyGroup,
   emptyGroupCounts,
@@ -39,6 +40,7 @@ import {
 } from '../logic/draw-groups';
 import {
   createFrameSummary,
+  type FrameSummary,
   createFrameWindow,
   createSessionStats,
   formatFramesLine,
@@ -191,7 +193,23 @@ export class StatsSystem extends createSystem({}) {
     console.log('[soglia:frames] ' + formatFramesLine(summary));
     recordSessionWindow(this.session, summary);
     recordSessionRender(this.session, callsPerView(stats.calls, stats.views), stats.triangles);
+    this.publishHud(summary, stats);
     if (this.session.seconds - this.lastSummarySeconds >= SUMMARY_SECONDS) this.logSummary();
+  }
+
+  /** The figures of the headset panel (M6, T6.A8): the same window and totals as the console lines, copied into the reused feed. */
+  private publishHud(summary: FrameSummary, stats: Stats): void {
+    const feed = hudFeed;
+    feed.valid = true;
+    feed.fps = summary.fps;
+    feed.avgMs = summary.avgMs;
+    feed.p95Ms = summary.p95Ms;
+    feed.maxMs = summary.maxMs;
+    feed.cls = summary.cls;
+    feed.callsPerView = callsPerView(stats.calls, stats.views);
+    feed.triangles = stats.triangles;
+    feed.minFps = this.session.minFps;
+    feed.worstMs = this.session.worstMs;
   }
 
   private scanMaterial(material: Material): void {

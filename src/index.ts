@@ -8,6 +8,7 @@ import { attachPinDraftKey } from './debug/pin-draft-key';
 import { attachStateLog } from './debug/state-log';
 import { showGlyphTest } from './debug/glyph-test';
 import { attachEnvProbe } from './debug/env-probe';
+import { attachDebugHud } from './debug/hud';
 import { attachStats } from './debug/stats';
 import { installTuning } from './debug/tuning';
 import { loadCatalog } from './data/load-catalog';
@@ -105,6 +106,9 @@ async function start(): Promise<void> {
     attachStats(world);
     // The browser-features probe (T6.A5): feature detection only, two `[soglia:env]` lines.
     attachEnvProbe(world, performance.now());
+    // The statistics panel in the headset (T6.A8); `hud=0` turns it off for the final measures (D71): no entity, no cost.
+    if (params.hud) attachDebugHud(world);
+    else slog('hud hidden reason=hud0');
   }
 
   // `failmy=1` (with `debug=1`): the file of the own pieces is not even requested, as if it failed (D44).

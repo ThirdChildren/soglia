@@ -53,6 +53,12 @@ const SAMPLE_CALLS: Record<string, () => string[]> = {
   disassembledNarrow: () => [strings.fit.disassembledNarrow(90, 'bed', 95)],
   disassembledLow: () => [strings.fit.disassembledLow(210, 'bed', 230)],
   fits: () => [strings.fit.fits(75), strings.fit.fits(90)],
+  fps: () => [strings.debug.hud.fps('71.9', 'OK'), strings.debug.hud.fps('0.0', 'FAIL')],
+  frameMs: () => [strings.debug.hud.frameMs('13.9', '14.4', '16.9')],
+  render: () => [strings.debug.hud.render(57, 31354)],
+  floor: () => [strings.debug.hud.floor('64', '31.2'), strings.debug.hud.floor('-', '0.0')],
+  hands: () => [strings.debug.hud.hands('joints', 'grip')],
+  pinch: () => [strings.debug.hud.pinch('R', 'joints', 123)],
   roomLabel: () =>
     ['apartment-a.json', 'apartment-b.json'].flatMap((file) =>
       rooms(file).map((room) => strings.roomLabel(room.name, polygonArea(room.polygon))),
