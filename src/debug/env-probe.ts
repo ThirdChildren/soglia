@@ -4,7 +4,7 @@
 //   interfaces the browser has (hand, anchors, hit test, planes, meshes, speech, recorder, camera, virtual keyboard), the
 //   secure context, localStorage, `isSessionSupported` for VR and AR, and the cold-start times.
 //   When a session starts: one `session` line (granted features, reference space, frame rate and the rates it offers,
-//   cameras, input kinds). The session line waits for the cameras and the input sources, at most 2 s, and is written
+//   cameras, input kinds). The session line is a snapshot taken 2 s after the session starts, and is written
 //   once per session (a new session writes a new one).
 //   `[soglia] env iwer clues ...` is the evidence for `iwer=`: the user agent alone proves nothing, IWER sets a Quest's.
 //
@@ -15,7 +15,7 @@ import { slog } from '../log';
 import { formatEnvLine, formatIwerClues, formatSessionLine } from '../logic/env-probe';
 import { collectEnv, collectIwerClues, collectSession, type ProbeHost } from './env-collect';
 
-/** Seconds to wait, after the session starts, for the cameras of the first XR frame and for the input sources. */
+/** Seconds after the session starts at which its facts are read: the cameras and the input sources have settled. */
 const INPUT_WAIT_SECONDS = 2;
 
 let readyMs = 0;
@@ -50,12 +50,11 @@ export class EnvProbeSystem extends createSystem({}) {
     }
     if (this.logged) return;
     this.waited += delta;
+    // A snapshot INPUT_WAIT_SECONDS after the start: by then the cameras exist and the hands (or the controllers the
+    // system started with) have been found, so the line shows the inputs the session settled on.
+    if (this.waited < INPUT_WAIT_SECONDS) return;
     const views = this.world.renderer.xr.getCamera().cameras.length;
     const session = this.world.xrSession;
-    const inputs = session ? session.inputSources.length : 0;
-    // Wait for the cameras of the first XR frame and for the hands, but never longer than INPUT_WAIT_SECONDS.
-    const timedOut = this.waited >= INPUT_WAIT_SECONDS;
-    if (!timedOut && !(views >= 1 && inputs > 0)) return;
     this.logged = true;
     try {
       console.log('[soglia:env] ' + formatSessionLine(collectSession(session, views >= 1 ? views : undefined)));
