@@ -18,7 +18,7 @@ Legenda stato: ⬜ da fare · 🟨 in corso · ✅ PC-done · 🟩 Device-done
 | M3 Dentro la casa e i miei mobili | 15 – 21 ott (PC-done atteso 12–13 ott) | ✅ PC-done 2026-11-02 (piano: `docs/plans/M3.md`; report: `qa/reports/M3-2026-10-10.md`; `contest-reviewer`: APPROVATO CON AVVISI, nessun bloccante; T3.15 tagliato; gate visore in debito, vedi `qa/device/DEBT.md`) |
 | M4 Segnalazioni e persistenza | 2 – 8 nov (PC-done atteso dom 8, limite lun 9) | ✅ PC-done 2026-11-04 (piano: `docs/plans/M4.md`; report: `qa/reports/M4-2026-11-03.md`; `contest-reviewer`: APPROVATO CON AVVISI, nessun bloccante; nota vocale, tastiera di sistema, conferma completa del punto di vista e corsivo W4 non fatti; gate visore in debito, vedi `qa/device/DEBT.md`; ramo `m4`) |
 | M5 Luce, agente, accessibilità, realtà mista (**ridotta**) | 9 – 12 nov (PC-done entro gio 12, 23:59; iniziata ven 6 nov) | ✅ PC-done 2026-11-06 (piano: `docs/plans/M5.md`; report: `qa/reports/M5-2026-11-06.md`; `contest-reviewer`: APPROVATO CON AVVISI, nessun bloccante, avvisi correggibili chiusi; T5.RA fatta; realtà mista, ombre vere, mappa e confronto tagliati; gate visore in debito, vedi `qa/device/DEBT.md`) |
-| M6 Integrazione con il visore | appena arriva il Quest: mezze giornate 10 – 13 nov, sessione principale ven 13; ripiego: prova di fumo del link 15 – 16 nov | ⬜ |
+| M6 Integrazione con il visore | **fase A** (strumenti, senza visore) sab 7 – lun 9 nov; **fase B** con il Quest (arriva mar 10): sessioni 10 – 13 nov, sessione principale ven 13; ripiego: prova di fumo del link 15 – 16 nov | 🟨 piano consegnato 2026-11-07 (piano: `docs/plans/M6.md`; guida utente: `docs/QUEST_SETUP.md`; scenari fase A: `qa/scenarios/M6-*.md`; realtà mista tagliata e fuori dal gate) |
 | M7 Rifinitura e consegna | 14 – 17 nov (consegna interna mar 17, 18:00; scadenza mer 18 nov, 12:00 PT = 21:00 in Italia) | ⬜ |
 
 ### Calendario ripianificato (2026-11-02)
@@ -299,20 +299,33 @@ sul visore in due stanze), ombre (si evita R-A), modalità una mano completa. Il
 | S5.9 Budget (aggiunto) | `qa/scenarios/M5-budget.md`: K1–K18, caso peggiore previsto ~82; ≥ 85 apre T5.RA |
 | S5.10 Regressione rapida (aggiunto) | `qa/scenarios/M5-regression.md`: S1.2, S1.3, S1.6, S2.1–S2.9, S3.0–S3.9, S4.1, S4.3–S4.8 con `pinch=grip` |
 
-**Gate visore**: realtà mista in due stanze mai provate prima, fps con ombre attive, contrasto
-leggibile, sessione completa di 10 minuti senza fastidio.
+**Gate visore**: ~~realtà mista in due stanze mai provate prima~~ (**tagliata e fuori dal gate**, D74 del piano M6),
+fps con le chiazze di luce del sole (non ci sono ombre vere), contrasto leggibile, sessione completa di 10 minuti
+senza fastidio. (Riallineato il 2026-11-07 con `docs/DEVICE_CHECKLIST.md`.)
 
 ## M6 · Integrazione con il visore
 
 **Obiettivo**: saldare tutto il debito in `qa/device/DEBT.md` e raggiungere Device-done per M1–M5.
+**Piano e decisioni D65–D79 in `docs/plans/M6.md` (consegnato il 2026-11-07, 🟨)**; guida per l'utente (Fedora, adb,
+certificato, debug remoto, Meta VR CLI e "Strumenti di M6"): `docs/QUEST_SETUP.md`. Due fasi.
 
-- Setup (vedi agente `quest-integrator`): modalità sviluppatore, adb su Fedora, `adb reverse`,
-  debug remoto da Chromium, Meta VR CLI.
-- Esecuzione di `docs/DEVICE_CHECKLIST.md` per ogni milestone.
-- Taratura: soglie del pizzico, distanze, dimensioni del testo, budget grafico reale.
-- Decisione finale sulla realtà mista (dentro o fuori dalla demo).
+- **Fase A · prima del visore (sab 7 – lun 9 nov)**, solo strumenti dietro `debug=1` o fuori dall'app, **default
+  invariati** e nessuna funzione nuova (T6.A1–T6.A13): manopole di taratura `t_<nome>` (URL, `dev-params.local.txt`,
+  file vivo `tuning.local.txt` riletto ogni 2 s, `foveation`), pannello di statistiche nel visore `ui:debug-hud`
+  (`hud=0` lo spegne), righe `[soglia:frames]`, `[soglia:stats:summary]` e `[soglia:env]` (sonda delle funzioni del
+  browser), script `npm run quest:*` per `adb` e `metavr`, maschera del campo visivo stretto (opzionale), pagina di
+  avvio (opzionale). Stima: nucleo ≈ 18 h reali, tutto ≈ 22 h (centrale × 1,8). Scenari PC: S6.1 taratura, S6.2
+  frame e pannello, S6.3 sonda, S6.4 script, S6.5 regressione ridotta e budget (`qa/scenarios/M6-*.md`).
+- **Fase B · con il visore (da mar 10 nov)**: sessioni S0 fumo e ambiente (mar sera), S1 mani (mer mattina),
+  S2 viaggi e dati (mer pomeriggio), S3 luce, agente, accessibilità e prestazioni (gio mattina), decisione dei
+  default (gio sera, entro il congelamento), S4 riverifica e gate (ven 13); ripiego L1–L3 se il visore tarda.
+  Esecuzione di `docs/DEVICE_CHECKLIST.md` (riallineata il 2026-11-07) e di `qa/device/DEBT.md` per priorità; taratura
+  con protocolli a soglie numeriche; budget grafico reale con criterio D71 (nessuna finestra di 2 s sotto 60 fps).
+- **Realtà mista: TAGLIATA e fuori dal gate** (decisione esplicita D74, conferma di M5: `mr=1` non ha effetto). Non
+  si prova e non si cita nella demo; resta solo il dato di `[soglia:env]` sul browser.
 
-**Gate**: tutte le voci della checklist superate o motivate; fps ≥ 60 in tutta la demo.
+**Gate**: tutte le voci della checklist superate o motivate (le righe `alta` di DEBT.md per milestone, D77); fps ≥ 60
+in tutta la demo (D71); nessuna dichiarazione "funziona sul visore" senza il report in `qa/device/`.
 
 ## M7 · Rifinitura e consegna
 
@@ -329,6 +342,7 @@ leggibile, sessione completa di 10 minuti senza fastidio.
 
 ## Changelog
 
+- 2026-11-07: **piano M6 consegnato (M6 ⬜ → 🟨)**: `docs/plans/M6.md` (decisioni D65–D79, fase A T6.A1–T6.A13, fase B sessioni S0–S4 con protocolli di taratura a soglie numeriche, ripiego L1–L3 se il visore tarda, rischi R57–R73, debito per `DEBT.md`, stima onesta: fase A nucleo ≈ 18 h reali / tutto ≈ 22 h, fase B ≈ 12,5 h di sessioni sul visore + ≈ 16 h di lavoro dell'agente) e scenari `qa/scenarios/M6-*.md` (S6.1–S6.5). Fase A = solo strumenti dietro `debug=1` o fuori dall'app, default invariati, nessuna dipendenza nuova. **Realtà mista tagliata e fuori dal gate** (D74, conferma di M5). `docs/DEVICE_CHECKLIST.md` riallineata (sette segnalazioni di `quest-integrator`: chiazze di luce al posto delle ombre, realtà mista tagliata, tastiera/microfono/presa a distanza non applicabili, voci mancanti di DEBT.md aggiunte, `debug=1` per `[soglia:stats]`, HTTPS autofirmato anche su `localhost`, `dev-params.local.txt` sul visore) e sezione 11 di `docs/QUEST_SETUP.md` completata con lo stato "da implementare". Stato di M5 invariato (✅ PC-done); nulla è provato sul visore.
 - 2026-11-06: **M5 🟨 → ✅ PC-done** (report unificato `qa/reports/M5-2026-11-06.md`, con i parziali AB, rerun e C2D; scenari S5.1, S5.3–S5.10 e regressioni S1.x, S2.x, S3.x, S4.x superati). Consegnati: Blocco R (riporti 1–8 di M4), sole in logica pura con chiazze di luce e dicitura "Simplified light", pannello "View" (sole, zoom, rotazione, contrasto, testo), punti informativi e Furnish/Clear del ruolo agent, alto contrasto (≥ 7:1), testo grande (pannelli scalati ×1,25, finestra di beccheggio ±8° dichiarata), "Rotate" a una mano, coach del pulsante Menu, T5.RA (muri e soglie uniti, −16 chiamate). Caso peggiore 70 chiamate per vista, 32.766 triangoli. Corretti dopo il gate: F1, W1, W2, F-D-1, F-D-2 e gli avvisi 3–9 del `contest-reviewer`. Aperti: rilettura del regolamento ufficiale (sito Devpost non raggiungibile dalla sessione), N2/N3 da rimisurare sul visore. Nulla è provato sul visore: voci M5 in `qa/device/DEBT.md`. M3 e M4 uniti in `main` con squash (PR #1 e #2).
 - 2026-11-06: **piano M5 consegnato (M5 ⬜ → 🟨)**: `docs/plans/M5.md` (decisioni D53–D64, Blocco R T5.R1–T5.R6, task T5.1–T5.18 con T5.16 sotto la linea e T5.RA condizionale, previsione dei draw call con caso peggiore ~82, rischi, debito, stima ≈ 30 h reali, ordine dei tagli) e scenari `qa/scenarios/M5-*.md` (S5.1, S5.3–S5.10). **Tagliati in partenza**: confronto di due disposizioni/case, mappa dell'interesse e domande (S5.2), realtà mista, ombre con shadow map (sostituite da chiazze di luce), trascinamento a una mano (T1.15 ridotto a pulsanti nel pannello "View"). Correzioni agli scenari esistenti (riporto 6) **applicate il 2026-11-06 su decisione dell'utente** (S3.0, S3.5, S4.3, S4.5, ciascuno con riga di changelog); confermate anche le chiazze di sole al posto delle shadow map, il pannello "View" unico e lo staging solo per apartment-a. Stato di M4 invariato (✅ PC-done).
 - 2026-11-02: **piano M4 consegnato (M4 ⬜ → 🟨)**: `docs/plans/M4.md` (decisioni D39–D52, Blocco R dei riporti di M3, task T4.R1–T4.R7 e T4.1–T4.14, previsione dei draw call, rischi, debito, stima onesta con fattore 1,8) e scenari `qa/scenarios/M4-*.md` (S4.1–S4.10). **Calendario M4–M7 ripianificato** (le date precedenti erano superate): M4 PC-done atteso dom 8 nov (limite lun 9), M5 ridotta 9–12 nov, **congelamento delle funzioni gio 12 nov 23:59**, M6 appena c'è il Quest (sessione principale ven 13), M7 14–17 nov con consegna interna mar 17, 18:00; tagli in ordine e scenari A/B in `docs/plans/M4.md`. Testo con le sole mani: frasi predefinite (D40), tastiera di sistema e nota vocale opzionali e tagliate di partenza. Cambio ruolo dal nuovo pannello "Issues" (D41). Scenari corretti nei punti di partenza (non nei criteri), con riga di changelog in testa: S1.2, S2.6, S2.9, S3.0, S3.2, S3.3 e nota condizionale su S3.1. `README.md` e `docs/DATA_FORMATS.md` in inglese passano a M7. Stato di M3 invariato (✅ PC-done).
