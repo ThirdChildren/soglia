@@ -8,7 +8,7 @@
 //   geometries/textures: `renderer.info.memory`.
 //   views             : `renderer.xr.getCamera().cameras.length` while presenting (2 on a stereo headset),
 //                       else 1. callsPerView = calls / views is what the budget limits.
-//   fps               : moving average of the last 120 frame deltas (seconds).
+//   fps               : moving average of the last 120 frame deltas (src/logic/frame-stats.ts; T6.A6).
 //   maxTextureSize    : largest side of the standard material texture slots found in the app's part of the
 //                       scene (UIKit font atlases are not material maps and are not included). Everything
 //                       under `world.player` (input visuals: controller/hand glTF models, ray cursor) belongs
@@ -19,8 +19,14 @@
 //                       the frustum is not tested), grouped by the nearest named ancestor (`classifyGroup`), and
 //                       everything under `world.player` counts as `hands`. It is an ESTIMATE of where the calls
 //                       go, not the renderer's number: compare its sum with `calls / views`.
-// No allocation per frame: the delta window and the Stats object are reused; the scene walks and the log
-// strings happen once every 2 seconds.
+//   frames line       : `[soglia:frames] n=.. hz=.. avgMs=.. p95Ms=.. maxMs=.. over=.. fps=.. class=OK|LOW|FAIL hzFrom=..` (T6.A6, D68, D71),
+//                       every 2 s while an XR session runs, over the last 120 frames (average, 95th percentile, worst frame, frames over
+//                       1.2 x the frame budget of the display rate). The window restarts when a session starts or ends.
+//   summary line      : `[soglia:stats:summary] seconds=.. minFps=.. worstMs=.. maxCallsPerView=.. maxTriangles=.. windowsBelow60=.. windows=..`
+//                       every 10 s of session, when the session ends and when the page is hidden; it starts again with the next session.
+//   groups line       : also ends with `hud=<n>` (the debug panel of T6.A8, counted apart so that `hud=0` removes it from a measure).
+// No allocation per frame: the delta window, the summary objects and the Stats object are reused; the scene walks, the sort for the
+// 95th percentile and the log strings happen once every 2 seconds.
 
 import { createSystem, type Material, type Object3D, type World } from '@iwsdk/core';
 import { slog, swarn } from '../log';
@@ -31,10 +37,26 @@ import {
   resetGroupCounts,
   type DrawGroup,
 } from '../logic/draw-groups';
-import { BUDGET, evaluateBudget, formatStatsLine, type Stats } from '../logic/stats';
+import {
+  createFrameSummary,
+  createFrameWindow,
+  createSessionStats,
+  formatFramesLine,
+  formatSummaryLine,
+  pushFrame,
+  recordSessionFrame,
+  recordSessionRender,
+  recordSessionWindow,
+  resetFrameWindow,
+  resetSessionStats,
+  summarize,
+  windowFps,
+} from '../logic/frame-stats';
+import { BUDGET, callsPerView, evaluateBudget, formatStatsLine, type Stats } from '../logic/stats';
 
 const INTERVAL_SECONDS = 2;
-const WINDOW = 120;
+/** Seconds of session between two `[soglia:stats:summary]` lines. */
+const SUMMARY_SECONDS = 10;
 const MAP_SLOTS = ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'emissiveMap', 'aoMap', 'alphaMap'] as const;
 
 interface TextureLike {
@@ -77,10 +99,11 @@ export function attachStats(world: World): void {
 }
 
 export class StatsSystem extends createSystem({}) {
-  private readonly deltas = new Float32Array(WINDOW);
-  private count = 0;
-  private cursor = 0;
-  private sum = 0;
+  private readonly frames = createFrameWindow();
+  private readonly frameSummary = createFrameSummary();
+  private readonly session = createSessionStats();
+  private wasPresenting = false;
+  private lastSummarySeconds = 0;
   private elapsed = 0;
   private readonly stats: Stats = {
     fps: 0,
@@ -121,17 +144,54 @@ export class StatsSystem extends createSystem({}) {
     for (let i = 0; i < children.length; i++) this.countGroups(children[i], group, insidePlayer);
   };
 
-  update(delta: number): void {
-    if (delta > 0 && delta < 1) {
-      this.sum += delta - (this.count === WINDOW ? this.deltas[this.cursor] : 0);
-      this.deltas[this.cursor] = delta;
-      this.cursor = (this.cursor + 1) % WINDOW;
-      if (this.count < WINDOW) this.count++;
+  init(): void {
+    // The page going to the background ends the measuring for now: write what the session has so far.
+    if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+      const onVisibility = (): void => {
+        if (document.visibilityState === 'hidden' && this.wasPresenting) this.logSummary();
+      };
+      document.addEventListener('visibilitychange', onVisibility);
+      this.cleanupFuncs.push(() => document.removeEventListener('visibilitychange', onVisibility));
     }
+  }
+
+  update(delta: number): void {
+    const presenting = this.world.renderer.xr.isPresenting;
+    if (presenting !== this.wasPresenting) this.onSessionEdge(presenting);
+    if (pushFrame(this.frames, delta) && presenting) recordSessionFrame(this.session, delta);
     this.elapsed += delta;
     if (this.elapsed < INTERVAL_SECONDS) return;
     this.elapsed = 0;
-    this.report();
+    this.report(presenting);
+  }
+
+  /** A session starts or ends: the frame window and the session totals start again; the end writes the summary first. */
+  private onSessionEdge(presenting: boolean): void {
+    if (!presenting) this.logSummary();
+    this.wasPresenting = presenting;
+    resetFrameWindow(this.frames);
+    this.elapsed = 0;
+    if (presenting) {
+      resetSessionStats(this.session);
+      this.lastSummarySeconds = 0;
+    }
+  }
+
+  private logSummary(): void {
+    this.lastSummarySeconds = this.session.seconds;
+    if (this.session.seconds > 0) console.log('[soglia:stats:summary] ' + formatSummaryLine(this.session));
+  }
+
+  /** The frame-time window and the session totals (T6.A6): only while a session runs, after the lines of M5. */
+  private reportFrames(stats: Stats): void {
+    // `frameRate` is what the browser says the display runs at; it may be missing (then the rate is estimated).
+    const hz = (this.world.xrSession as { frameRate?: number } | undefined)?.frameRate;
+    const summary = summarize(this.frames, hz, this.frameSummary);
+    if (summary.n === 0) return;
+    console.log('[soglia:frames] ' + formatFramesLine(summary));
+    recordSessionWindow(this.session, summary);
+    recordSessionRender(this.session, callsPerView(stats.calls, stats.views), stats.triangles);
+    if (this.session.seconds - this.lastSummarySeconds >= SUMMARY_SECONDS) this.logSummary();
   }
 
   private scanMaterial(material: Material): void {
@@ -148,11 +208,11 @@ export class StatsSystem extends createSystem({}) {
     }
   }
 
-  private report(): void {
+  private report(presenting: boolean): void {
     const renderer = this.world.renderer;
     const info = renderer.info;
     const stats = this.stats;
-    stats.fps = this.sum > 0 ? this.count / this.sum : 0;
+    stats.fps = windowFps(this.frames);
     stats.calls = info.render.calls;
     stats.triangles = info.render.triangles;
     stats.geometries = info.memory.geometries;
@@ -174,6 +234,7 @@ export class StatsSystem extends createSystem({}) {
     console.log('[soglia:stats:groups] ' + formatGroupsLine(this.groupCounts));
     const budget = evaluateBudget(stats);
     if (!budget.ok) swarn('budget exceeded: ' + budget.violations.join('; '));
+    if (presenting) this.reportFrames(stats);
     // Framework-owned textures (e.g. the 2048 px controller glTF that IWSDK loads from its CDN while a
     // controller is connected) are reported once per change, as information, not as an app violation.
     if (this.maxFrameworkTexture !== this.lastFrameworkTexture) {
