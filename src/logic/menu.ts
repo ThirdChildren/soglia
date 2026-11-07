@@ -2,6 +2,8 @@
 // the items and the buttons in the plane of the menu, and the choice of the item a pinch hits.
 // No imports from @iwsdk/core or three.
 
+import { getTuning, TUNING_DEFAULTS } from './tuning';
+
 /** Catalog items per page (a 2 x 3 grid: two columns, three rows). */
 export const PAGE_SIZE = 6;
 /** Columns and rows of the item grid. */
@@ -11,7 +13,7 @@ export const GRID_ROWS = 3;
  * A pinch takes a control when the pinch point is inside its rectangle in the plane of the menu and no farther
  * than this from that plane, in front of it or behind it (metres, D15).
  */
-export const PICK_DEPTH = 0.05;
+export const PICK_DEPTH = TUNING_DEFAULTS.pickDepth;
 
 /** Number of pages for `count` items: at least 1, so an empty catalog still has "page 1". */
 export function pageCount(count: number): number {
@@ -299,7 +301,7 @@ export function pickRect<T extends PickSlot>(
   point: Point3,
   slots: readonly T[],
   frame: Quat,
-  depth = PICK_DEPTH,
+  depth = getTuning().pickDepth,
 ): T | null {
   // Inverse rotation of the frame (its conjugate), as a rotation matrix applied below: v' = q* v q.
   const { x: qx, y: qy, z: qz, w: qw } = frame;

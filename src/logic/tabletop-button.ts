@@ -14,6 +14,7 @@
 // The worst corner is then 24.7 degrees off the gaze (24.4 with 10 cm), still inside 25.
 
 import { PICK_DEPTH } from './menu';
+import { getTuning } from './tuning';
 import type { Point3Like } from './view-fit';
 
 /** Stable id of the button (QA finds it with `ecs_find_entities`). */
@@ -88,7 +89,7 @@ export function pickTabletopButton(
   return (
     Math.abs(lx) <= TABLETOP_BUTTON_HALF_WIDTH * (widthFactor >= 1 ? widthFactor : 1) &&
     Math.abs(dy) <= TABLETOP_BUTTON_HALF_HEIGHT &&
-    Math.abs(lz) <= TABLETOP_BUTTON_PICK_DEPTH
+    Math.abs(lz) <= getTuning().pickDepth
   );
 }
 

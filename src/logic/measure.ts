@@ -9,9 +9,10 @@
 import { rectCorners, wallPieces, type Rect } from './footprint';
 import type { House, Wall } from './house';
 import { stableId } from './ids';
+import { getTuning, TUNING_DEFAULTS } from './tuning';
 
 /** Snap radius in metres of the WORLD (0.012 m): 0.24 m of plan at scale 0.05, 0.10 m at 0.12. */
-export const SNAP_WORLD_RADIUS = 0.012;
+export const SNAP_WORLD_RADIUS = TUNING_DEFAULTS.measureSnap;
 
 /** Distances closer than this (metres of plan) count as equal when two targets compete (see `snapPoint`). */
 const TIE_EPS = 1e-9;
@@ -139,7 +140,7 @@ function pushFaces(out: SnapTarget[], wall: Wall, id: string): void {
 
 /** The snap radius on the plan, in metres, for a miniature scale; 0 (no snapping) when the scale is not a positive number. */
 export function snapRadiusPlan(worldScale: number): number {
-  return Number.isFinite(worldScale) && worldScale > 0 ? SNAP_WORLD_RADIUS / worldScale : 0;
+  return Number.isFinite(worldScale) && worldScale > 0 ? getTuning().measureSnap / worldScale : 0;
 }
 
 // Tie-break between targets at the same distance (within TIE_EPS): the kind first, then the id, then the

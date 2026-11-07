@@ -24,7 +24,7 @@ import { BASE_TOP } from '../logic/constants';
 import { MINIATURE_ROOT_ID } from '../logic/ids';
 import {
   formatTranslated,
-  GESTURE_SETTLE_MS,
+  settlePending,
   isOnBase,
   panStep,
   roundOffset,
@@ -110,7 +110,7 @@ export class MiniaturePanSystem extends createSystem({
     pinchPoint(active.hand, this.point);
     getMiniatureAnchor(this.anchor);
     if (!active.captured) {
-      if (performance.now() - active.startedAt < GESTURE_SETTLE_MS) return;
+      if (settlePending(active.startedAt, performance.now())) return;
       active.captured = true;
       const [ox, oz] = ctx.store.get().miniature.offset;
       active.reference = startPan(this.point.x, this.point.z, ox, oz);

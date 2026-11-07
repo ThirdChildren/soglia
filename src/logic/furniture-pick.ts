@@ -7,9 +7,10 @@
 import { footprint, type CatalogItem } from './catalog';
 import type { PlacedPiece } from './placement-rules';
 import { realScaleBlend } from './real-scale';
+import { getTuning, TUNING_DEFAULTS } from './tuning';
 
 /** The footprint of a piece is grown by this much on each side for the pick (world metres, D15). */
-export const PICK_MARGIN_WORLD = 0.015;
+export const PICK_MARGIN_WORLD = TUNING_DEFAULTS.pickMargin;
 /** A pinch picks a piece only at most this high above the model floor (world metres, D15). */
 export const PICK_HEIGHT_WORLD = 0.06;
 /** ... and at most this far below it (a hand a little under the floor plane still picks). */
@@ -44,8 +45,9 @@ export interface PickParams {
  */
 export function pickParamsForScale(scale: number): PickParams {
   const t = realScaleBlend(scale);
+  const margin = getTuning().pickMargin; // the knob `pickMargin` (D66); its default is PICK_MARGIN_WORLD
   return {
-    marginWorld: PICK_MARGIN_WORLD + t * (PICK_MARGIN_REAL_WORLD - PICK_MARGIN_WORLD),
+    marginWorld: margin + t * (PICK_MARGIN_REAL_WORLD - margin),
     heightWorld: PICK_HEIGHT_WORLD,
     belowWorld: PICK_BELOW_WORLD,
     pieceWeight: t,

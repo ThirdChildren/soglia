@@ -11,9 +11,10 @@
 // and the marker anchors live in.
 
 import { CUT_HEIGHT } from './constants';
+import { getTuning, TUNING_DEFAULTS } from './tuning';
 
-/** A pinch within this distance (world metres) of the centre of a marker picks it. */
-export const VIEWPOINT_PICK_RADIUS = 0.025;
+/** A pinch within this distance (world metres) of the centre of a marker picks it. Default of the knob `viewpointRadius` (D66). */
+export const VIEWPOINT_PICK_RADIUS = TUNING_DEFAULTS.viewpointRadius;
 
 /** Size of the pillar (plan metres): about 2.3 x 4.5 cm on the table at 1:20, readable and small enough not to hide a room. */
 export const MARKER_BODY = { sx: 0.45, sy: 0.9, sz: 0.45 } as const;
@@ -93,7 +94,7 @@ export function pickMarker(
   py: number,
   pz: number,
   candidates: readonly MarkerCandidate[],
-  radius: number = VIEWPOINT_PICK_RADIUS,
+  radius: number = getTuning().viewpointRadius,
 ): string | null {
   if (!Number.isFinite(px) || !Number.isFinite(py) || !Number.isFinite(pz) || !Number.isFinite(radius)) return null;
   let best: string | null = null;

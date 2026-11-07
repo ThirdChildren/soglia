@@ -14,6 +14,7 @@
 // The table in tests/unit/menu-button.test.ts gives distance and angle for scale 0.03-0.12 and for heads at 1.2-1.9 m.
 
 import { PICK_DEPTH } from './menu';
+import { getTuning, TUNING_DEFAULTS } from './tuning';
 import { BASE_ABOVE } from './miniature-pan';
 import { SCALE } from './state';
 import { yawTowardHead, type Point3Like } from './view-fit';
@@ -35,7 +36,7 @@ export const BUTTON_HALF_HEIGHT = BUTTON_PANEL.height / 200;
 export const BUTTON_PICK_DEPTH = PICK_DEPTH;
 
 /** Radius of the ring the buttons sit on, around the anchor of the model (the edge of the base at scale 0.05), metres. */
-export const BUTTON_RING_RADIUS = 0.45;
+export const BUTTON_RING_RADIUS = TUNING_DEFAULTS.buttonRing;
 /** Angle of a button from the direction (anchor -> user), degrees: 90 is the side of the model, more is farther from the user. */
 export const BUTTON_RING_ANGLE_DEG = 105;
 
@@ -105,8 +106,9 @@ export function buttonAnchors(
   const az = usable ? anchor.z : 0;
   const yaw = Number.isFinite(placementYawRad) ? placementYawRad : 0;
   const theta = BUTTON_RING_ANGLE_DEG * DEG_TO_RAD;
-  const side = BUTTON_RING_RADIUS * Math.sin(theta); // to the right (or left) of the user
-  const toward = BUTTON_RING_RADIUS * Math.cos(theta); // toward the user (negative: past the side, away from them)
+  const ring = getTuning().buttonRing; // the knob `buttonRing` (D66)
+  const side = ring * Math.sin(theta); // to the right (or left) of the user
+  const toward = ring * Math.cos(theta); // toward the user (negative: past the side, away from them)
   const rightX = Math.cos(yaw);
   const rightZ = -Math.sin(yaw);
   const towardX = Math.sin(yaw);
@@ -242,7 +244,7 @@ export function pickButton<T extends ButtonAnchor>(point: Readonly<Point3Like>, 
     // Axes of the panel after `rotation.y = yaw`: x -> (c, 0, -s), z (its normal) -> (s, 0, c).
     const lx = dx * c - dz * s;
     const lz = dx * s + dz * c;
-    if (!(Math.abs(lx) <= (b.halfWidth ?? BUTTON_HALF_WIDTH) && Math.abs(dy) <= BUTTON_HALF_HEIGHT && Math.abs(lz) <= BUTTON_PICK_DEPTH)) continue;
+    if (!(Math.abs(lx) <= (b.halfWidth ?? BUTTON_HALF_WIDTH) && Math.abs(dy) <= BUTTON_HALF_HEIGHT && Math.abs(lz) <= getTuning().pickDepth)) continue;
     const distance = Math.sqrt(lx * lx + dy * dy + lz * lz);
     if (distance < bestDistance) {
       best = b;

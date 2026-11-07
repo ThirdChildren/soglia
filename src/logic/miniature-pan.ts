@@ -8,16 +8,22 @@
 
 import { BASE_RADIUS } from './constants';
 import { pointInPolygon, type Point2 } from './geometry';
+import { getTuning, TUNING_DEFAULTS } from './tuning';
 
 /** The centre of the model stays within this horizontal distance of its anchor (metres). */
 export const PAN_MAX_RADIUS = 0.3;
 /** A drag shorter than this (metres) counts as no drag. */
-export const TRANSLATE_DEAD_ZONE = 0.005;
+export const TRANSLATE_DEAD_ZONE = TUNING_DEFAULTS.deadZone;
 /**
  * A gesture takes its reference this long after the pinch starts (milliseconds): the grip pose of a hand
  * moves while the fingers close (about 1 cm in IWER), and that must not count as a drag.
  */
-export const GESTURE_SETTLE_MS = 150;
+export const GESTURE_SETTLE_MS = TUNING_DEFAULTS.settleMs;
+
+/** True while a gesture that started at `startedAt` (ms) is still inside the settle time of the knob `settleMs` (D66). */
+export function settlePending(startedAt: number, now: number): boolean {
+  return now - startedAt < getTuning().settleMs;
+}
 
 /** A horizontal vector; also used as the output of the functions below (allocation-free). */
 export interface Offset2 {
@@ -160,7 +166,7 @@ export function panStep(
 ): Offset2 {
   let dx = handX - session.handX;
   let dz = handZ - session.handZ;
-  if (!Number.isFinite(dx) || !Number.isFinite(dz) || dx * dx + dz * dz < TRANSLATE_DEAD_ZONE * TRANSLATE_DEAD_ZONE) {
+  if (!Number.isFinite(dx) || !Number.isFinite(dz) || dx * dx + dz * dz < getTuning().deadZone * getTuning().deadZone) {
     dx = 0;
     dz = 0;
   }
