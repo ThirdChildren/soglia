@@ -10,8 +10,11 @@ import { rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { defineConfig, type Plugin } from 'vite';
 
-/** Agent instruction files live next to the code they govern in public/; they are not app content. */
-const AGENT_DOCS = ['ui/AGENTS.md', 'scenes/AGENTS.md'];
+/**
+ * Files and folders of public/ that are not app content: the agent instruction files that live next to the code they govern, and
+ * `dev/` (the start page for the headset that `npm run quest:links` writes, T6.A11: a development tool, never published).
+ */
+const AGENT_DOCS = ['ui/AGENTS.md', 'scenes/AGENTS.md', 'dev'];
 
 function excludeAgentDocs(): Plugin {
   let outDir = 'dist';
@@ -22,7 +25,7 @@ function excludeAgentDocs(): Plugin {
       outDir = join(config.root, config.build.outDir);
     },
     closeBundle() {
-      for (const file of AGENT_DOCS) rmSync(join(outDir, file), { force: true });
+      for (const file of AGENT_DOCS) rmSync(join(outDir, file), { force: true, recursive: true });
     },
   };
 }

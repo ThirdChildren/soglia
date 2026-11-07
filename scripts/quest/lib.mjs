@@ -390,6 +390,57 @@ export function buildLinksMarkdown(presets, base) {
   return lines.join('\n');
 }
 
+/** Text safe inside HTML text and a double-quoted attribute. @param {string} text */
+export function escapeHtml(text) {
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+/**
+ * The start page for the headset (`public/dev/quest.html`, served by the development server only): one big link per preset,
+ * plain HTML and CSS (no script), English. The links are relative (`../?query`), so the page works on whatever port the server
+ * has and a link opens the app at the root of the same server. Open it in the Quest Browser window, tap a scenario, then enter VR
+ * from the app: nothing to type, no adb. The page is a development tool and is removed from the production build.
+ * @param {Preset[]} presets
+ */
+export function buildQuestPage(presets) {
+  const items = presets
+    .map(
+      (p) =>
+        `    <li><a href="../?${escapeHtml(p.query)}"><span class="name">${escapeHtml(p.id)}</span><span class="what">${escapeHtml(p.title)}</span></a></li>`,
+    )
+    .join('\n');
+  return [
+    '<!doctype html>',
+    '<html lang="en">',
+    '<head>',
+    '  <meta charset="utf-8">',
+    '  <meta name="viewport" content="width=device-width, initial-scale=1">',
+    '  <title>Soglia test scenarios</title>',
+    '  <style>',
+    '    :root { color-scheme: light dark; --bg: #ffffff; --ink: #1a1a1a; --card: #f1f3f6; --edge: #1a1a1a; }',
+    '    @media (prefers-color-scheme: dark) { :root { --bg: #14161a; --ink: #f5f5f5; --card: #23272e; --edge: #f5f5f5; } }',
+    '    body { margin: 0; padding: 24px; background: var(--bg); color: var(--ink); font: 22px/1.35 system-ui, sans-serif; }',
+    '    h1 { font-size: 34px; margin: 0 0 8px; }',
+    '    p { margin: 0 0 20px; max-width: 40em; }',
+    '    ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; max-width: 40em; }',
+    '    a { display: block; min-height: 64px; padding: 14px 18px; border: 3px solid var(--edge); border-radius: 14px; background: var(--card); color: var(--ink); text-decoration: none; }',
+    '    a:active, a:focus { outline: 4px solid #ffd400; }',
+    '    .name { display: block; font-weight: 700; font-size: 26px; }',
+    '    .what { display: block; }',
+    '  </style>',
+    '</head>',
+    '<body>',
+    '  <h1>Soglia test scenarios</h1>',
+    '  <p>Tap a scenario, then enter VR from the app. The saved state is reset by every scenario except <b>resume</b>. Development page: it is not part of the published app.</p>',
+    '  <ul>',
+    items,
+    '  </ul>',
+    '</body>',
+    '</html>',
+    '',
+  ].join('\n');
+}
+
 // ---------------------------------------------------------------------------------------------------------------
 // Tuning file (quest:tune)
 

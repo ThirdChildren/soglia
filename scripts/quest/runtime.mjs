@@ -22,6 +22,8 @@ export const PRESETS_FILE = join(ROOT, 'qa', 'device', 'presets.json');
 export const LOGS_DIR = join(ROOT, 'qa', 'device', 'logs');
 export const TRACES_DIR = join(ROOT, 'qa', 'device', 'traces');
 export const LINKS_FILE = join(ROOT, 'qa', 'device', 'links.md');
+/** The start page for the headset: development server only, left out of the build (vite.config.ts) and of git. */
+export const QUEST_PAGE_FILE = join(ROOT, 'public', 'dev', 'quest.html');
 export const TUNING_FILE = join(ROOT, 'tuning.local.txt');
 
 /** Prints an error line to stderr and ends the process (exit code 1, or 2 for a wrong command line). */

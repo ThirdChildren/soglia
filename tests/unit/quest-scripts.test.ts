@@ -12,12 +12,14 @@ import {
   buildCaptureCommand,
   buildLinksMarkdown,
   buildOpenIntent,
+  buildQuestPage,
   buildPerfCommand,
   buildReverseCommand,
   chooseConsoleChannel,
   clockStamp,
   consoleLogName,
   displayArg,
+  escapeHtml,
   encodeLaunchUrl,
   formatCdpMessage,
   formatCommand,
@@ -250,6 +252,55 @@ describe('presets', () => {
     const text = buildLinksMarkdown(parsed.presets, baseUrl(8081));
     for (const p of parsed.presets) expect(text).toContain(presetUrl(p, baseUrl(8081)));
     expect(text).not.toMatch(/[\u00e0\u00e8\u00e9\u00ec\u00f2\u00f9]/);
+  });
+});
+
+describe('the start page for the headset (T6.A11)', () => {
+  const parsed = parsePresets(presetsData);
+  const presets = parsed.ok ? parsed.presets : [];
+  const page = buildQuestPage(presets);
+  /** The `href` values of the page, with the HTML entities of the page undone. */
+  const hrefs = [...page.matchAll(/href="([^"]*)"/g)].map((m) => m[1].replace(/&amp;/g, '&'));
+  it('escapes the characters that are special in HTML', () => {
+    expect(escapeHtml('a&b<c>"d"')).toBe('a&amp;b&lt;c&gt;&quot;d&quot;');
+  });
+  it('has one link per preset, in order, relative to the root of the same server', () => {
+    expect(hrefs).toEqual(presets.map((p) => `../?${p.query}`));
+    expect(hrefs.length).toBeGreaterThanOrEqual(12);
+  });
+  it('every link is a preset the app reads without a warning', () => {
+    for (const href of hrefs) {
+      const query = href.slice('../?'.length);
+      expect(isQueryString(query), href).toBe(true);
+      expect(parseParams(query).warnings, href).toEqual([]);
+    }
+  });
+  it('shows the name and the title of every preset', () => {
+    for (const p of presets) {
+      expect(page).toContain(`<span class="name">${escapeHtml(p.id)}</span>`);
+      expect(page).toContain(escapeHtml(p.title));
+    }
+  });
+  it('is plain HTML and CSS: no script, no external file, no absolute URL', () => {
+    expect(page).not.toMatch(/<script|<link|<img|src=|https?:\/\//i);
+    expect(page.startsWith('<!doctype html>')).toBe(true);
+  });
+  it('is English with ASCII only, and has big tap targets', () => {
+    expect(page).not.toMatch(/[^\x09\x0a\x20-\x7e]/);
+    expect(page).toMatch(/min-height: 6\d+px/);
+    expect(page).toMatch(/font: 2\d+px/);
+  });
+  it('does not let a title or a query break out of its attribute or tag', () => {
+    const hostile = buildQuestPage([{ id: 'x', title: '<b>"hi"</b>', query: 'a="1"&b=<2>' }]);
+    expect(hostile).not.toContain('<b>"hi"</b>');
+    expect(hostile).toContain('href="../?a=&quot;1&quot;&amp;b=&lt;2&gt;"');
+  });
+  it('is written by quest:links (dry-run says so) and kept out of git and out of the build', () => {
+    const run = spawnSync(process.execPath, [join(ROOT, 'scripts', 'quest', 'links.mjs'), '--port', '8081', '--dry-run'], { encoding: 'utf8' });
+    expect(run.status).toBe(0);
+    expect(run.stdout).toContain('public/dev/quest.html');
+    expect(readFileSync(join(ROOT, '.gitignore'), 'utf8')).toMatch(/^public\/dev\/$/m);
+    expect(readFileSync(join(ROOT, 'vite.config.ts'), 'utf8')).toMatch(/AGENT_DOCS = \[[^\]]*'dev'/);
   });
 });
 

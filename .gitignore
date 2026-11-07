@@ -52,4 +52,5 @@ qa/device/traces/
 qa/device/logs/
 qa/device/captures/
 qa/device/links.md
+public/dev/
 tuning.local.txt
