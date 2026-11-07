@@ -245,11 +245,17 @@ https://localhost:8081/?debug=1
 ```
 
 Per non scrivere l'URL con la tastiera virtuale puoi lanciarlo dal PC (da verificare: l'intento
-Android standard dovrebbe aprire il Quest Browser; le `&` vanno protette dalle virgolette):
+Android standard dovrebbe aprire il Quest Browser). **Attenzione alle `&`**: `adb shell` incolla gli
+argomenti in una sola stringa e la shell **del visore** la rilegge, quindi il comando remoto deve
+essere **un solo argomento tra apici singoli, con l'URL tra virgolette doppie** dentro. La forma senza
+apici esterni (`adb shell am start ... -d "https://...&..."`) si rompe con le `&` (la parte dopo la
+prima `&` diventa un comando in background):
 
 ```bash
-adb shell am start -a android.intent.action.VIEW -d "https://localhost:8081/?debug=1"
+adb shell 'am start -a android.intent.action.VIEW -d "https://localhost:8081/?house=apartment-a&debug=1"'
 ```
+
+Lo script `npm run quest:open -- <preset>` (sezione 11) costruisce già il comando giusto.
 
 Un altro modo per non digitare URL: i parametri possono stare nel file `dev-params.local.txt` nella
 radice del progetto (ignorato da git, letto **solo dal server di sviluppo**; vedi sezione 6).
@@ -394,6 +400,8 @@ scrive un avviso in console. Se una chiave compare due volte vale la prima.
 | `furnish` | `none` / `scandinavian` | `none` | parte con l'arredo di esempio (aiuto di sviluppo) |
 | `mr` | `1` / `0` | `0` | letto ma **senza effetto**: la realtà mista è tagliata da M5 |
 | `glyphs`, `failmodels`, `failmy`, `failcatalog` | `1` | `0` | aiuti per lo sviluppo; funzionano solo insieme a `debug=1`: non servono sul visore |
+| `hud` | `1` / `0` | `1` con `debug=1` | `hud=0` spegne il pannello di statistiche nel visore (per le misure finali); senza `debug=1` è ignorato con un avviso |
+| `t_<nome>` | numero | vedi sezione 11.2 | manopole di taratura (soglie del pizzico, raggi, palmo, distanze, timer, `foveation`, `fovMask`); solo con `debug=1` |
 
 Il `?` iniziale e le `&` separano i parametri. L'ora si scrive con i due punti: `time=2026-12-21T10:00`.
 
@@ -585,37 +593,73 @@ vere. Per le prove di Soglia usa il percorso normale delle sezioni 4-7.
 
 ## 11. Strumenti di M6
 
-> **Stato (2026-11-07)**: il piano M6 (`docs/plans/M6.md`) li ha definiti, ma **al momento della
-> scrittura nessuno è ancora implementato**: la fase A del piano (7-9 novembre) li costruisce. Prima di
-> usare un comando o un parametro di questa sezione controlla che esista (`npm run` senza argomenti
-> elenca gli script; la colonna "Task" dice quale task lo consegna). Se un nome è cambiato durante
-> l'implementazione, il task T6.A11 del piano riallinea questa sezione con la realtà: fidati del
-> codice, non di questo testo.
+> **Stato (2026-11-07, sera)**: la fase A del piano M6 è **implementata** (T6.A1–T6.A11) e questa sezione
+> è stata riletta contro il codice (`scripts/quest/`, `src/logic/tuning.ts`, `src/debug/`,
+> `qa/device/presets.json`). Tutto è provato **sul PC** (test unitari, `--dry-run`, un `adb` e un server di
+> debug finti, l'emulatore): **nulla è provato sul visore**. Ogni comando che parla con un Quest vero
+> (`adb reverse`, l'apertura dell'URL, `--mode vr`, il socket di debug remoto, `logcat`, `metavr`) è
+> **da verificare** martedì; se uno non funziona, annotalo (è il lavoro della sessione S0 di `docs/plans/M6.md`)
+> e gli script si correggono in meno di un'ora. Se un nome qui non corrisponde al codice, fidati del codice
+> (`npm run` elenca gli script).
 
-### 11.1 Script npm `quest:*` (task T6.A8, T6.A10)
+### 11.0 Procedimento per martedì (sessione S0, circa 1,5 h)
 
-Tutti accettano `--dry-run` (stampano i comandi `adb` senza eseguirli) e `--serial <numero>`; se `adb`
-vede più di un dispositivo, lo script **si ferma** e chiede il numero di serie (non ne sceglie uno).
-Messaggi e codice sono in inglese.
+Prima: Fedora pronta (sezione 1), `npm ci`, `npm test`, `npm run build` verdi, visore in modalità sviluppatore e
+collegato con il cavo dati (sezione 3), tracciamento delle mani attivo, controller spenti, seduto.
 
-| Comando | Cosa fa | Task |
-|---|---|---|
-| `npm run quest:check` | elenca il visore (`adb devices`), modello e batteria, i collegamenti `adb reverse` attivi e lo stato del server (`dev status`); termina con un messaggio chiaro se non c'è il visore | T6.A8 |
-| `npm run quest:serve` | `npx @iwsdk/cli dev up --no-open` e stampa gli URL (porta letta da `dev status`) | T6.A8 |
-| `npm run quest:reverse` / `quest:unreverse` | `adb reverse tcp:<porta> tcp:<porta>` / `adb reverse --remove` | T6.A8 |
-| `npm run quest:open -- <preset\|url> [--mode vr\|browser]` | apre l'URL nel Quest Browser dal PC. `--mode vr` prova l'avvio diretto in VR (`ovrweb://vr?uri=...`, da verificare sul visore), `--mode browser` usa l'intento Android `VIEW`. I preset sono in `qa/device/presets.json` | T6.A8 |
-| `npm run quest:links` | stampa i preset con gli URL e scrive `qa/device/links.md`; con la pagina di avvio, genera anche `public/dev/quest.html` (solo sviluppo, esclusa dalla build) | T6.A8, T6.A10 |
-| `npm run quest:tune -- nome=valore ...` | scrive `tuning.local.txt` (ignorato da git); il server di sviluppo lo rilegge ogni 2 s e l'app applica i valori **senza ricaricare**. `quest:tune -- --clear` torna ai default | T6.A8 |
-| `npm run quest:console` | salva su file (`qa/device/logs/`) la console del Quest Browser; usa il protocollo di debug se il PC ha Node 22+ (`WebSocket` globale), altrimenti `adb logcat`; altrimenti vale `chrome://inspect` (sezione 5.1). Da verificare sul visore | T6.A8 |
-| `npm run quest:perf -- [--seconds 10]` | traccia di prestazioni con `npx metavr perf capture` sull'app del browser; salva in `qa/device/traces/` (ignorata da git). Sottocomandi e flag da verificare con `npx metavr perf --help` | T6.A8 |
-| `npm run quest:capture -- shot\|video` | screenshot o registrazione con `npx metavr capture` (o `adb pull` come in 5.2) | T6.A8 |
-| `npm run quest:preview` | `npm run build` + `vite preview` (HTTP sulla porta 4173) per le misure finali di fps su build di produzione; con `adb reverse tcp:4173 tcp:4173` si apre `http://localhost:4173/?debug=1` (`localhost` in HTTP è un contesto sicuro, senza avviso del certificato: da verificare) | T6.A8 |
+```bash
+cd ~/soglia
+npm run quest:check                          # 1. vede il visore? modello, batteria, reverse attivi, stato del server
+npm run quest:serve                          # 2. avvia il server di sviluppo senza aprire il browser dell'emulatore
+npm run quest:reverse                        # 3. adb reverse sulla porta che il server dichiara (di solito 8081)
+npm run quest:open -- smoke                  # 4. apre https://localhost:<porta>/?house=apartment-a&role=visitor&reset=1&seed=1&debug=1
+npm run quest:console                        # 5. (in un secondo terminale) salva la console del visore in qa/device/logs/
+# nel visore: accetta l'avviso del certificato (prima volta), premi "Enter VR", accetta il permesso WebXR
+npm run quest:tune -- pinnedDistance=0.62    # 6. cambia una soglia a sessione aperta, senza ricaricare (vedi 11.2)
+```
+
+Controlla con `quest:check` prima di partire; se il passo 4 apre il browser ma non l'URL, usa
+`npm run quest:open -- smoke --mode browser` oppure digita a mano l'URL stampato da `quest:links`. Se
+`quest:console` non trova il socket di debug, usa `chrome://inspect` (sezione 5.1) e annota che il canale
+automatico non ha funzionato. Alternativa senza `adb` per cambiare scenario: apri nel visore
+`https://localhost:<porta>/dev/quest.html` (pagina con un link grande per preset, 11.1). A fine sessione:
+`npm run quest:unreverse`, `npm run dev:down`, `rm -f tuning.local.txt dev-params.local.txt`.
+
+Cosa guardare per prima cosa nella console o nel pannello `ui:debug-hud` (vedi 11.3): `[soglia:env]` con
+`iwer=no` e tutti gli indizi della riga `[soglia] env iwer clues` a `0`; `views=2`; `readyMs` e `startMs` (avvio a
+freddo); poi `[soglia:frames]` con `hz`, `fps` e `class`. Per le **misure finali** di fps non usare il server di
+sviluppo ma `npm run quest:preview` con `hud=0` (sezione 11.1).
+
+### 11.1 Script npm `quest:*` (task T6.A9, T6.A11)
+
+Undici script, tutti con `--dry-run` (stampa i comandi senza eseguirli; l'unica lettura che fanno è
+`npx @iwsdk/cli dev status` per sapere la porta). `--serial <numero>` vale per quelli che parlano con un
+dispositivo (`check`, `reverse`, `unreverse`, `open`, `console`, `perf`, `capture`): se `adb` vede **più di
+un dispositivo** e non dai `--serial`, lo script **si ferma** e non ne sceglie uno (D69). Senza `adb` o senza
+visore esce con codice 1 e un messaggio in inglese. **Porta**: `--port` > quella che dichiara `dev status` > 8081.
+
+| Comando | Cosa fa |
+|---|---|
+| `npm run quest:check` | elenca il visore (`adb devices -l`), modello e batteria, i collegamenti `adb reverse` attivi e lo stato del server |
+| `npm run quest:serve` | `npx @iwsdk/cli dev up --no-open` e stampa gli URL (porta letta da `dev status`) |
+| `npm run quest:reverse` / `quest:unreverse` | `adb reverse tcp:<porta> tcp:<porta>` / `adb reverse --remove tcp:<porta>` |
+| `npm run quest:open -- <preset\|url> [--mode browser\|vr] [--base <url>]` | apre un preset (`qa/device/presets.json`) o un URL nel Quest Browser dal PC. `--mode browser` (predefinito) = intento Android `VIEW`; `--mode vr` = `am broadcast … ovrweb://vr?uri=<URL codificato>` (da verificare: dovrebbe entrare in VR da solo). Apre solo `localhost` e indirizzi di rete privati. Il comando remoto è **un solo argomento** con l'URL tra virgolette doppie, quindi le `&` non rompono nulla (sezione 4.2) |
+| `npm run quest:links` | stampa i **12 preset** con gli URL (`smoke`, `a-clean`, `b-clean`, `tenant`, `landlord`, `agent`, `sun-winter-10`, `sun-summer-14`, `contrast-text`, `grip`, `perf-worst`, `resume`), scrive `qa/device/links.md` e genera la **pagina di avvio** `public/dev/quest.html` (solo sviluppo, ignorata da git, esclusa dalla build; link relativi, quindi vale qualunque porta). Nel visore: `https://localhost:<porta>/dev/quest.html`, tocca uno scenario, poi "Enter VR" |
+| `npm run quest:tune -- nome=valore …` | scrive `tuning.local.txt` (una riga `t_nome=valore&…`, ignorato da git; **aggiunge il prefisso `t_` da solo**); il server di sviluppo lo rilegge ogni 2 s e l'app applica i valori **senza ricaricare**. Un nome sconosciuto o un valore non numerico non scrive nulla; fuori limite avvisa (il limite lo applica l'app). `quest:tune -- --clear` cancella il file |
+| `npm run quest:console` | salva la console del Quest Browser in `qa/device/logs/console-<data>-<ora>.log` (e la stampa). Canale **CDP** se il PC ha Node 22+ (`WebSocket` globale): `adb forward tcp:9222 localabstract:chrome_devtools_remote` (`--socket` per cambiare nome), mostra console, eccezioni e richieste di rete a host diversi da quello della pagina (utile per "nessuna richiesta alla CDN"); altrimenti `adb logcat` filtrato su `[soglia`. Opzioni: `--seconds`, `--match`, `--all`, `--channel cdp\|logcat`. Se nessuno dei due funziona vale `chrome://inspect` (5.1) |
+| `npm run quest:perf -- [--seconds 10] [-- <parole di metavr>]` | traccia di prestazioni con `npx metavr perf capture --app com.oculus.browser --mode vr --duration <ms>`, salvata sotto `qa/device/traces/` (ignorata da git). I sottocomandi e i flag di `metavr` sono **da verificare** con `npx metavr perf --help` (le parole dopo `--` si aggiungono così come sono); il dispositivo per `metavr` si sceglie con la variabile `ANDROID_SERIAL` |
+| `npm run quest:capture -- shot\|video [--seconds n]` | screenshot o registrazione con `npx metavr capture …`, sotto `qa/device/captures/` (ignorata da git); flag da verificare con `npx metavr capture --help`. Senza `metavr`: `adb pull` come in 5.2 |
+| `npm run quest:preview` | `npm run build` + `vite preview` (HTTP sulla porta 4173) per le **misure finali di fps** su build di produzione; con `adb reverse tcp:4173 tcp:4173` si apre `http://localhost:4173/?debug=1&hud=0` (`localhost` in HTTP è un contesto sicuro, senza avviso del certificato: da verificare) |
 
 ### 11.2 Parametri di taratura e di diagnostica (solo con `debug=1`)
 
-Sono letti da `src/logic/tuning.ts` e `src/logic/params.ts` (task T6.A1-T6.A7, T6.A9). Senza
-`debug=1` sono ignorati con un avviso `[soglia] tuning ignored ... reason=needs-debug`. Un valore fuori
-limite viene ricondotto al limite più vicino e scritto in console (`tuning clamped`).
+Sono letti da `src/logic/tuning.ts` (26 manopole, **tutte cablate**: le "opzionali" del piano ci sono) e da
+`src/logic/params.ts` (`hud`). Senza `debug=1` sono ignorati con un avviso `[soglia] tuning ignored name=… reason=needs-debug`
+(uno per nome). Un valore fuori limite viene ricondotto al limite più vicino (`tuning clamped`), un nome
+sconosciuto o un valore non numerico si scarta (`reason=unknown|not-a-number`), `t_palmCloseDeg` deve restare sopra
+`t_palmOpenDeg` (`reason=order`). **Tre strati, dal più forte**: file vivo `tuning.local.txt` (riletto ogni 2 s dal server di
+sviluppo; **vuole il prefisso `t_`**: `t_fovMask=45`, senza prefisso è ignorato senza alcuna riga di log), URL (`?…&t_nome=valore`), `dev-params.local.txt`;
+poi il default. La taratura **non si salva**: a ogni avvio si riparte da default + URL/file.
 
 | Parametro | Default | Limiti | Unità | Si applica |
 |---|---|---|---|---|
@@ -634,24 +678,34 @@ limite viene ricondotto al limite più vicino e scritto in console (`tuning clam
 | `t_pinnedDistance` / `t_pinnedDrop` | 0,55 / 0,20 | 0,45-0,75 / 0,05-0,35 | m | alla prossima apertura del menu o del pannello |
 | `t_anchorForward` / `t_anchorDown` | 0,45 / 0,25 | 0,35-0,65 / 0,10-0,40 | m | al prossimo posizionamento (avvio sessione o `Recenter`) |
 | `t_rotateWindow` / `t_coachTimeout` | 12 / 20 | 6-30 / 8-60 | s | alla prossima comparsa |
-| `t_longPressSettle`, `t_fixtureSnap`, `t_measureSnap`, `t_releaseGuard`, `t_buttonRing` | 0,15 s, 0,02 m, 0,012 m, 0,3 s, 0,45 m | vedi `docs/plans/M6.md` | s / m | **opzionali**: esistono solo se T6.A2/T6.A3 li cablano (controlla la riga `tuning table`) |
-| `t_foveation` | non impostato | 0 - 1 | – | subito (`renderer.xr.setFoveation`, solo se esiste) |
-| `t_fovMask` | 0 (spento) | 20 - 55 | gradi (semiangolo) | subito (maschera nera che simula un campo visivo stretto, `debug:fov-mask`) |
+| `t_longPressSettle`, `t_fixtureSnap`, `t_measureSnap`, `t_releaseGuard`, `t_buttonRing` | 0,15 s, 0,02 m del mondo, 0,012 m del mondo, 0,3 s, 0,45 m | 0-0,4 s, 0,01-0,05, 0,006-0,03, 0,1-0,8 s, 0,35-0,60 m | s / m | subito (`buttonRing`: letto a ogni chiamata, senza ricostruzioni) |
+| `t_foveation` | non impostato | 0 - 1 | – | subito (`renderer.xr.setFoveation`, solo se esiste: `tuning foveation applied=…` / `restored=…` / `skipped reason=no-api\|failed`) |
+| `t_fovMask` | 0 (spento) | 20 - 55 (0 = spento) | gradi (semiangolo) | subito, **solo in sessione** (anello nero a 1,5 m solidale con la testa che simula un campo visivo stretto, `debug:fov-mask`; `fov-mask on halfAngleDeg=…`) |
 
-Esempio: `https://localhost:8081/?debug=1&t_longPress=1.1&t_palmOpenHold=0.6`. Dal PC, mentre sei nel
-visore e senza ricaricare: `npm run quest:tune -- longPress=1.1 palmOpenHold=0.6`. L'elenco
-aggiornato dei nomi, dei limiti e dei default è la tabella in `src/logic/tuning.ts` (la prima riga di
-log `tuning table` la stampa).
+`pinnedDistance` e `pinnedDrop` valgono per i pannelli a testo **normale**: a testo grande restano i valori del
+progetto. L'URL e il file vivo seguono lo stesso formato: `https://localhost:8081/?debug=1&t_longPress=1.1&t_palmOpenHold=0.6`;
+dal PC, mentre sei nel visore e senza ricaricare: `npm run quest:tune -- longPress=1.1 palmOpenHold=0.6`. L'elenco
+aggiornato dei nomi, dei limiti e dei default è la tabella in `src/logic/tuning.ts` (la riga di log `tuning table count=26`
+la annuncia all'avvio). **Il passaggio dall'URL è coperto solo da test unitari**: sul PC le prove usano `dev-params.local.txt`.
 
 ### 11.3 Cosa si vede nel visore con `debug=1`
 
-- Un pannello `ui:debug-hud` accanto al plastico: fps e tempo per frame (media, p95, massimo), chiamate per vista,
-  triangoli, sorgente dei giunti (`joints`/`grip`), le ultime righe di log (anche `warn`) e il riepilogo della sessione
-  (fps minimo, frame peggiore). Si legge senza togliere il visore. Per le **misure finali** usa `hud=0`: il pannello
-  costa qualche chiamata (il suo costo è nel gruppo `hud` di `[soglia:stats:groups]`).
-- In console: `[soglia:env]` (user agent breve, IWER sì/no, funzioni del browser, frequenza di aggiornamento, tempo
-  di avvio), `[soglia:frames]` (media, p95, massimo e frame oltre il budget in ogni finestra di 2 s) e
-  `[soglia:stats:summary]` (riepilogo ogni 10 s e alla sospensione).
+- Un pannello `ui:debug-hud` **solo in sessione**, a sinistra del plastico e un po' oltre (circa 0,8 m dalla testa,
+  36° dalla linea di vista), aggiornato una volta al secondo: fps con `OK`/`LOW`/`FAIL` (`OK` ≥ 70, `LOW` ≥ 60),
+  tempo per frame (medio, p95, massimo), chiamate per vista e triangoli, fps minimo e frame peggiore della sessione,
+  sorgente dei giunti (`joints`/`grip`) e ultimo pizzico, fino a 4 righe di log (anche `warn` e `uncaught …`).
+  Si legge senza togliere il visore. **Costo: circa +2 chiamate** (nel gruppo `hud` di `[soglia:stats:groups]`,
+  che finisce con `hud=<n>`; la maschera del campo visivo conta lì). Per le **misure finali** usa `hud=0`
+  (`hud hidden reason=hud0`).
+- In console: `[soglia:env]` (user agent breve, `iwer=`, funzioni del browser, `readyMs=` e `startMs=`) al primo
+  fotogramma e, **2 s dopo l'inizio di ogni sessione**, la riga `session` (modo, funzioni concesse, `frameRate`,
+  `rates`, `views`, `inputs`); `[soglia] env iwer clues …` (le prove del riconoscimento dell'emulatore: in IWER
+  sono tutte a 1, sul Quest devono essere tutte a 0; l'user agent non conta, IWER ne imposta uno da Quest);
+  `[soglia:frames]` ogni 2 s con `hz`, `fps`, `class` e `hzFrom=session|est`; `[soglia:stats:summary]` ogni
+  10 s di sessione, a fine sessione e quando la pagina va in background.
+- Le funzioni del browser che la sonda elenca (`hand`, `anchors`, `hitTest`, `planes`, `meshes`, `speech`,
+  `mediaRecorder`, `getUserMedia`, `virtualKeyboard`) sono solo rilevamento: `iface` = l'interfaccia c'è, non
+  prova che funzioni.
 
 ### 11.4 Dove si annotano i valori misurati
 

@@ -14,7 +14,7 @@ Guida passo passo per l'utente (Fedora, adb, certificato, debug remoto, Meta VR 
 > mancanti: pulsanti fissi `Menu`/`Issues`/`View`/`Tabletop`, pannello View, punti informativi, Furnish/Clear,
 > `Rotate`, coach, avvio a freddo sotto 10 s, `handTracking` richiesto o opzionale; (5) `[soglia:stats]` richiede
 > `?debug=1`; (6) il server è **HTTPS autofirmato anche su `localhost`**; (7) `dev-params.local.txt` vale anche sul visore
-> se la pagina arriva dal server di sviluppo. Aggiunta la sezione "Strumenti di M6" (HUD, `[soglia:env]`, taratura).
+> se la pagina arriva dal server di sviluppo. Aggiunta la sezione "Strumenti di M6" (HUD, `[soglia:env]`, taratura). **Aggiornamento 2026-11-07 (sera, T6.A12)**: la fase A è implementata, la sezione "Strumenti di M6" descrive ciò che c'è davvero (provato solo sul PC).
 
 ## Setup (una volta)
 
@@ -111,13 +111,18 @@ Guida passo passo per l'utente (Fedora, adb, certificato, debug remoto, Meta VR 
       M5). Non si prova e non si cita nella demo. Resta solo il rilevamento di funzioni del browser, a titolo di
       informazione (`[soglia:env]`, sezione "Strumenti di M6").
 
-## Strumenti di M6 (disponibili dopo la fase A del piano M6)
-- [ ] `?debug=1` mostra nel visore il pannello `ui:debug-hud` (fps, tempo per frame, chiamate, triangoli, ultime
-      righe di log); `&hud=0` lo spegne per le misure pulite.
-- [ ] La console contiene `[soglia:env]` (browser, funzioni disponibili, frequenza di aggiornamento) e
-      `[soglia:frames]` (media, p95 e massimo del tempo per frame).
-- [ ] Taratura: parametri `t_<nome>=<valore>` (solo con `debug=1`) e file `tuning.local.txt` letto ogni 2 s dal
-      server di sviluppo; ogni cambio scrive `[soglia] tuning set ...`.
+## Strumenti di M6 (fase A implementata il 2026-11-07, **provati solo sul PC**; i dettagli in `docs/QUEST_SETUP.md`, sezione 11)
+- [ ] `?debug=1` mostra nel visore, **solo in sessione**, il pannello `ui:debug-hud` (fps con `OK`/`LOW`/`FAIL`, ms medio/p95/max,
+      chiamate e triangoli, fps minimo e frame peggiore, sorgente dei giunti, ultime righe di log; a ~0,8 m e ~36° dalla linea
+      di vista); `&hud=0` lo spegne per le misure pulite (costa ~+2 chiamate, gruppo `hud`).
+- [ ] La console contiene `[soglia:env]` (browser, `iwer=`, funzioni disponibili, `readyMs`/`startMs`; la riga `session`
+      2 s dopo l'inizio della sessione con `frameRate` e `rates`), `[soglia] env iwer clues` (tutti 0 sul Quest),
+      `[soglia:frames]` (media, p95 e massimo del tempo per frame, `hzFrom=session|est`) e `[soglia:stats:summary]`.
+- [ ] Taratura: parametri `t_<nome>=<valore>` (solo con `debug=1`; 26 manopole) e file vivo `tuning.local.txt` (con il
+      prefisso `t_`) letto ogni 2 s dal server di sviluppo; ogni cambio scrive `[soglia] tuning set ...`
+      (`npm run quest:tune -- nome=valore` lo scrive per te).
+- [ ] Script `npm run quest:*` (check, serve, reverse, open, console, perf, capture, preview, links, tune): ognuno
+      provato sul Quest vero; i punti incerti (apertura in VR, socket di debug, `metavr`) sono in `qa/device/DEBT.md` (M6).
 
 ## Prima della consegna
 - [ ] Link pubblico (GitHub Pages) aperto dal Quest Browser, senza login, dall'inizio alla fine (la build pubblica
