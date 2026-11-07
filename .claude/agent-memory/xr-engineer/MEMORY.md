@@ -30,3 +30,4 @@
 - [M5 review warnings](m5-review-warnings.md) — View note "Simplified light" (box beside Close), coach text forced into the 30 deg cone (0.22 m from button, 29.99 deg), Rotate 12 s restart after cover closes, fonts parallel + 1.5 s, DEBT rows
 - [M6 phase A: quest scripts, env probe, frame stats](m6-phase-a-scripts-probe-frames.md) — adb shell quoting trap, unverified-on-headset list, IWER clues (UA is a Quest one!), draw-groups `hud` tail, CLI names
 - [M6 tuning registry + channel (T6.A1-T6.A4)](m6-tuning-registry-channel.md) — 26 knobs, layers live>url>file, wiring list, ERR_ABORTED poll artifact, hud param, verified S6.1 numbers
+- [M6 HUD, log tail, fov mask, start page (T6.A7/A8/A10/A11)](m6-hud-logtail-fovmask-startpage.md) — UIKit newline collapse -> one span per line, HUD placement beside-and-behind, alert ring, mask needs transparent:true, live file needs t_ prefix, logs recipe
