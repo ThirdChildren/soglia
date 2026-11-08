@@ -17,6 +17,7 @@
 
 import { palmAngleDeg, type Vec3Like } from './palm';
 import type { PinchMode } from './params';
+import { getTuning, TUNING_DEFAULTS } from './tuning';
 
 export type { Vec3Like };
 export type Handedness = 'left' | 'right';
@@ -53,8 +54,9 @@ export const PINCH_END_DISTANCE = 0.03;
 /**
  * A `selectstart` can arrive before the joints show the closed hand (IWER shows the open hand at the event and the
  * closed one at the next frame). The pinch is announced to the app when the tips are this close, or after this long.
+ * Default of the knob `pinchWait` (tuning registry, D66); `isPinchPointFinal` reads the value in use.
  */
-export const PINCH_POINT_MAX_WAIT_SECONDS = 0.15;
+export const PINCH_POINT_MAX_WAIT_SECONDS = TUNING_DEFAULTS.pinchWait;
 
 const COHERENCE_MIN_COS = Math.cos((PALM_COHERENCE_MAX_DEG * Math.PI) / 180);
 const MIN_LENGTH = 1e-6;
@@ -192,7 +194,7 @@ export function updatePinchDetector(detector: PinchDetector, distance: number): 
 export function isPinchPointFinal(jointsUsed: boolean, distance: number, waitedSeconds: number): boolean {
   if (!jointsUsed) return true;
   if (Number.isFinite(distance) && distance <= PINCH_END_DISTANCE) return true;
-  return waitedSeconds >= PINCH_POINT_MAX_WAIT_SECONDS;
+  return waitedSeconds >= getTuning().pinchWait;
 }
 
 // --- Sample of one hand ----------------------------------------------------------------------------

@@ -13,9 +13,10 @@
 import type { CoachStep, OnboardingStep } from './state';
 import { anchorInCone, type ConeFit, type Point3Like } from './view-fit';
 import type { PanelExtent } from './menu';
+import { getTuning, TUNING_DEFAULTS } from './tuning';
 
 /** The coach stops by itself this long after the step that is on began (D60). */
-export const COACH_TIMEOUT_SECONDS = 20;
+export const COACH_TIMEOUT_SECONDS = TUNING_DEFAULTS.coachTimeout;
 
 /** What can move the coach on. */
 export type CoachEvent = 'menu-opened' | 'placed' | 'timeout';
@@ -57,7 +58,7 @@ export function coachVisible(step: CoachStep, inputs: Readonly<CoachInputs>): bo
  */
 export function coachTimedOut(stepStartedAt: number, now: number): boolean {
   const elapsed = now - stepStartedAt;
-  return Number.isFinite(elapsed) && elapsed > COACH_TIMEOUT_SECONDS;
+  return Number.isFinite(elapsed) && elapsed > getTuning().coachTimeout;
 }
 
 /**

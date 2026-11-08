@@ -5,7 +5,7 @@
 // HOW IT WORKS. The machine itself is pure (src/logic/long-press.ts). Here:
 //   - at a pinch start nothing is decided yet: the grip pose moves about 1 cm while the fingers close and the systems that
 //     register after this one (the grab, the viewpoint markers, the drag) take their claim in their own pinch listeners. So
-//     the decision waits LONG_PRESS_SETTLE_SECONDS (0.15 s); by then the claims are in. A pinch that someone else owns (a menu
+//     the decision waits the `longPressSettle` knob (0.15 s by default); by then the claims are in. A pinch that someone else owns (a menu
 //     control, a piece, a marker, the drag, the tape measure, two hands) never starts anything and leaves no trace in the log;
 //   - then the hold starts (`issue hold start`) if the role may create issues (only the tenant), the tool is `furnish`, the model
 //     is at table-top scale and the pinch point resolves to an anchor (`pinchToHouse` + `resolveAnchor`). The ghost `pin:draft`
@@ -44,8 +44,8 @@ import {
   type IssueDraft,
 } from '../logic/issue-draft';
 import {
-  LONG_PRESS_SECONDS,
-  LONG_PRESS_SETTLE_SECONDS,
+  longPressSeconds,
+  longPressSettleSeconds,
   cancelLongPress,
   createLongPress,
   formatHoldCancelled,
@@ -196,7 +196,7 @@ export class IssueCreateSystem extends createSystem({}) {
     const now = this.now();
     switch (this.mode) {
       case 'settling':
-        if (now - this.startedAt >= LONG_PRESS_SETTLE_SECONDS) this.decide(hand, now);
+        if (now - this.startedAt >= longPressSettleSeconds()) this.decide(hand, now);
         break;
       case 'holding':
         this.step(hand, now);
@@ -281,7 +281,7 @@ export class IssueCreateSystem extends createSystem({}) {
 
   /** A pinch that cannot start is reported once, when it has lasted as long as a long pinch and nobody owns the hand. */
   private reportBlocked(hand: Hand, now: number): void {
-    if (this.blockedLine === null || now - this.startedAt < LONG_PRESS_SECONDS) return;
+    if (this.blockedLine === null || now - this.startedAt < longPressSeconds()) return;
     const owner = pinchClaims.ownerOf(hand);
     if (owner === null || owner === 'room') slog(this.blockedLine);
     this.blockedLine = null;

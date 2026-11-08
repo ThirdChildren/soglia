@@ -13,9 +13,10 @@ import { OVER_MODEL_BELOW, handToPlan, overModelAbove, type MiniatureRoot, type 
 import type { Fixture, House, Room } from './house';
 import { planBox } from './house-layout';
 import { ISSUE_CATEGORIES, type IssueCategory } from './issues';
+import { getTuning, TUNING_DEFAULTS } from './tuning';
 
 /** A pinch snaps to a fixture within this distance of it (WORLD metres, D42): 0.40 m of plan at scale 0.05. */
-export const FIXTURE_SNAP_WORLD_RADIUS = 0.02;
+export const FIXTURE_SNAP_WORLD_RADIUS = TUNING_DEFAULTS.fixtureSnap;
 /** A free point may lie this far outside a room polygon (towards the walls, plan metres, D42) and still count as in it. */
 export const ROOM_MARGIN = 0.2;
 /** The plan coordinates and the height of a free point are rounded to this step (plan metres, D42). */
@@ -63,7 +64,7 @@ export function pinchToHouse(
 
 /** The snap radius on the plan (house metres) for a miniature scale; 0 (no snapping) when the scale is not positive. */
 export function snapRadiusHouse(worldScale: number): number {
-  return Number.isFinite(worldScale) && worldScale > 0 ? FIXTURE_SNAP_WORLD_RADIUS / worldScale : 0;
+  return Number.isFinite(worldScale) && worldScale > 0 ? getTuning().fixtureSnap / worldScale : 0;
 }
 
 /**

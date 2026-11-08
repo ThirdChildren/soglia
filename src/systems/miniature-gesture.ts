@@ -20,7 +20,7 @@ import { MINIATURE_ROOT_ID } from '../logic/ids';
 import {
   clampOffset,
   formatTranslated,
-  GESTURE_SETTLE_MS,
+  settlePending,
   roundOffset,
   type Offset2,
 } from '../logic/miniature-pan';
@@ -207,7 +207,7 @@ export class MiniatureGestureSystem extends createSystem({
     this.pivotNow.z = (this.leftPos.z + this.rightPos.z) / 2;
     getMiniatureAnchor(this.anchor);
     if (!this.captured) {
-      if (performance.now() - this.startedAt < GESTURE_SETTLE_MS) return;
+      if (settlePending(this.startedAt, performance.now())) return;
       this.captured = true;
       this.pivot0.x = this.pivotNow.x;
       this.pivot0.z = this.pivotNow.z;

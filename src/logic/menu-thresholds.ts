@@ -4,21 +4,26 @@
 // ALL OF THESE ARE FIRST GUESSES THAT MUST BE TUNED ON THE HEADSET (qa/device/DEBT.md): the emulator
 // has no hand jitter, no tracking latency and no accidental gestures, so it cannot say whether they are
 // right. When a value changes here, the logic and the tests follow it.
+//
+// The thresholds that are KNOBS of the tuning registry (`src/logic/tuning.ts`, D66) take their default from there: the constant
+// here is the default, and the functions read `getTuning()` for the value in use.
+
+import { TUNING_DEFAULTS } from './tuning';
 
 // --- Palm detection ---------------------------------------------------------------------------
 
 /** The palm opens the menu when its normal is within this angle of straight up, in degrees. */
-export const PALM_OPEN_DEG = 35;
+export const PALM_OPEN_DEG = TUNING_DEFAULTS.palmOpenDeg;
 /** An open menu closes when the normal is farther than this angle from straight up, in degrees. */
-export const PALM_CLOSE_DEG = 55;
+export const PALM_CLOSE_DEG = TUNING_DEFAULTS.palmCloseDeg;
 /**
  * The palm must stay up (and the menu must be allowed to open) this long before the menu opens, in
  * seconds. Longer than the 0.25 s of M2 so a palm that only passes through the "up" pose, or a palm
  * raised just after a pinch, never opens it.
  */
-export const PALM_OPEN_HOLD_SECONDS = 0.4;
+export const PALM_OPEN_HOLD_SECONDS = TUNING_DEFAULTS.palmOpenHold;
 /** The palm must stay turned away this long before an open menu closes, in seconds. */
-export const PALM_CLOSE_HOLD_SECONDS = 0.25;
+export const PALM_CLOSE_HOLD_SECONDS = TUNING_DEFAULTS.palmCloseHold;
 
 // --- When the menu must NOT open -----------------------------------------------------------------
 
@@ -27,7 +32,7 @@ export const PALM_CLOSE_HOLD_SECONDS = 0.25;
  * cannot open for this long, in seconds (the hand is still coming out of the gesture and its palm
  * passes through "up").
  */
-export const MENU_RELEASE_GUARD_SECONDS = 0.3;
+export const MENU_RELEASE_GUARD_SECONDS = TUNING_DEFAULTS.releaseGuard;
 
 // --- Where the menu sits -----------------------------------------------------------------------
 
@@ -83,12 +88,12 @@ export const VIEW_CONE_HALF_ANGLE_DEG = 30;
  * The pinned menu (one-hand mode) is placed this far in FRONT of the head, along the horizontal direction of the
  * gaze, in metres (rule 8: panels at 0.5-0.8 m). It is the bottom centre of the menu (its frame).
  */
-export const PINNED_DISTANCE = 0.55;
+export const PINNED_DISTANCE = TUNING_DEFAULTS.pinnedDistance;
 /**
  * The bottom centre of the pinned menu is this far BELOW the eyes, in metres, so the 0.35 m tall menu sits between
  * about -20 and +15 degrees vertically and below the far edge of the model.
  */
-export const PINNED_DROP = 0.2;
+export const PINNED_DROP = TUNING_DEFAULTS.pinnedDrop;
 /**
  * The pinned menu follows the pitch of the gaze at the opening (task T4.R2, D49), but only within this range, in
  * degrees (positive = looking up): the anchor is raised or lowered by `PINNED_DISTANCE * tan(pitch)`. Beyond the

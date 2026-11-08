@@ -1,5 +1,6 @@
 // Pure URL / dev-file parameter parsing: no imports from @iwsdk/core or three.
-// Recognised keys: house, role, reset, seed, time, debug, mr, glyphs, furnish, failmodels, failmy, failcatalog, pinch.
+// Recognised keys: house, role, reset, seed, time, debug, mr, glyphs, furnish, failmodels, failmy, failcatalog, pinch, contrast, text, hud.
+// The tuning keys `t_<name>` are NOT parameters of this module: `src/logic/tuning.ts` reads them (T6.A4, D66).
 // Unknown values fall back to the default and produce a warning returned as data;
 // the caller decides how to log it.
 
@@ -34,7 +35,8 @@ export type ParamKey =
   | 'failcatalog'
   | 'pinch'
   | 'contrast'
-  | 'text';
+  | 'text'
+  | 'hud';
 
 export type ParamsSource = 'url' | 'dev-file' | 'default';
 
@@ -81,6 +83,12 @@ export interface Params {
   contrast: boolean;
   /** `text=large|normal`: large text, 3.0 cm (D58). Named in the URL or the dev file it beats the saved preference. */
   text: TextSize;
+  /**
+   * `hud=0|1` (default 1): the statistics panel in the headset (`ui:debug-hud`, T6.A7). It only exists with `debug=1`, so
+   * `hud` is only honoured together with it (`mergeParams` drops it with a warning otherwise); `hud=0` turns the panel off for
+   * the final measures.
+   */
+  hud: boolean;
 }
 
 export interface ParsedParams {
@@ -120,6 +128,7 @@ export const DEFAULT_PARAMS: Readonly<Params> = Object.freeze({
   pinch: 'auto',
   contrast: false,
   text: 'normal',
+  hud: true,
 });
 
 /** Letters, digits, `_` and `-` only: no dots, slashes, spaces or markup. */
@@ -192,6 +201,7 @@ const FIELD_PARSERS: { [K in ParamKey]: (raw: string) => FieldResult<Params[K]> 
     (TEXT_SIZES as readonly string[]).includes(raw)
       ? { ok: true, value: raw as TextSize }
       : { ok: false, reason: `expected one of ${TEXT_SIZES.join(', ')}` },
+  hud: parseFlag,
 };
 
 const KEYS = Object.keys(FIELD_PARSERS) as ParamKey[];
@@ -280,6 +290,12 @@ export function mergeParams(
     explicit.splice(explicit.indexOf('glyphs'), 1);
     warnings.push('param glyphs ignored: needs debug=1');
   }
+  // `hud` has a default of 1, so it is the presence of the key that counts, `hud=0` included.
+  if (!params.debug && explicit.includes('hud')) {
+    params.hud = DEFAULT_PARAMS.hud;
+    explicit.splice(explicit.indexOf('hud'), 1);
+    warnings.push('param hud ignored: needs debug=1');
+  }
   return { params, explicit, source, warnings };
 }
 
@@ -294,7 +310,9 @@ export function formatParamsLine(source: ParamsSource, p: Params): string {
   const withCatalog = p.failcatalog ? `${withMy} failcatalog=true` : withMy;
   const withPinch = p.pinch === 'auto' ? withCatalog : `${withCatalog} pinch=${p.pinch}`;
   const withContrast = p.contrast ? `${withPinch} contrast=1` : withPinch;
-  return p.text === 'large' ? `${withContrast} text=large` : withContrast;
+  const withText = p.text === 'large' ? `${withContrast} text=large` : withContrast;
+  // Last, and only when it is off: the statistics panel is the default with `debug=1`.
+  return p.hud ? withText : `${withText} hud=0`;
 }
 
 /** True when the warnings include a discarded `house` value (the app then logs that it kept the default home). */

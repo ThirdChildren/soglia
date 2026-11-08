@@ -35,6 +35,8 @@ export const stableId = {
   merged: (name: string): string => make('merged', name),
   viewpoint: (id: string): string => make('viewpoint', id),
   ui: (name: string): string => make('ui', name),
+  /** Debug-only objects (`debug:fov-mask`, M6): present only with `debug=1`. */
+  debug: (name: string): string => make('debug', name),
   pin: (issueId: string): string => make('pin', issueId),
   /** `furniture:<catalogId>#<n>`; `n` is the 1-based instance counter (positive integer). */
   furniture: (catalogId: string, n: number): string => {

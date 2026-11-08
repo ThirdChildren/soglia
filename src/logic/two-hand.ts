@@ -10,8 +10,8 @@
 // Positive = counter-clockwise seen from above. Seen from above (x right, z toward the user), the
 // right hand moving away from the user (-z) while the left hand comes closer is +90 degrees.
 
-import { TRANSLATE_DEAD_ZONE } from './miniature-pan';
 import { ZOOM_MAX, ZOOM_MIN } from './state';
+import { getTuning, TUNING_DEFAULTS } from './tuning';
 
 /** A point in world metres. A Three.js Vector3 satisfies this shape. */
 export interface HandPoint {
@@ -32,7 +32,7 @@ export interface TwoHandResult {
 }
 
 /** Distance changes smaller than this (metres) do not change the scale. */
-export const DEAD_ZONE = 0.005;
+export const DEAD_ZONE = TUNING_DEFAULTS.deadZone;
 /** The start distance never counts as less than this (metres), so a tiny start cannot blow up the ratio. */
 export const MIN_START_DISTANCE = 0.02;
 /** Below this distance (metres) the direction of the line between the hands is undefined. */
@@ -141,7 +141,7 @@ export function updateTwoHand(
 
   // Scale: ratio of the distances, with a dead zone around "unchanged".
   const change = distance - session.startDistance;
-  const ratio = Math.abs(change) < DEAD_ZONE ? 1 : distance / session.startDistance;
+  const ratio = Math.abs(change) < getTuning().deadZone ? 1 : distance / session.startDistance;
   out.scale = clamp(session.baseScale * ratio, limits);
   session.lastScale = out.scale;
 
@@ -218,7 +218,7 @@ export function pivotTranslation(
   let pz = mt.z;
   const dragX = mt.x - m0.x;
   const dragZ = mt.z - m0.z;
-  if (dragX * dragX + dragZ * dragZ < TRANSLATE_DEAD_ZONE * TRANSLATE_DEAD_ZONE) {
+  if (dragX * dragX + dragZ * dragZ < getTuning().deadZone * getTuning().deadZone) {
     px = m0.x;
     pz = m0.z;
   }

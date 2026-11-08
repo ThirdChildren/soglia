@@ -99,18 +99,18 @@ describe('classifyGroup: real object names', () => {
 
 describe('formatGroupsLine', () => {
   it('matches the documented example', () => {
-    const counts = { house: 24, furniture: 14, hands: 7, ui: 9, markers: 0, sun: 0, other: 1 };
-    expect(formatGroupsLine(counts)).toBe('house=24 furniture=14 hands=7 ui=9 markers=0 sun=0 other=1');
+    const counts = { house: 24, furniture: 14, hands: 7, ui: 9, markers: 0, sun: 0, other: 1, hud: 0 };
+    expect(formatGroupsLine(counts)).toBe('house=24 furniture=14 hands=7 ui=9 markers=0 sun=0 other=1 hud=0');
   });
 
   it('keeps the group order and prints every group', () => {
-    expect(formatGroupsLine(emptyGroupCounts())).toBe('house=0 furniture=0 hands=0 ui=0 markers=0 sun=0 other=0');
-    expect(DRAW_GROUPS).toEqual(['house', 'furniture', 'hands', 'ui', 'markers', 'sun', 'other']);
+    expect(formatGroupsLine(emptyGroupCounts())).toBe('house=0 furniture=0 hands=0 ui=0 markers=0 sun=0 other=0 hud=0');
+    expect(DRAW_GROUPS).toEqual(['house', 'furniture', 'hands', 'ui', 'markers', 'sun', 'other', 'hud']);
   });
 
   it('prints whole non-negative numbers whatever it is given', () => {
-    const counts = { house: 24.4, furniture: -3, hands: Number.NaN, ui: Infinity, markers: 2.6, sun: 0, other: 0 };
-    expect(formatGroupsLine(counts)).toBe('house=24 furniture=0 hands=0 ui=0 markers=3 sun=0 other=0');
+    const counts = { house: 24.4, furniture: -3, hands: Number.NaN, ui: Infinity, markers: 2.6, sun: 0, other: 0, hud: 0 };
+    expect(formatGroupsLine(counts)).toBe('house=24 furniture=0 hands=0 ui=0 markers=3 sun=0 other=0 hud=0');
   });
 });
 
@@ -437,6 +437,7 @@ describe('classifyGroup: robustness', () => {
 
 describe('classifyGroup: invariants over the whole name corpus', () => {
   const corpus: string[] = [
+    'ui:debug-hud',
     '',
     'LevelRoot',
     'Scene',
@@ -492,10 +493,10 @@ describe('classifyGroup: invariants over the whole name corpus', () => {
 });
 
 describe('DRAW_GROUPS and the counter objects', () => {
-  it('lists each group once, in the documented order, with other last', () => {
-    expect([...DRAW_GROUPS]).toEqual(['house', 'furniture', 'hands', 'ui', 'markers', 'sun', 'other']);
+  it('lists each group once, in the documented order, with hud last (it is only a tail on the M5 line)', () => {
+    expect([...DRAW_GROUPS]).toEqual(['house', 'furniture', 'hands', 'ui', 'markers', 'sun', 'other', 'hud']);
     expect(new Set(DRAW_GROUPS).size).toBe(DRAW_GROUPS.length);
-    expect(DRAW_GROUPS[DRAW_GROUPS.length - 1]).toBe('other');
+    expect(DRAW_GROUPS[DRAW_GROUPS.length - 1]).toBe('hud');
   });
 
   it('emptyGroupCounts has exactly the declared groups, all at 0', () => {
@@ -524,7 +525,7 @@ describe('DRAW_GROUPS and the counter objects', () => {
   });
 
   it('resetGroupCounts clears odd values too and adds no keys', () => {
-    const counts = { house: -4, furniture: 2.5, hands: Number.NaN, ui: Infinity, markers: 1e9, sun: 0, other: 3 };
+    const counts = { house: -4, furniture: 2.5, hands: Number.NaN, ui: Infinity, markers: 1e9, sun: 0, other: 3, hud: 0 };
     resetGroupCounts(counts);
     expect(counts).toEqual(emptyGroupCounts());
     expect(Object.keys(counts)).toHaveLength(DRAW_GROUPS.length);
@@ -566,13 +567,13 @@ describe('totalGroupCalls', () => {
   });
 
   it('matches the manual sum for distinct values', () => {
-    const counts = { house: 24, furniture: 14, hands: 7, ui: 9, markers: 3, sun: 0, other: 1 };
+    const counts = { house: 24, furniture: 14, hands: 7, ui: 9, markers: 3, sun: 0, other: 1, hud: 0 };
     expect(totalGroupCalls(counts)).toBe(24 + 14 + 7 + 9 + 3 + 1);
     expect(totalGroupCalls(counts)).toBe(58);
   });
 
   it('matches the sum of the numbers printed by formatGroupsLine for whole counts', () => {
-    const counts = { house: 120, furniture: 1, hands: 22, ui: 333, markers: 4, sun: 0, other: 0 };
+    const counts = { house: 120, furniture: 1, hands: 22, ui: 333, markers: 4, sun: 0, other: 0, hud: 0 };
     const printed = formatGroupsLine(counts)
       .split(' ')
       .map((part) => Number(part.split('=')[1]));
@@ -580,50 +581,50 @@ describe('totalGroupCalls', () => {
   });
 
   it('does not modify the counters', () => {
-    const counts = Object.freeze({ house: 1, furniture: 2, hands: 3, ui: 4, markers: 5, sun: 0, other: 6 });
+    const counts = Object.freeze({ house: 1, furniture: 2, hands: 3, ui: 4, markers: 5, sun: 0, other: 6, hud: 0 });
     expect(totalGroupCalls(counts)).toBe(21);
-    expect(counts).toEqual({ house: 1, furniture: 2, hands: 3, ui: 4, markers: 5, sun: 0, other: 6 });
+    expect(counts).toEqual({ house: 1, furniture: 2, hands: 3, ui: 4, markers: 5, sun: 0, other: 6, hud: 0 });
   });
 });
 
 describe('formatGroupsLine: exact format', () => {
   it('prints all six groups in the declared order, separated by single spaces, no prefix or trailing text', () => {
-    const line = formatGroupsLine({ house: 1, furniture: 2, hands: 3, ui: 4, markers: 5, sun: 0, other: 6 });
-    expect(line).toBe('house=1 furniture=2 hands=3 ui=4 markers=5 sun=0 other=6');
+    const line = formatGroupsLine({ house: 1, furniture: 2, hands: 3, ui: 4, markers: 5, sun: 0, other: 6, hud: 0 });
+    expect(line).toBe('house=1 furniture=2 hands=3 ui=4 markers=5 sun=0 other=6 hud=0');
     expect(line.split(' ').map((part) => part.split('=')[0])).toEqual([...DRAW_GROUPS]);
   });
 
   it('does not depend on the key order of the counter object', () => {
-    const shuffled = { other: 6, sun: 0, markers: 5, ui: 4, hands: 3, furniture: 2, house: 1 };
-    expect(formatGroupsLine(shuffled)).toBe('house=1 furniture=2 hands=3 ui=4 markers=5 sun=0 other=6');
+    const shuffled = { hud: 0, other: 6, sun: 0, markers: 5, ui: 4, hands: 3, furniture: 2, house: 1 };
+    expect(formatGroupsLine(shuffled)).toBe('house=1 furniture=2 hands=3 ui=4 markers=5 sun=0 other=6 hud=0');
   });
 
   it('prints multi-digit counts in full', () => {
-    const counts = { house: 100, furniture: 1234, hands: 10, ui: 99, markers: 12, sun: 0, other: 150000 };
-    expect(formatGroupsLine(counts)).toBe('house=100 furniture=1234 hands=10 ui=99 markers=12 sun=0 other=150000');
+    const counts = { house: 100, furniture: 1234, hands: 10, ui: 99, markers: 12, sun: 0, other: 150000, hud: 0 };
+    expect(formatGroupsLine(counts)).toBe('house=100 furniture=1234 hands=10 ui=99 markers=12 sun=0 other=150000 hud=0');
   });
 
   it('prints zero as 0 (never -0, empty or NaN)', () => {
-    expect(formatGroupsLine({ house: 0, furniture: -0, hands: 0, ui: 0, markers: 0, sun: 0, other: 0 })).toBe(
-      'house=0 furniture=0 hands=0 ui=0 markers=0 sun=0 other=0',
+    expect(formatGroupsLine({ house: 0, furniture: -0, hands: 0, ui: 0, markers: 0, sun: 0, other: 0, hud: 0 })).toBe(
+      'house=0 furniture=0 hands=0 ui=0 markers=0 sun=0 other=0 hud=0',
     );
   });
 
   it('has no line breaks and no double spaces', () => {
-    const line = formatGroupsLine({ house: 24, furniture: 14, hands: 7, ui: 9, markers: 0, sun: 0, other: 1 });
+    const line = formatGroupsLine({ house: 24, furniture: 14, hands: 7, ui: 9, markers: 0, sun: 0, other: 1, hud: 0 });
     expect(line).not.toMatch(/\n/);
     expect(line).not.toMatch(/ {2}/);
     expect(line).toMatch(/^(?:[a-z]+=\d+ )*[a-z]+=\d+$/);
   });
 
   it('rounds fractional counts to the nearest whole number (half rounds up)', () => {
-    const counts = { house: 0.4, furniture: 0.5, hands: 1.49, ui: 2.5, markers: 2.6, sun: 0, other: 9.999 };
-    expect(formatGroupsLine(counts)).toBe('house=0 furniture=1 hands=1 ui=3 markers=3 sun=0 other=10');
+    const counts = { house: 0.4, furniture: 0.5, hands: 1.49, ui: 2.5, markers: 2.6, sun: 0, other: 9.999, hud: 0 };
+    expect(formatGroupsLine(counts)).toBe('house=0 furniture=1 hands=1 ui=3 markers=3 sun=0 other=10 hud=0');
   });
 
   it('prints negative, NaN and infinite counts as 0', () => {
-    const counts = { house: -1, furniture: Number.NaN, hands: Infinity, ui: -Infinity, markers: -0.4, sun: 0, other: -1000 };
-    expect(formatGroupsLine(counts)).toBe('house=0 furniture=0 hands=0 ui=0 markers=0 sun=0 other=0');
+    const counts = { house: -1, furniture: Number.NaN, hands: Infinity, ui: -Infinity, markers: -0.4, sun: 0, other: -1000, hud: 0 };
+    expect(formatGroupsLine(counts)).toBe('house=0 furniture=0 hands=0 ui=0 markers=0 sun=0 other=0 hud=0');
   });
 
   it('prints a missing or non-numeric counter as 0 instead of throwing', () => {
@@ -631,11 +632,11 @@ describe('formatGroupsLine: exact format', () => {
       typeof formatGroupsLine
     >[0];
     expect(() => formatGroupsLine(broken)).not.toThrow();
-    expect(formatGroupsLine(broken)).toBe('house=3 furniture=0 hands=0 ui=0 markers=0 sun=0 other=0');
+    expect(formatGroupsLine(broken)).toBe('house=3 furniture=0 hands=0 ui=0 markers=0 sun=0 other=0 hud=0');
   });
 
   it('does not mutate the counter object (frozen input works, values stay as they were)', () => {
-    const counts = Object.freeze({ house: 24.4, furniture: -3, hands: Number.NaN, ui: 9, markers: 0, sun: 0, other: 1 });
+    const counts = Object.freeze({ house: 24.4, furniture: -3, hands: Number.NaN, ui: 9, markers: 0, sun: 0, other: 1, hud: 0 });
     const before = { ...counts };
     formatGroupsLine(counts);
     expect(counts).toEqual(before);
@@ -648,7 +649,7 @@ describe('formatGroupsLine: exact format', () => {
     counts.ui = 4;
     expect(formatGroupsLine(counts)).toBe(formatGroupsLine(counts));
     counts.ui = 5;
-    expect(formatGroupsLine(counts)).toBe('house=0 furniture=0 hands=0 ui=5 markers=0 sun=0 other=0');
+    expect(formatGroupsLine(counts)).toBe('house=0 furniture=0 hands=0 ui=5 markers=0 sun=0 other=0 hud=0');
   });
 
   it('every group shows up in the line when set alone', () => {
@@ -764,7 +765,7 @@ describe('the issues and pins of M4 are counted in the right groups (T4.12)', ()
     counts.furniture = 14;
     counts.ui = 9;
     counts.markers = 5;
-    expect(formatGroupsLine(counts)).toBe('house=24 furniture=14 hands=0 ui=9 markers=5 sun=0 other=0');
+    expect(formatGroupsLine(counts)).toBe('house=24 furniture=14 hands=0 ui=9 markers=5 sun=0 other=0 hud=0');
   });
 });
 
@@ -775,5 +776,23 @@ describe('M5: the sun group (D55)', () => {
   it('a sun id never falls into the ui or markers groups', () => {
     expect(classifyGroup('sun:dial')).not.toBe('ui');
     expect(classifyGroup('light:patches')).not.toBe('markers');
+  });
+});
+
+describe('the debug HUD is counted apart (T6.A6)', () => {
+  it('classifies ui:debug-hud as hud and every other panel as ui', () => {
+    expect(classifyGroup('ui:debug-hud')).toBe('hud');
+    expect(classifyGroup('ui:debug-hud-extra')).toBe('ui');
+    expect(classifyGroup('ui:palm-menu')).toBe('ui');
+  });
+
+  it('keeps the M5 fields first and adds hud at the tail of the line', () => {
+    const counts = emptyGroupCounts();
+    counts.ui = 9;
+    counts.hud = 3;
+    const line = formatGroupsLine(counts);
+    expect(line).toBe('house=0 furniture=0 hands=0 ui=9 markers=0 sun=0 other=0 hud=3');
+    expect(line.startsWith('house=0 furniture=0 hands=0 ui=9 markers=0 sun=0 other=0')).toBe(true);
+    expect(totalGroupCalls(counts)).toBe(12);
   });
 });

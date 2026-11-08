@@ -43,6 +43,7 @@ describe('parseParams defaults', () => {
       pinch: 'auto',
       contrast: false,
       text: 'normal',
+      hud: true,
     });
   });
 
@@ -269,6 +270,7 @@ describe('parseParams multiple keys', () => {
       pinch: 'grip',
       contrast: true,
       text: 'large',
+      hud: true,
     });
     expect([...r.present].sort()).toEqual(['contrast', 'debug', 'failcatalog', 'failmodels', 'failmy', 'furnish', 'glyphs', 'house', 'mr', 'pinch', 'reset', 'role', 'seed', 'text', 'time']);
     expect(r.warnings).toEqual([]);
@@ -299,7 +301,7 @@ describe('parseParams multiple keys', () => {
     expect(r.params.house).toBe('apartment-b');
     expect(r.present).toEqual(['house']);
     expect(r.warnings).toEqual([]);
-    expect(Object.keys(r.params).sort()).toEqual(['contrast', 'debug', 'failcatalog', 'failmodels', 'failmy', 'furnish', 'glyphs', 'house', 'mr', 'pinch', 'reset', 'role', 'seed', 'text', 'time']);
+    expect(Object.keys(r.params).sort()).toEqual(['contrast', 'debug', 'failcatalog', 'failmodels', 'failmy', 'furnish', 'glyphs', 'house', 'hud', 'mr', 'pinch', 'reset', 'role', 'seed', 'text', 'time']);
   });
 
   it('ignores key names that differ only by case', () => {
@@ -519,6 +521,7 @@ describe('formatParamsLine', () => {
       pinch: 'auto',
       contrast: false,
       text: 'normal',
+      hud: true,
     });
     expect(line).toBe('params source=dev-file house=apartment-b role=visitor reset=false seed=1 debug=true time=-');
   });
@@ -861,5 +864,68 @@ describe('pinch parameter: more cases (D31)', () => {
   it('round trip: a merged pinch value appears in the log line it produces', () => {
     const m = mergeParams(parseParams('pinch=grip'), null);
     expect(formatParamsLine(m.source, m.params)).toContain(' pinch=grip');
+  });
+});
+
+describe('hud (T6.A4)', () => {
+  it('is on by default and is not in the list of present keys', () => {
+    const r = parseParams('debug=1');
+    expect(r.params.hud).toBe(true);
+    expect(r.present).toEqual(['debug']);
+  });
+
+  it('reads 0 and 1', () => {
+    expect(parseParams('hud=0').params.hud).toBe(false);
+    expect(parseParams('hud=1').params.hud).toBe(true);
+    expect(parseParams('hud=0').present).toEqual(['hud']);
+  });
+
+  it('refuses another value and keeps the default', () => {
+    const r = parseParams('hud=yes');
+    expect(r.params.hud).toBe(true);
+    expect(r.present).toEqual([]);
+    expect(r.warnings).toEqual(['param hud="yes" ignored: expected 1 or 0']);
+  });
+
+  it('is honoured with debug=1', () => {
+    const merged = mergeParams(parseParams('debug=1&hud=0'), null);
+    expect(merged.params.hud).toBe(false);
+    expect(merged.explicit).toContain('hud');
+    expect(merged.warnings).toEqual([]);
+  });
+
+  it('is dropped with one warning without debug=1, hud=0 included', () => {
+    for (const query of ['hud=0', 'hud=1']) {
+      const merged = mergeParams(parseParams(query), null);
+      expect(merged.params.hud).toBe(true);
+      expect(merged.explicit).not.toContain('hud');
+      expect(merged.warnings).toEqual(['param hud ignored: needs debug=1']);
+    }
+  });
+
+  it('comes from the dev file with debug=1 from the URL', () => {
+    const merged = mergeParams(parseParams('debug=1'), parseParams('hud=0'));
+    expect(merged.params.hud).toBe(false);
+  });
+
+  it('adds hud=0 at the end of the params line, only when it is off', () => {
+    const base = { ...DEFAULT_PARAMS, debug: true };
+    expect(formatParamsLine('url', base)).not.toContain('hud');
+    expect(formatParamsLine('url', { ...base, hud: false })).toMatch(/ hud=0$/);
+    expect(formatParamsLine('url', { ...base, hud: false, contrast: true, text: 'large' })).toMatch(/ contrast=1 text=large hud=0$/);
+  });
+});
+
+describe('t_ keys are not parameters (T6.A4)', () => {
+  it('parseParams ignores them without a warning and they do not change the line', () => {
+    const r = parseParams('debug=1&t_longPress=1.1&t_bogus=x');
+    expect(r.warnings).toEqual([]);
+    expect(r.present).toEqual(['debug']);
+    expect(Object.keys(r.params)).not.toContain('t_longPress');
+  });
+
+  it('isQueryString accepts a file made of tuning keys', () => {
+    expect(isQueryString('t_longPress=1.1&t_palmOpenHold=0.6\n')).toBe(true);
+    expect(isQueryString('t_fovMask=-5')).toBe(true);
   });
 });

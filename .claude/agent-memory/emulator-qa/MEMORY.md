@@ -9,3 +9,4 @@
 
 - [M5 rerun recipes](reference_m5_rerun_recipes.md) — lib.sh overwrite/variable traps, coach v9 and K18 scripts, post-T5.RA budget numbers, merged-wall checks, V1/B coordinates, measure F1/F2
 - [M5 C2+D recipes](reference_m5_c2d_recipes.md) — palm-menu pinch offsets (right hand = plain grip), `I` var trap, pinch counter windows, ipx selectors, rotate-vs-undo overlap, intermittent glyph warn, demo route
+- [M6 gate recipes](reference_m6_gate_recipes.md) — `--input-json` trap, M5-vs-M6 same-state comparison via git worktree (golden rule D65), K18 rebuild with hud=0/1, differential log regression, live tuning layers, HUD geometry

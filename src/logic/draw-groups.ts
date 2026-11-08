@@ -9,14 +9,19 @@
 // two meshes of a model, the outline frame of a piece). So the walker classifies the named object and lets its
 // subtree inherit the group: `classifyGroup` returns `'other'` for "no opinion", and `other` means "inherit".
 
-export type DrawGroup = 'house' | 'furniture' | 'hands' | 'ui' | 'markers' | 'sun' | 'other';
+export type DrawGroup = 'house' | 'furniture' | 'hands' | 'ui' | 'markers' | 'sun' | 'other' | 'hud';
 
-export const DRAW_GROUPS: readonly DrawGroup[] = ['house', 'furniture', 'hands', 'ui', 'markers', 'sun', 'other'];
+// `hud` (M6, T6.A6) is the debug statistics panel `ui:debug-hud`: its cost is counted apart so it can be taken out of every
+// measure (`hud=0`). It comes LAST, so the groups line keeps its M5 fields in the same order and only gains a tail.
+export const DRAW_GROUPS: readonly DrawGroup[] = ['house', 'furniture', 'hands', 'ui', 'markers', 'sun', 'other', 'hud'];
 
 export type GroupCounts = Record<DrawGroup, number>;
 
 /** Stable-id kinds (the part before the colon) that belong to the house model. */
 const HOUSE_KINDS: ReadonlySet<string> = new Set(['house', 'room', 'wall', 'door', 'window', 'fixture', 'merged']);
+
+/** The debug statistics panel (T6.A8); a UIKit panel like the others, but counted apart. */
+const HUD_ID = 'ui:debug-hud';
 
 /** Singleton ids that belong to the house model (the table plinth is part of the miniature's base). */
 const HOUSE_IDS: ReadonlySet<string> = new Set(['table:plinth']);
@@ -40,11 +45,14 @@ const MARKER_UI_PREFIXES: readonly string[] = ['ui:fit-marker-', 'ui:measure-ins
 export function classifyGroup(name: string | null | undefined): DrawGroup {
   if (typeof name !== 'string' || name.length === 0) return 'other';
   if (HOUSE_IDS.has(name)) return 'house';
+  if (name === HUD_ID) return 'hud';
   const colon = name.indexOf(':');
   if (colon <= 0) return 'other';
   const kind = name.slice(0, colon);
   if (HOUSE_KINDS.has(kind)) return 'house';
   if (kind === 'furniture') return 'furniture';
+  // Debug-only objects (the narrow-view mask `debug:fov-mask`, T6.A10) are counted with the statistics panel: `hud=0` and no mask take both out.
+  if (kind === 'debug') return 'hud';
   if (kind === 'viewpoint' || kind === 'pin') return 'markers';
   // M5: the dial (`sun:dial`, `sun:marker`) and the patches of light (`light:patches`, `light:<window>`), D55.
   if (kind === 'sun' || kind === 'light') return 'sun';
@@ -58,7 +66,7 @@ export function classifyGroup(name: string | null | undefined): DrawGroup {
 }
 
 export function emptyGroupCounts(): GroupCounts {
-  return { house: 0, furniture: 0, hands: 0, ui: 0, markers: 0, sun: 0, other: 0 };
+  return { house: 0, furniture: 0, hands: 0, ui: 0, markers: 0, sun: 0, other: 0, hud: 0 };
 }
 
 /** Sets every counter to 0 in place (the debug system reuses one object). */
@@ -77,7 +85,7 @@ function whole(value: number): number {
   return Number.isFinite(value) && value > 0 ? Math.round(value) : 0;
 }
 
-/** `house=24 furniture=14 hands=7 ui=9 markers=0 sun=2 other=1` (the `[soglia:stats:groups] ` prefix is added by the caller). */
+/** `house=24 furniture=14 hands=7 ui=9 markers=0 sun=2 other=1 hud=0` (the `[soglia:stats:groups] ` prefix is added by the caller). */
 export function formatGroupsLine(counts: GroupCounts): string {
   return DRAW_GROUPS.map((group) => `${group}=${whole(counts[group])}`).join(' ');
 }

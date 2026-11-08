@@ -14,15 +14,31 @@
 // (the caller takes the reference once the grip has settled, see `LONG_PRESS_SETTLE_SECONDS`). The progress runs from 0 to 1
 // over LONG_PRESS_SECONDS counted from the time of the start: it is what makes the ghost pin grow.
 
-/** A pinch held this long (seconds) is a long pinch. A normal pinch lasts 0.1-0.4 s (D45). */
-export const LONG_PRESS_SECONDS = 0.8;
-/** The pinch point may drift this far (world metres) from where it started before the long pinch is cancelled (D45). */
-export const LONG_PRESS_MOVE_M = 0.015;
+import { getTuning, TUNING_DEFAULTS } from './tuning';
+
+/**
+ * A pinch held this long (seconds) is a long pinch. A normal pinch lasts 0.1-0.4 s (D45). This is the DEFAULT of the knob
+ * `longPress` (tuning registry, D66): the functions below read `getTuning().longPress`.
+ */
+export const LONG_PRESS_SECONDS = TUNING_DEFAULTS.longPress;
+/** The pinch point may drift this far (world metres) from where it started before the long pinch is cancelled (D45). Default of `longPressMove`. */
+export const LONG_PRESS_MOVE_M = TUNING_DEFAULTS.longPressMove;
 /**
  * Seconds after the announcement of a pinch before the caller takes the reference point: the grip pose moves about 1 cm while
- * the fingers close (R-D, `GESTURE_SETTLE_MS` of the drag), and that must not count as movement.
+ * the fingers close (R-D, `GESTURE_SETTLE_MS` of the drag), and that must not count as movement. Default of `longPressSettle`;
+ * the caller reads `longPressSettleSeconds()`.
  */
-export const LONG_PRESS_SETTLE_SECONDS = 0.15;
+export const LONG_PRESS_SETTLE_SECONDS = TUNING_DEFAULTS.longPressSettle;
+
+/** The long-pinch time in use (the knob `longPress`). */
+export function longPressSeconds(): number {
+  return getTuning().longPress;
+}
+
+/** The settle time in use (the knob `longPressSettle`). */
+export function longPressSettleSeconds(): number {
+  return getTuning().longPressSettle;
+}
 
 export type LongPressPhase = 'idle' | 'holding' | 'fired' | 'cancelled';
 export type LongPressCancelReason = 'released' | 'moved' | 'second-hand' | 'claimed';
@@ -101,12 +117,13 @@ export function updateLongPress(m: LongPress, now: number, x: number, y: number,
   const dy = y - m.y;
   const dz = z - m.z;
   const distance2 = dx * dx + dy * dy + dz * dz;
-  if (!Number.isFinite(distance2) || distance2 > LONG_PRESS_MOVE_M * LONG_PRESS_MOVE_M) {
+  const limit = getTuning().longPressMove;
+  if (!Number.isFinite(distance2) || distance2 > limit * limit) {
     m.phase = 'cancelled';
     m.reason = 'moved';
     return m.phase;
   }
-  if (now - m.startedAt >= LONG_PRESS_SECONDS) m.phase = 'fired';
+  if (now - m.startedAt >= getTuning().longPress) m.phase = 'fired';
   return m.phase;
 }
 
@@ -117,7 +134,7 @@ export function updateLongPress(m: LongPress, now: number, x: number, y: number,
 export function longPressProgress(m: LongPress, now: number): number {
   if (m.phase === 'fired') return 1;
   if (m.phase !== 'holding') return 0;
-  const p = (now - m.startedAt) / LONG_PRESS_SECONDS;
+  const p = (now - m.startedAt) / getTuning().longPress;
   if (!Number.isFinite(p)) return 0;
   return p <= 0 ? 0 : p >= 1 ? 1 : p;
 }

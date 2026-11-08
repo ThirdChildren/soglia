@@ -214,6 +214,20 @@ export const strings = {
     hint: 'Pinch two points',
     label: (cm: number): string => measureLabelText(cm),
   },
+  /** The debug statistics panel in the headset (`ui:debug-hud`, only with `debug=1`; M6, T6.A8). One short line each. */
+  debug: {
+    hud: {
+      waiting: 'Waiting for frames',
+      fps: (fps: string, cls: string): string => `${fps} fps  ${cls}`,
+      frameMs: (avg: string, p95: string, max: string): string => `ms avg ${avg}  p95 ${p95}  max ${max}`,
+      render: (callsPerView: number, triangles: number): string => `calls ${callsPerView}/view  tris ${triangles}`,
+      floor: (minFps: string, worstMs: string): string => `min ${minFps} fps  worst ${worstMs} ms`,
+      hands: (left: string, right: string): string => `hands L ${left}  R ${right}`,
+      pinch: (hand: string, source: string, seconds: number): string => `pinch ${hand} ${source} at ${seconds} s`,
+      noPinch: 'pinch none yet',
+      tailTitle: 'log',
+    },
+  },
   /** FitCheck texts (T3.7): `message` is the first line of the label, `note` the fixed second line. */
   fit: {
     ...fitTexts,

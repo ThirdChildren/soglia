@@ -32,6 +32,7 @@ import {
 } from './issues';
 import type { Role } from './params';
 import { can } from './permissions';
+import { getTuning, TUNING_DEFAULTS } from './tuning';
 import { pickMarker, type MarkerCandidate } from './viewpoint-markers';
 
 /** Width of the head of a pin in the world (metres): 1.6 cm. */
@@ -40,8 +41,8 @@ export const PIN_HEAD_DIAMETER_WORLD = 0.016;
 export const PIN_HEIGHT_WORLD = 0.035;
 /** Height of the centre of the head above the tip, in the world (metres). */
 export const PIN_HEAD_CENTER_WORLD = PIN_HEIGHT_WORLD - PIN_HEAD_DIAMETER_WORLD / 2;
-/** A pinch within this distance (world metres) of the head of a pin picks it (D46). */
-export const PIN_PICK_WORLD_RADIUS = 0.02;
+/** A pinch within this distance (world metres) of the head of a pin picks it (D46). Default of the knob `pinRadius` (D66). */
+export const PIN_PICK_WORLD_RADIUS = TUNING_DEFAULTS.pinRadius;
 
 /** Instances of the mesh: one per issue, one for the draft (T4.5) and one for the selection ring (T4.8). */
 export const PIN_INSTANCE_CAPACITY = MAX_ISSUES + 2;
@@ -273,7 +274,7 @@ export interface PinHead extends MarkerCandidate {
 export function pickPin(
   point: Readonly<Vec3Tuple>,
   pins: readonly PinHead[],
-  radius: number = PIN_PICK_WORLD_RADIUS,
+  radius: number = getTuning().pinRadius,
 ): string | null {
   return pickMarker(point[0], point[1], point[2], pins, radius);
 }

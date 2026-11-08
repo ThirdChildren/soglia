@@ -21,9 +21,9 @@ import { placeHint } from '../logic/hint';
 import type { House } from '../logic/house';
 import { planCenter } from '../logic/house-layout';
 import { snapPoint, snapTargets, type SnapPiece } from '../logic/measure';
+import { settlePending } from '../logic/miniature-pan';
 import {
   EMPTY_FLOW,
-  MEASURE_SETTLE_MS,
   formatPointLine,
   formatResultLine,
   measureLabelText,
@@ -159,7 +159,7 @@ export class MeasureSystem extends createSystem({}) {
     }
 
     const pending = this.pending;
-    if (pending && performance.now() - pending.startedAt >= MEASURE_SETTLE_MS) {
+    if (pending && !settlePending(pending.startedAt, performance.now())) {
       if (isPinching(pending.hand)) this.capture(ctx, pending.hand);
       else this.pending = null;
     }
