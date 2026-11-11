@@ -83,3 +83,15 @@ describe('glyphs needs debug=1 (T5.R6)', () => {
     expect(mergeParams(parseParams('debug=1'), parseParams('glyphs=1')).params.glyphs).toBe(true);
   });
 });
+
+describe('noscan (plan MR, MR.5)', () => {
+  it('is honoured only together with debug=1', () => {
+    expect(merged('mr=1&noscan=1').params.noscan).toBe(false);
+    expect(merged('mr=1&noscan=1').warnings).toContain('param noscan ignored: needs debug=1');
+    expect(merged('mr=1&noscan=1&debug=1').params.noscan).toBe(true);
+    expect(merged('mr=1&noscan=1&debug=1').explicit).toContain('noscan');
+  });
+  it('is off by default', () => {
+    expect(merged('mr=1&debug=1').params.noscan).toBe(false);
+  });
+});

@@ -11,6 +11,7 @@
 import { XRMesh, XRPlane, createSystem } from '@iwsdk/core';
 import { slog } from '../log';
 import { sceneFeatureStatus } from '../logic/mixed-reality';
+import { setScanEmpty } from './room-scan-status';
 import {
   createScanWatch,
   formatRoomMeshLine,
@@ -45,10 +46,12 @@ export class RoomScanSystem extends createSystem({
     const onStart = (): void => {
       // Without any scene understanding feature there is nothing to watch: the app goes on without a room.
       this.sessionPending = this.checkSessionFeatures();
+      setScanEmpty(!this.sessionPending);
     };
     const onEnd = (): void => {
       this.sessionPending = false;
       this.scanning = false;
+      setScanEmpty(false);
       stopScanWatch(this.watch);
     };
     this.xrManager.addEventListener('sessionstart', onStart);
@@ -101,8 +104,10 @@ export class RoomScanSystem extends createSystem({
     const event = stepScanWatch(this.watch, time, this.queries.meshes.entities.size, this.queries.planes.entities.size);
     if (event === 'settled') {
       slog(formatRoomSummaryLine(this.queries.meshes.entities.size, this.queries.planes.entities.size));
+      setScanEmpty(false);
     } else if (event === 'empty') {
       slog('room scan empty');
+      setScanEmpty(true);
     }
   }
 

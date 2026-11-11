@@ -40,6 +40,7 @@ describe('parseParams defaults', () => {
       failmodels: false,
       failmy: false,
       failcatalog: false,
+      noscan: false,
       pinch: 'auto',
       contrast: false,
       text: 'normal',
@@ -253,7 +254,7 @@ describe('parseParams time', () => {
 
 describe('parseParams multiple keys', () => {
   it('parses every key in one query string', () => {
-    const r = parseParams('house=apartment-b&role=landlord&reset=1&seed=7&time=2026-12-21T10:00&debug=1&mr=1&glyphs=1&furnish=scandinavian&failmodels=1&failmy=1&failcatalog=1&pinch=grip&contrast=1&text=large');
+    const r = parseParams('house=apartment-b&role=landlord&reset=1&seed=7&time=2026-12-21T10:00&debug=1&mr=1&glyphs=1&furnish=scandinavian&failmodels=1&failmy=1&failcatalog=1&noscan=1&pinch=grip&contrast=1&text=large');
     expect(r.params).toEqual({
       house: 'apartment-b',
       role: 'landlord',
@@ -267,12 +268,13 @@ describe('parseParams multiple keys', () => {
       failmodels: true,
       failmy: true,
       failcatalog: true,
+      noscan: true,
       pinch: 'grip',
       contrast: true,
       text: 'large',
       hud: true,
     });
-    expect([...r.present].sort()).toEqual(['contrast', 'debug', 'failcatalog', 'failmodels', 'failmy', 'furnish', 'glyphs', 'house', 'mr', 'pinch', 'reset', 'role', 'seed', 'text', 'time']);
+    expect([...r.present].sort()).toEqual(['contrast', 'debug', 'failcatalog', 'failmodels', 'failmy', 'furnish', 'glyphs', 'house', 'mr', 'noscan', 'pinch', 'reset', 'role', 'seed', 'text', 'time']);
     expect(r.warnings).toEqual([]);
   });
 
@@ -301,7 +303,7 @@ describe('parseParams multiple keys', () => {
     expect(r.params.house).toBe('apartment-b');
     expect(r.present).toEqual(['house']);
     expect(r.warnings).toEqual([]);
-    expect(Object.keys(r.params).sort()).toEqual(['contrast', 'debug', 'failcatalog', 'failmodels', 'failmy', 'furnish', 'glyphs', 'house', 'hud', 'mr', 'pinch', 'reset', 'role', 'seed', 'text', 'time']);
+    expect(Object.keys(r.params).sort()).toEqual(['contrast', 'debug', 'failcatalog', 'failmodels', 'failmy', 'furnish', 'glyphs', 'house', 'hud', 'mr', 'noscan', 'pinch', 'reset', 'role', 'seed', 'text', 'time']);
   });
 
   it('ignores key names that differ only by case', () => {
@@ -518,6 +520,7 @@ describe('formatParamsLine', () => {
       failmodels: false,
       failmy: false,
       failcatalog: false,
+      noscan: false,
       pinch: 'auto',
       contrast: false,
       text: 'normal',

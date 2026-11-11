@@ -164,6 +164,15 @@ export const CARD_HEIGHT =
   CARD_PADDING * 2 + CARD_TITLE_HEIGHT + CARD_ROW_GAP_TITLE + CARD_MEASURES_HEIGHT + CARD_ROW_GAP_BUTTONS + CARD_BUTTON_HEIGHT;
 /** Text sizes in UIKit units; nothing in the card is smaller than 2.4 (rule 9). */
 export const CARD_TITLE_SIZE = 3.6;
+/** The title of a card whose name does not fit one line at `CARD_TITLE_SIZE` (the names of the catalog: "Three-seat sofa"). */
+export const CARD_TITLE_COMPACT_SIZE = 2.6;
+/** A title longer than this many characters is set at `CARD_TITLE_COMPACT_SIZE`. */
+export const CARD_TITLE_MAX_CHARS = 11;
+
+/** True when `title` is too long for one line at the normal title size. */
+export function compactTitle(title: string): boolean {
+  return title.length > CARD_TITLE_MAX_CHARS;
+}
 export const CARD_MEASURES_SIZE = 2.8;
 export const CARD_BUTTON_TEXT_SIZE = 2.4;
 

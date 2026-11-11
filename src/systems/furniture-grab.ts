@@ -406,6 +406,8 @@ export class FurnitureGrabSystem extends createSystem({}) {
   }
 
   private onPinch(ctx: GrabContext, hand: GrabHand): void {
+    // The model is hidden in the room view of the mixed reality mode: its pieces are not there to be taken (room-pieces.ts has the room's).
+    if (isRoomView()) return;
     if (this.held) {
       // A second pinch while holding is never a grab: the tap of the other hand turns the piece a quarter turn.
       if (hand !== this.held.hand && pinchClaims.ownerOf(hand) === null) this.tap(this.held);
@@ -446,11 +448,8 @@ export class FurnitureGrabSystem extends createSystem({}) {
   private startFromMenu(ctx: GrabContext, catalogId: string, hand: GrabHand): void {
     if (this.held) return; // one piece at a time: the menu claim of this hand lasts until its pinch ends
     if (isPanActive()) return; // a drag of the model is running: the menu keeps this pinch, nothing is picked
-    // The room view of the mixed reality mode has no model to put a piece in (the virtual pieces at 1:1 come with MR.4).
-    if (isRoomView()) {
-      slog(`menu item ignored id=${catalogId} reason=room-view`);
-      return;
-    }
+    // The room view of the mixed reality mode has no model to put a piece in: the menu pick makes a piece at 1:1 there (room-pieces.ts).
+    if (isRoomView()) return;
     const item = findItem(ctx.catalog, catalogId);
     if (!item) return;
     if (ctx.store.get().furniture.length >= MAX_PIECES) {

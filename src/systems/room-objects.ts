@@ -32,6 +32,7 @@ import {
   type VolumeHit,
   type VolumeInfo,
 } from '../logic/room-scan';
+import type { RoomObstacle } from '../logic/room-pieces';
 import { volumeCenter } from '../logic/room-scan-log';
 import { CARD_EXTENT, pickCardControl, type CardControl } from '../logic/room-view';
 import { addScanned, type Store } from '../logic/state';
@@ -92,12 +93,50 @@ export function isScanCardOpen(): boolean {
   return context?.card.isOpen ?? false;
 }
 
+/**
+ * What the virtual pieces system (src/systems/room-pieces.ts) gives this one: the first look at a pinch of the room view (a control of the
+ * card of a piece, or a piece to take) and the closing of its card. It is a bridge, not an import, because that system imports this one.
+ */
+export interface PieceBridge {
+  /** Called after the card of a real object had no use for the pinch; `volumeDistance` is the distance to the volume the hand points at, -1 for none. True when the pinch is taken. */
+  handlePinch(hand: Hand, volumeDistance: number): boolean;
+  /** Closes the card of a virtual piece (a real object was selected). */
+  closeCard(via: string): void;
+}
+
+let pieceBridge: PieceBridge | null = null;
+let activeSystem: RoomObjectsSystem | null = null;
+
+/** Registers (or, with null, removes) the bridge to the virtual pieces. */
+export function registerPieceBridge(bridge: PieceBridge | null): void {
+  pieceBridge = bridge;
+}
+
+/** The real volumes as obstacles for the virtual pieces: their poses are kept up to date in place; do not modify. */
+export function getRoomObstacles(): readonly RoomObstacle[] {
+  return activeSystem?.obstacles ?? [];
+}
+
+/** Distance to the real volume `hand` points at, metres; -1 when the hand points at none (or the room view is off). */
+export function volumeHoverDistance(hand: Hand): number {
+  return activeSystem ? activeSystem.hoverDistance[hand] : -1;
+}
+
+/** Closes the card of a real object (the card of a virtual piece opened, or the session is suspended). */
+export function closeScanCard(via: string): void {
+  activeSystem?.closeCard(via);
+}
+
 export class RoomObjectsSystem extends createSystem({
   meshes: { required: [XRMesh] },
 }) {
   private readonly entries: Entry[] = [];
   /** The volumes of `entries`, in the same order (what `pickVolume` takes). */
   private readonly volumes: ScanVolume[] = [];
+  /** The same volumes with their names, in the same order (what the virtual pieces collide with). */
+  readonly obstacles: RoomObstacle[] = [];
+  /** Distance to the volume each hand points at, metres, -1 for none. */
+  readonly hoverDistance: Record<Hand, number> = { left: -1, right: -1 };
   private readonly freeSlots: number[] = [];
   private readonly hit: VolumeHit = { index: -1, distance: 0 };
   private readonly origin = new Vector3();
@@ -117,6 +156,7 @@ export class RoomObjectsSystem extends createSystem({
   private time = 0;
 
   init(): void {
+    activeSystem = this;
     for (let i = OUTLINE_CAPACITY - 1; i >= 0; i -= 1) this.freeSlots.push(i);
     this.cleanupFuncs.push(onPinchStart((hand) => this.onPinch(hand)));
     this.cleanupFuncs.push(
@@ -149,6 +189,7 @@ export class RoomObjectsSystem extends createSystem({
     this.cleanupFuncs.push(() => {
       this.closeCard('teardown');
       context?.outlines.dispose();
+      if (activeSystem === this) activeSystem = null;
     });
   }
 
@@ -191,6 +232,7 @@ export class RoomObjectsSystem extends createSystem({
     const entry: Entry = { entity, info, volume: createScanVolume(), slot, state: 'idle' };
     this.entries.push(entry);
     this.volumes.push(entry.volume);
+    this.obstacles.push({ volume: entry.volume, name: info.name });
     this.writePose(entry, true);
     ctx.outlines.setVisible(isRoomView());
   }
@@ -206,6 +248,7 @@ export class RoomObjectsSystem extends createSystem({
     this.freeSlots.push(entry.slot);
     this.entries.splice(index, 1);
     this.volumes.splice(index, 1);
+    this.obstacles.splice(index, 1);
   }
 
   /** Reads the pose of the mesh of `entry` into its volume and, when it changed (or `force`), into its outline. */
@@ -249,16 +292,19 @@ export class RoomObjectsSystem extends createSystem({
   /** The ray of each hand against the volumes: the nearest one is the hovered one. */
   private pointRays(): void {
     const rays = this.world.player.raySpaces;
+    // With a virtual piece in a hand (room-pieces.ts) the rays are for the floor: no object lights up.
+    const holding = pinchClaims.anyClaimed('furniture');
     for (const hand of HANDS) {
       const ray = rays[hand];
       let next: Entry | null = null;
       // A hand that is not tracked has a hidden ray with its last pose: it points at nothing.
-      if (ray && ray.visible) {
+      if (ray && ray.visible && !holding) {
         ray.getWorldPosition(this.origin);
         ray.getWorldQuaternion(this.quaternion);
         this.direction.set(0, 0, -1).applyQuaternion(this.quaternion);
         if (pickVolume(this.origin, this.direction, this.volumes, RAY_MAX_DISTANCE, this.hit)) next = this.entries[this.hit.index];
       }
+      this.hoverDistance[hand] = next ? this.hit.distance : -1;
       if (next !== this.hover[hand]) {
         this.hover[hand] = next;
         if (next) slog(`mr hover hand=${hand} label=${next.info.key} distance=${this.hit.distance.toFixed(2)}`);
@@ -269,6 +315,8 @@ export class RoomObjectsSystem extends createSystem({
   private clearHover(): void {
     this.hover.left = null;
     this.hover.right = null;
+    this.hoverDistance.left = -1;
+    this.hoverDistance.right = -1;
     // A hidden mesh needs no colours; the next room view starts from the current states.
   }
 
@@ -317,6 +365,8 @@ export class RoomObjectsSystem extends createSystem({
         return;
       }
     }
+    // A control of the card of a virtual piece, or a virtual piece to take (nearer than the real object the hand points at).
+    if (pieceBridge?.handlePinch(hand, this.hoverDistance[hand])) return;
     const target = this.hover[hand];
     if (target) this.select(target);
   }
@@ -324,6 +374,7 @@ export class RoomObjectsSystem extends createSystem({
   private select(entry: Entry): void {
     const ctx = context;
     if (!ctx) return;
+    pieceBridge?.closeCard('object');
     this.selected = entry;
     const [w, d, h] = entry.info.cm;
     slog(`mr object selected label=${entry.info.key} size=${w}x${d}x${h}`);
@@ -387,7 +438,7 @@ export class RoomObjectsSystem extends createSystem({
     this.refreshCard();
   }
 
-  private closeCard(via: string): void {
+  closeCard(via: string): void {
     const ctx = context;
     if (!ctx || (!this.selected && !ctx.card.isOpen)) return;
     ctx.card.dispose();

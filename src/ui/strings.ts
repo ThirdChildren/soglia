@@ -79,6 +79,12 @@ export const strings = {
     /** Shown instead of the button when Mine cannot hold more scanned objects. */
     full: 'Mine is full',
     close: 'Close',
+    /** The first button of the card of a virtual piece (it takes the place of `Add to Mine`). */
+    remove: 'Remove',
+    /** Notices of the room view (public/ui/room-notice.uikitml): short, plain English. */
+    scanEmpty: 'No room scan found. Set up your space in the headset settings (Space Setup), then reopen Soglia.',
+    notSaved: 'Room layout is not saved',
+    roomFull: 'Room is full',
     /** "210 × 90 × 85 cm": width, depth and height in whole centimetres (plain x when the local panel font is missing). */
     measures: (widthCm: number, depthCm: number, heightCm: number, ascii = false): string => {
       const sign = ascii ? 'x' : '×';

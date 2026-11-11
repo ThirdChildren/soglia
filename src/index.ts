@@ -65,9 +65,10 @@ import { createPins } from './systems/pins';
 import { createSun } from './systems/sun';
 import { createViewpoint } from './systems/viewpoint';
 import { isRealScale } from './systems/view-mode';
-import { chooseMrEntry, mixedRealityOptions } from './systems/mixed-reality';
+import { chooseMrEntry, mixedRealityOptions, watchMrSessionRefusal } from './systems/mixed-reality';
 import { RoomScanSystem } from './systems/room-scan';
 import { createRoomObjects } from './systems/room-objects';
+import { attachRoomPieceVisuals, createRoomPieces } from './systems/room-pieces';
 import { createRoomView } from './systems/room-view';
 import { createFadeOverlay } from './ui/fade-overlay';
 import { ErrorPanelSystem, showErrorPanel } from './ui/error-panel';
@@ -101,11 +102,12 @@ async function start(): Promise<void> {
   // `mr=1`: a mixed reality world (`immersive-ar`, scene understanding on) when the browser can do it; else the VR world of
   // the project, as without the parameter (DMR1). Only a COPY of the project options changes, never the object of the SDK.
   const mrEntry = await chooseMrEntry(params.mr);
-  const worldOptions = mrEntry.mode === 'ar' ? mixedRealityOptions(projectOptions) : projectOptions;
+  const worldOptions = mrEntry.mode === 'ar' ? mixedRealityOptions(projectOptions, params.noscan) : projectOptions;
   const world = await World.create(document.getElementById('scene-container') as HTMLDivElement, worldOptions);
   if (mrEntry.mode === 'ar') {
-    slog('mr world created mode=immersive-ar sceneUnderstanding=on');
+    slog(`mr world created mode=immersive-ar sceneUnderstanding=${params.noscan ? 'off' : 'on'}`);
     world.registerSystem(RoomScanSystem);
+    watchMrSessionRefusal();
   }
   installLocalHands(world);
   installLocalControllers(world);
@@ -281,6 +283,8 @@ async function start(): Promise<void> {
           setMenuTabData({ mine: [...merged.mine] });
         },
       });
+      // The virtual pieces at real scale (MR.4) and the ray of the hands: right after the room objects (they use its volumes and its hover).
+      createRoomPieces(world, merged ? merged.items : []);
     }
     // The tape measure claims the pinch above the grab (and below the menu): register it after the menu, before the grab (T3.14).
     createMeasure(world, store, result.house, merged ? merged.items : [], built.entity, miniature.root);
@@ -289,6 +293,7 @@ async function start(): Promise<void> {
     if (merged) {
       const visuals = new FurnitureVisuals(merged.items);
       await visuals.preload(params.failmodels);
+      if (mrEntry.mode === 'ar') attachRoomPieceVisuals(visuals);
       createFurniture(world, store, result.house, merged.items, visuals, built.entity);
       createFurnitureReasons(world, merged.items);
       createFurnitureGrab(world, store, result.house, merged.items, visuals, built.entity, miniature.root);
