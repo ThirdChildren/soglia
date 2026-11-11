@@ -68,6 +68,23 @@ export const strings = {
   viewpoint: {
     tabletopButton: 'Tabletop',
   },
+  /** The mixed reality mode (`?mr=1`, plan MR): the toggle between the model and the real room, and the card of a real object. */
+  room: {
+    /** The toggle in the model view; in the room view it reads `toModel`. */
+    toRoom: 'My room',
+    toModel: 'Model',
+    addToMine: 'Add to Mine',
+    /** Shown instead of the button for an object that is already in Mine. */
+    added: 'Added',
+    /** Shown instead of the button when Mine cannot hold more scanned objects. */
+    full: 'Mine is full',
+    close: 'Close',
+    /** "210 × 90 × 85 cm": width, depth and height in whole centimetres (plain x when the local panel font is missing). */
+    measures: (widthCm: number, depthCm: number, heightCm: number, ascii = false): string => {
+      const sign = ascii ? 'x' : '×';
+      return `${widthCm} ${sign} ${depthCm} ${sign} ${heightCm} cm`;
+    },
+  },
   /** The coach of the first minute (M5, D60): two short lines, one for each step. */
   coach: {
     menuButton: 'Pinch Menu',

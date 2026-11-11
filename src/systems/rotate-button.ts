@@ -47,7 +47,7 @@ import { isIssuePanelOpen } from './issue-panel';
 import { isPalmMenuOpen } from './palm-menu';
 import { currentReasons } from './piece-reasons';
 import { onPinchStart, pinchClaims, pinchPoint, type Hand } from './pinch-input';
-import { isRealScale, isViewTransitioning } from './view-mode';
+import { isModelHidden, isViewTransitioning } from './view-mode';
 import { isViewPanelOpen } from './view-panel';
 
 interface RotateContext {
@@ -160,7 +160,7 @@ export class RotateButtonSystem extends createSystem({ pieces: { required: [Furn
     }
     const piece = this.pieceObjects.get(pieceId);
     // At real scale the model is the room around the head, and outside a session there is no hand: the button waits.
-    if (!decision.visible || !piece || !presenting || isRealScale() || isViewTransitioning()) {
+    if (!decision.visible || !piece || !presenting || isModelHidden() || isViewTransitioning()) {
       ctx.panel.place(0, 0, 0, 0, false);
       this.shown = false;
       return;

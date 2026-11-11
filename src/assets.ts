@@ -103,6 +103,16 @@ export default defineAssets({
     type: AssetType.UIKitML,
     priority: 'lazy',
   },
+  'room-button': {
+    url: `${import.meta.env.BASE_URL}ui/room-button.uikitml`,
+    type: AssetType.UIKitML,
+    priority: 'lazy',
+  },
+  'scan-card': {
+    url: `${import.meta.env.BASE_URL}ui/scan-card.uikitml`,
+    type: AssetType.UIKitML,
+    priority: 'lazy',
+  },
   'menu-hint': {
     url: `${import.meta.env.BASE_URL}ui/menu-hint.uikitml`,
     type: AssetType.UIKitML,

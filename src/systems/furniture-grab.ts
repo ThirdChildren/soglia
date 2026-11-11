@@ -62,6 +62,7 @@ import type { FurnitureVisuals } from '../ui/furniture-visuals';
 import { forgetPieceStatus, getFurnitureEntity, logPieceStatus, publishReason } from './furniture';
 import { onMenuItemPick, releaseMenuHand } from './menu-items';
 import { isMiniatureGestureActive } from './miniature-gesture';
+import { isRoomView } from './view-mode';
 import { isPanActive, onPinchEnd, onPinchStart, pinchClaims, pinchPoint } from './pinch-input';
 
 interface GrabContext {
@@ -445,6 +446,11 @@ export class FurnitureGrabSystem extends createSystem({}) {
   private startFromMenu(ctx: GrabContext, catalogId: string, hand: GrabHand): void {
     if (this.held) return; // one piece at a time: the menu claim of this hand lasts until its pinch ends
     if (isPanActive()) return; // a drag of the model is running: the menu keeps this pinch, nothing is picked
+    // The room view of the mixed reality mode has no model to put a piece in (the virtual pieces at 1:1 come with MR.4).
+    if (isRoomView()) {
+      slog(`menu item ignored id=${catalogId} reason=room-view`);
+      return;
+    }
     const item = findItem(ctx.catalog, catalogId);
     if (!item) return;
     if (ctx.store.get().furniture.length >= MAX_PIECES) {

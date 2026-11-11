@@ -59,6 +59,7 @@ const SAMPLE_CALLS: Record<string, () => string[]> = {
   floor: () => [strings.debug.hud.floor('64', '31.2'), strings.debug.hud.floor('-', '0.0')],
   hands: () => [strings.debug.hud.hands('joints', 'grip')],
   pinch: () => [strings.debug.hud.pinch('R', 'joints', 123)],
+  measures: () => [strings.room.measures(210, 90, 85), strings.room.measures(7, 5, 108)],
   roomLabel: () =>
     ['apartment-a.json', 'apartment-b.json'].flatMap((file) =>
       rooms(file).map((room) => strings.roomLabel(room.name, polygonArea(room.polygon))),
