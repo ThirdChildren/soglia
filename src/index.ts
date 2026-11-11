@@ -63,6 +63,8 @@ import { createPins } from './systems/pins';
 import { createSun } from './systems/sun';
 import { createViewpoint } from './systems/viewpoint';
 import { isRealScale } from './systems/view-mode';
+import { chooseMrEntry, mixedRealityOptions } from './systems/mixed-reality';
+import { RoomScanSystem } from './systems/room-scan';
 import { createFadeOverlay } from './ui/fade-overlay';
 import { ErrorPanelSystem, showErrorPanel } from './ui/error-panel';
 import { loadPanelFonts } from './ui/fonts';
@@ -92,10 +94,15 @@ async function start(): Promise<void> {
   const storage = createSafeStorage();
   if (params.reset) clearSavedState(storage);
 
-  const world = await World.create(
-    document.getElementById('scene-container') as HTMLDivElement,
-    projectOptions,
-  );
+  // `mr=1`: a mixed reality world (`immersive-ar`, scene understanding on) when the browser can do it; else the VR world of
+  // the project, as without the parameter (DMR1). Only a COPY of the project options changes, never the object of the SDK.
+  const mrEntry = await chooseMrEntry(params.mr);
+  const worldOptions = mrEntry.mode === 'ar' ? mixedRealityOptions(projectOptions) : projectOptions;
+  const world = await World.create(document.getElementById('scene-container') as HTMLDivElement, worldOptions);
+  if (mrEntry.mode === 'ar') {
+    slog('mr world created mode=immersive-ar sceneUnderstanding=on');
+    world.registerSystem(RoomScanSystem);
+  }
   installLocalHands(world);
   installLocalControllers(world);
   world.registerSystem(ErrorPanelSystem);
