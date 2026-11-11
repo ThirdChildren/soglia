@@ -39,7 +39,7 @@ import { createIssueCreate } from './systems/issue-create';
 import { createIssuePanel } from './systems/issue-panel';
 import { createViewPanel } from './systems/view-panel';
 import { createMenuButton } from './systems/menu-button';
-import { createMenuItems, setMenuTabData } from './systems/menu-items';
+import { createMenuItems, setMenuPickDebug, setMenuTabData } from './systems/menu-items';
 import { attachLifecycle } from './systems/lifecycle';
 import {
   attachPersistence,
@@ -239,6 +239,7 @@ async function start(): Promise<void> {
     if (merged && catalogResult.ok) {
       const sections = menuSections(catalogResult.items, merged.mine);
       createMenuItems(world, store, sections.items);
+      setMenuPickDebug(params.debug);
       // The tabs `mine` and `fit` appear only when their data arrived; `measure` is there with the tape measure (T3.14).
       setMenuTabData({ mine: sections.mine, fit: sections.fit, measure: true });
     }

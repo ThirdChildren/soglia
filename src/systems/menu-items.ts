@@ -9,8 +9,11 @@
 // rendering and sit where each card or button is drawn, in the plane of the menu (the layout is in
 // src/logic/menu.ts). They are disposed when the menu closes. The page always starts at 1 when the menu opens.
 //
-// A pinch of the free hand inside the rectangle of a control (its real size in the plane of the menu) claims that hand as `menu` (the highest
-// priority, so it never selects a room and never starts a gesture) and runs the action:
+// A pinch of the free hand over the rectangle of a control (its real size in the plane of the menu, judged where the hand
+// is SEEN from the eyes: the menu is drawn over everything, `pickMenu` in src/logic/menu.ts) claims that hand as `menu` (the highest
+// priority, so it never selects a room and never starts a gesture) and runs the action. A pinch that lands on the panel but on no
+// control (between two cards, on the title) is also taken by the menu and does nothing (`menu pinch ignored`), so it never
+// falls through to the model behind (headset bug 2026-11-11):
 //   item     -> listeners registered with `onMenuItemPick` (the grab, task T2.13). They may take the hand with
 //               `releaseMenuHand` and claim it as `furniture`; otherwise the claim lasts until the pinch ends.
 //   Undo     -> `undo()` on the store, with the `undo ...` log line.
@@ -34,17 +37,24 @@ import {
   ITEM_SLOTS,
   barButtons,
   formatPageLine,
+  createMenuPick,
   formatTabLine,
+  MENU_EXTENT,
   menuTabs,
   pageCount,
   pageItems,
-  pickRect,
+  pickMenu,
+  pointOnMenuPanel,
+  scaleExtent,
   tabPieces,
   tabRowVisible,
   tabSlots,
   turnPage,
+  toFrameLocal,
   validTab,
   type ButtonId,
+  type FrameLocal,
+  type PanelExtent,
   type HalfSize,
   type MenuTabId,
   type Offset,
@@ -57,7 +67,7 @@ import { MenuAnchor } from '../ui/menu-anchor';
 import { strings } from '../ui/strings';
 import { panelFontSupports } from '../ui/fonts';
 import { endMiniaturePan } from './miniature-pan';
-import { getPalmMenuPanel } from './palm-menu';
+import { getMenuMode, getPalmMenuPanel } from './palm-menu';
 import type { PalmMenuPanel } from '../ui/palm-menu';
 import { onPinchStart, pinchClaims, pinchPoint, type Hand } from './pinch-input';
 import { returnToTabletop } from './viewpoint';
@@ -94,6 +104,12 @@ const BUTTON_IDS: Readonly<Record<ButtonId | 'tabletop', string>> = {
 
 // Shared with the system, which has no constructor arguments: set by `createMenuItems`.
 let context: MenuItemsContext | null = null;
+let pickDebug = false;
+
+/** `debug=1`: every pinch that opens no control while a menu is open logs `menu pick miss ...` (headset diagnosis). */
+export function setMenuPickDebug(on: boolean): void {
+  pickDebug = on;
+}
 const pickListeners = new Set<PickListener>();
 
 /** Calls `listener` when a pinch picks a catalog item of the menu (the grab uses it). Returns the unsubscribe function. */
@@ -160,7 +176,12 @@ export class MenuItemsSystem extends createSystem({}) {
   private slots: Slot[] = [];
   private readonly spot = new Vector3();
   private readonly point = new Vector3();
+  private readonly eye = new Vector3();
   private readonly frameQuat = new Quaternion();
+  private readonly pick = createMenuPick<Slot>();
+  private readonly localPoint: FrameLocal = { x: 0, y: 0, z: 0 };
+  private extent: PanelExtent = MENU_EXTENT;
+  private extentScale = 1;
 
   init(): void {
     this.cleanupFuncs.push(
@@ -323,8 +344,14 @@ export class MenuItemsSystem extends createSystem({}) {
     pinchPoint(hand, this.point);
     const menu = getPalmMenuPanel();
     if (!menu) return;
-    const hit = pickRect(this.point, this.slots, menu.frameOrientation);
-    if (!hit) return;
+    // The menu is drawn over everything, so a pinch counts where the hand is SEEN from the eyes.
+    this.world.player.head.getWorldPosition(this.eye);
+    const pick = pickMenu(this.point, this.eye, this.slots, menu.frameOrientation, this.pick);
+    const hit = pick.hit;
+    if (!hit) {
+      this.onMiss(hand, menu, pick.nearest, pick.gapX, pick.gapY);
+      return;
+    }
     // The menu has the highest priority: this only fails if the menu already owns the hand.
     // The Rotate button comes first (T5.14): a pinch that pressed it is not a second press on a control under it.
     if (pinchClaims.ownerOf(hand) === 'menu' || !pinchClaims.claim(hand, 'menu')) return;
@@ -358,6 +385,30 @@ export class MenuItemsSystem extends createSystem({}) {
         slog(`miniature recentered scale=${ctx.store.get().miniature.scale.toFixed(4)}`);
         break;
     }
+  }
+
+  /**
+   * A pinch that opened no control while the menu is open. One that lands on the panel (between two cards, on the
+   * title) is taken by the menu and does nothing, so it never starts an issue, selects a room or drags the model
+   * behind it (headset bug 2026-11-11, symptom 2). With `debug=1` the miss is logged in the frame of the menu.
+   */
+  private onMiss(hand: Hand, menu: PalmMenuPanel, nearest: Slot | null, gapX: number, gapY: number): void {
+    if (this.extentScale !== menu.scale) {
+      this.extentScale = menu.scale;
+      this.extent = scaleExtent(MENU_EXTENT, menu.scale);
+    }
+    const onPanel = pointOnMenuPanel(this.point, this.eye, menu.framePosition, menu.frameOrientation, this.extent);
+    if (pickDebug) {
+      const local = toFrameLocal(this.point, menu.framePosition, menu.frameOrientation, this.localPoint);
+      slog(
+        `menu pick miss hand=${hand} mode=${getMenuMode() ?? 'none'} local=${local.x.toFixed(3)},${local.y.toFixed(3)} ` +
+          `planeDist=${local.z.toFixed(3)} nearest=${nearest ? nearest.id : 'none'} dx=${gapX.toFixed(3)} dy=${gapY.toFixed(3)} ` +
+          `onPanel=${onPanel ? 1 : 0} headDist=${this.eye.distanceTo(menu.framePosition).toFixed(2)}`,
+      );
+    }
+    if (!onPanel) return;
+    if (pinchClaims.ownerOf(hand) === 'menu' || !pinchClaims.claim(hand, 'menu')) return;
+    slog(`menu pinch ignored hand=${hand} reason=between-controls`);
   }
 
   private undo(ctx: MenuItemsContext): void {
