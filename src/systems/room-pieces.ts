@@ -425,7 +425,8 @@ export class RoomPiecesSystem extends createSystem({
         const piece = held ? null : this.pickPiece();
         const pieceDistance = piece ? this.hit.distance : -1;
         let best = -1;
-        if (piece && (volumeDistance < 0 || pieceDistance <= volumeDistance)) {
+        // A virtual piece wins over a real object it is in or behind: the pieces are what the user moves (a piece left over a couch must stay grabbable).
+        if (piece) {
           best = pieceDistance;
           this.hoverPiece[hand] = piece;
         } else if (volumeDistance >= 0) {
@@ -543,10 +544,11 @@ export class RoomPiecesSystem extends createSystem({
         return true;
       }
     }
-    // A placed piece the hand points at, nearer than the real object it also points at.
+    // A placed piece the hand points at wins over the real object it also points at (it may sit inside it).
     if (!ctx.visuals || !this.readRay(hand)) return false;
     const piece = this.pickPiece();
-    if (!piece || (volumeDistance >= 0 && this.hit.distance > volumeDistance)) return false;
+    if (!piece) return false;
+    void volumeDistance;
     releaseMenuHand(hand);
     if (!pinchClaims.claim(hand, 'furniture')) return false;
     closeScanCard('piece');
