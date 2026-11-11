@@ -4,6 +4,9 @@ Sintesi del regolamento ufficiale letto il 28 settembre 2026:
 https://start-developer-competition-26.devpost.com/rules — in caso di dubbio fa fede il testo ufficiale.
 Il `contest-reviewer` lo ricontrolla a ogni gate.
 
+**Riletto il 2026-11-11** (Rules, Overview, FAQ e guida Meta "Build and Deploy" di IWSDK): nessun cambiamento
+rispetto a questa sintesi; aggiunti sotto i dettagli del modulo di consegna e dell'hosting.
+
 ## Date
 
 - Periodo: dal 24 settembre 2026, 10:00 PT, al **18 novembre 2026, 12:00 PT** (21:00 in Italia).
@@ -101,6 +104,15 @@ Il `contest-reviewer` lo ricontrolla a ogni gate.
   equivalent emulator", pubblico su YouTube o Vimeo. Riprese reali: "Don't lean on AI-generated video".
 - Descrizione: ispirazione, come è fatto, sviluppi futuri, data di lancio; screenshot consigliati.
 - Track Productivity, divisione New Experience.
+- Modulo Devpost: nome, **tagline ≤ 140 caratteri**, track, divisione, descrizione (consigliate ≤ 500 parole:
+  ispirazione, come è fatto, sviluppi futuri), **data di lancio prevista**, facoltativo "come sono implementate le
+  interazioni con le mani e cosa ti entusiasma del futuro della VR", nomi/email/ruoli del team se c'è.
+- Per IWSDK: link alla pagina ospitata; la guida Meta indica GitHub Pages ("You may also use your preferred hosting
+  solution (e.g., Vercel, Digital Ocean, AWS, Azure)"). Il progetto deve restare gratuito e raggiungibile fino
+  all'annuncio dei vincitori (~11 dic) ed essere giocabile sul **Quest 3/3S** (FAQ: "Project builds need to be playable on
+  Meta Quest 3/3S").
+- Idoneità (testo attuale): esclusi i residenti in Brasile, Québec e paesi sotto sanzioni; chi entra in Start o abilita
+  l'accesso sviluppatore dopo il 24/9 può partecipare se è in regola al momento della consegna. Il visore non è obbligatorio.
 
 ## Valutazione
 
