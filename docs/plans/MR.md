@@ -1,6 +1,6 @@
 # MR · Realtà mista: la mia stanza (ramo `claude/eager-mendel-skcibe`)
 
-**Decisione dell'utente (2026-11-11)**: si fa la **versione completa** della realtà mista, su un ramo separato da `main`, da provare sul visore e poi unire. Contenuto scelto: (1) gli oggetti veri della stanza, riconosciuti dalla scansione del Quest, si vedono, si toccano (nome e misure) e si aggiungono ai "miei mobili" per il FitCheck; (2) **mobili virtuali del catalogo a grandezza reale nella stanza**, appoggiati al pavimento rilevato. Il congelamento delle funzioni (gio 12, 23:59) slitta **solo per questa funzione**; tutto resta dietro `?mr=1` finché non supera la prova sul visore in **due stanze diverse** (regola già scritta in `docs/ROADMAP.md`, M5). Se non la supera entro ven 13, il ramo non si unisce e la demo resta quella di `main`.
+**Decisione dell'utente (2026-11-11)**: si fa la **versione completa** della realtà mista, su un ramo separato da `main`, da provare sul visore e poi unire. Contenuto scelto: (1) gli oggetti veri della stanza, riconosciuti dalla scansione del Quest, si vedono, si toccano (nome e misure) e si aggiungono ai "miei mobili" per il FitCheck; (2) **mobili virtuali del catalogo a grandezza reale nella stanza**, appoggiati al pavimento rilevato. Il congelamento delle funzioni (gio 12, 23:59) slitta **solo per questa funzione**; tutto resta dietro `?mr=1` finché non supera la prova sul visore in **due stanze diverse** (regola già scritta in `docs/ROADMAP.md`, M5). Se non la supera entro **domenica 15 novembre in mattinata** (termine indicato dall'utente il 2026-11-11), il ramo non si unisce e la demo resta quella di `main`.
 
 ## Cosa la piattaforma dà e cosa no (verificato su `@iwsdk/core` 1.0.1, 2026-11-11)
 
@@ -41,3 +41,4 @@ In **due stanze diverse** con Space Setup fatto: la sessione MR parte; i mobili 
 
 ## Changelog
 - 2026-11-11: piano creato dopo la decisione dell'utente (versione completa, ramo separato, mobili virtuali nella stanza).
+- 2026-11-11: termine per le prove sul visore e l'unione spostato a domenica 15 novembre mattina (indicazione dell'utente).
