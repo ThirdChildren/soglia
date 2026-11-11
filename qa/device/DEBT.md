@@ -107,3 +107,30 @@ Voci che l'emulatore non può dimostrare. Le aggiungono `emulator-qa`, `xr-engin
 | M6 | Frequenza di aggiornamento effettiva della sessione (72/90/120 Hz) letta da `session.frameRate` (`hzFrom=session`) contro la stima (`hzFrom=est`), e se `session.updateTargetFrameRate` è disponibile (l'app non lo usa): le soglie di classe `OK ≥ 70`, `LOW ≥ 60` hanno senso a 72 Hz | media | 2026-11-07 | — |
 | M6 | `pair-headset` con le mani vere (D73): lo stato ECS del visore si legge dal PC (`ecs query`, posa della testa) senza che i controller sintetici tolgano le mani; fonte per misurare le distanze reali dei pannelli dalla testa. `--native-xr-control` non si usa con le mani | bassa | 2026-11-07 | — |
 | M6 | HUD contro la colonna dei pulsanti di sinistra (avviso W-A1 del gate PC, `qa/reports/M6-2026-11-07.md`): **corretto in PC** (commit 6198854, HUD spostato sopra la linea di vista, test angolari contro i 6 pulsanti fissi e il menu `pinned`); sul visore confermare che non c'è sovrapposizione con i pulsanti né con i pannelli aperti, e che la maschera `t_fovMask` costa +1 chiamata (forceSinglePass, commit de7b2ee) | bassa | 2026-11-07 | — |
+| M6 | **Difetto trovato sul visore (2026-11-11):** con il menu del palmo aperto (`mode=palm`, mano sinistra o destra) i pizzichi dell'altra mano sulle schede non producono mai `menu item picked` (circa 10 pizzichi su 4 aperture, `pinchDist` 1–9 mm, `source=joints`), mentre il menu `pinned` aperto dal pulsante `Menu` prende la poltrona al primo pizzico. I pizzichi mancati passano al plastico (6 righe `issue denied action=create role=agent` dopo 0,8 s). In IWER la presa dal menu del palmo funziona. Affidato a `xr-engineer`; da riprovare sul visore dopo la correzione. Log: `qa/device/logs/console-20261111-202258.log` | alta | 2026-11-11 | ❌ fallito (2026-11-11) |
+
+## Sessione sul visore del 2026-11-11 (Quest 3S, mani, `role=agent`, casa A, `debug=1`)
+
+Prima sessione con il visore. Log: `qa/device/logs/console-20261111-202258.log` (le righe fino alle 20:23:01 sono il buffer
+riletto all'aggancio; la parte dal vivo inizia alle 20:23:02). Esiti osservati **solo nel log e dalle parole dell'utente**,
+non ancora con la checklist completa di `docs/DEVICE_CHECKLIST.md`: le righe sopra restano aperte finché non si fa la prova
+completa.
+
+Riuscito sul visore:
+
+- `quest:console` canale **CDP** (`adb forward` + `localabstract:chrome_devtools_remote`): si aggancia alla pagina e
+  salva il log (riga M6 sugli script `quest:*`, parte console).
+- `adb reverse tcp:8081 tcp:8081` e `adb shell 'am start … -d "URL con &"'`: la pagina si apre con i parametri giusti.
+- Prestazioni: 90 Hz di sessione (`hzFrom=session`), 90 fps stabili, minimo 82 fps su 191 s, nessuna finestra sotto 60;
+  20–24 chiamate per vista, 12–13,6k triangoli (senza mobili); un fotogramma peggiore di 138 ms (probabile caricamento).
+- Giunti delle mani: `source=joints` su entrambe le mani; un solo passaggio breve a `grip reason=no-joints` (20:23:32).
+- Menu del palmo: si apre e si chiude con entrambe le mani (`menu opened hand=left|right mode=palm`, `menu closed via=palm`).
+- Pulsanti fissi `Menu`, `Issues`, `View` e controlli del pannello View (`ui:view-close`): presi al primo pizzico.
+- Menu `pinned`: presa dalla scheda, trascinamento, rotazione durante la presa, `Fits: the narrowest door…`, posa valida.
+- Spostamento di un pezzo dal plastico (`source=model`): FitCheck `Won't fit: the door is 80 cm wide…` e `Blocks the door`.
+- `Furnish` dell'agente: 14 pezzi in un colpo.
+- Punti di vista: ingresso in V2 e ritorno con il pulsante `Tabletop` (dissolvenza 424–426 ms).
+- Gesto a due mani sul plastico (zoom, rotazione, traslazione) e selezione di una stanza con etichetta.
+- Salvataggio automatico (`state saved … reason=debounce`).
+
+Fallito: il menu del palmo non accetta i pizzichi sulle schede (riga M6 qui sopra).
