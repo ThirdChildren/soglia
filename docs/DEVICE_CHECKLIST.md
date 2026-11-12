@@ -7,6 +7,8 @@ con priorità: questa checklist è l'indice, DEBT.md il dettaglio con i numeri d
 Guida passo passo per l'utente (Fedora, adb, certificato, debug remoto, Meta VR CLI):
 `docs/QUEST_SETUP.md`. Piano e ordine delle sessioni: `docs/plans/M6.md`.
 
+> **Changelog 2026-11-12**: realtà mista ripresa come funzione opt-in `?mr=1` (decisione dell'utente del 2026-11-11): la voce ➖ diventa una prova da fare.
+
 > **Changelog 2026-11-07** (piano M6, segnalazioni di `quest-integrator`): (1) M5: le "ombre del sole" non
 > esistono più, sono **chiazze di luce** (D55 di M5); (2) M5: la **realtà mista è tagliata e fuori dal gate**
 > (`mr=1` non ha effetto), decisione esplicita D74 del piano M6; (3) M4: tastiera di sistema e microfono **non
@@ -107,9 +109,12 @@ Guida passo passo per l'utente (Fedora, adb, certificato, debug remoto, Meta VR 
 - [ ] Alto contrasto e testo grande leggibili nel campo visivo; modalità una mano completa.
 - [ ] **`Rotate`** (12 s dopo la posa) raggiungibile e non premuto per sbaglio; **coach** del pulsante `Menu`
       comprensibile senza spiegazioni.
-- [ ] ➖ **Realtà mista: tagliata e fuori dal gate** (`mr=1` non ha effetto; decisione D74 del piano M6, conferma di
-      M5). Non si prova e non si cita nella demo. Resta solo il rilevamento di funzioni del browser, a titolo di
-      informazione (`[soglia:env]`, sezione "Strumenti di M6").
+- [ ] **Realtà mista `?mr=1`** (ripresa il 2026-11-11, piano `docs/plans/MR.md`; prima D74 la tagliava). Con lo
+      Space Setup fatto, in **due stanze diverse**: la sessione parte con passthrough; `My room` mostra i contorni dei
+      mobili veri con il nome giusto; il raggio della mano li sceglie da seduti; misure entro ±5 cm da un mobile misurato
+      col metro; `Add to Mine` poi FitCheck sull'appartamento; un divano virtuale a 1:1 sul pavimento resta fermo quando
+      ci si gira e diventa rosso sopra un mobile vero; percorso a una mano (`Model`/`Menu`); ≥ 60 fps con 12 pezzi;
+      senza `?mr=1` l'app è quella di `main`. Se una prova fallisce, il ramo non si unisce.
 
 ## Strumenti di M6 (fase A implementata il 2026-11-07, **provati solo sul PC**; i dettagli in `docs/QUEST_SETUP.md`, sezione 11)
 - [ ] `?debug=1` mostra nel visore, **solo in sessione**, il pannello `ui:debug-hud` (fps con `OK`/`LOW`/`FAIL`, ms medio/p95/max,
