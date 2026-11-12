@@ -329,3 +329,203 @@ export function pickRect<T extends PickSlot>(
   }
   return best;
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Picking along the line of sight (headset bug of 2026-11-11).
+//
+// The menu is drawn without depth testing, so the user lines the pinch up with a card AS SEEN FROM THE EYES: the hand
+// can be several centimetres in front of the plane of the menu and still look exactly over the card. `pickRect` asks
+// for the point itself to be within 5 cm of the plane, which is stricter than the depth perception of a floating
+// panel allows (the pinned menu, reached by a hand that happened to be on the plane, worked; the palm menu, whose
+// plane is pulled to 0.5 m from the head, did not). `pickMenu` projects the pinch point on the plane of the menu along
+// the line from the eye, so a pinch counts where the hand is SEEN, within a window of depth in front of the plane
+// (`PICK_FRONT`) and `depth` behind it. The point itself inside a rectangle within `depth` still counts, so
+// the point itself is used when the eye is not known.
+// ---------------------------------------------------------------------------------------------------------------------
+
+/** How far in front of the plane of the menu (toward the eyes) a pinch still counts when it is seen over a control, metres. */
+export const PICK_FRONT = 0.2;
+/** A pinch on the menu panel but not on a control is still taken by the menu if it is this close to the panel's edge, metres. */
+export const PANEL_MARGIN = 0.02;
+/** The same window in front of the plane for a pinch on the panel but not on a control (smaller: that pinch is simply absorbed), metres. */
+export const PANEL_FRONT = 0.12;
+
+/** A point in the frame of the menu: `x` to the right, `y` up, `z` toward the head (the side the panel faces). */
+export interface FrameLocal {
+  x: number;
+  y: number;
+  z: number;
+}
+
+/**
+ * The coordinates of `point` in the frame of a plane: origin `origin`, orientation `frame` (the inverse rotation is
+ * applied). Writes into `out` and returns it. Non-finite input gives non-finite output. Allocates nothing.
+ */
+export function toFrameLocal(point: Point3, origin: Point3, frame: Quat, out: FrameLocal): FrameLocal {
+  const { x: qx, y: qy, z: qz, w: qw } = frame;
+  const dx = point.x - origin.x;
+  const dy = point.y - origin.y;
+  const dz = point.z - origin.z;
+  // t = 2 * cross(-q.xyz, d); v' = d + w * t + cross(-q.xyz, t)
+  const tx = 2 * (-qy * dz + qz * dy);
+  const ty = 2 * (-qz * dx + qx * dz);
+  const tz = 2 * (-qx * dy + qy * dx);
+  out.x = dx + qw * tx + (-qy * tz + qz * ty);
+  out.y = dy + qw * ty + (-qz * tx + qx * tz);
+  out.z = dz + qw * tz + (-qx * ty + qy * tx);
+  return out;
+}
+
+/** The eye must be at least this far in front of the plane for the line of sight to be used, metres. */
+const EYE_MIN_DISTANCE = 0.05;
+
+/**
+ * Where the line from the eye (`eye`, local) through `p` (local) crosses the plane `z = 0`, written into `out`
+ * (x, y; z = 0). False when the line cannot be used: the eye is not in front of the plane or the point is not between
+ * the eye and the plane's side of it. Allocates nothing.
+ */
+function projectToPlane(eye: FrameLocal, p: FrameLocal, out: FrameLocal): boolean {
+  if (!(eye.z > EYE_MIN_DISTANCE) || !(eye.z - p.z > EYE_MIN_DISTANCE)) return false;
+  const t = eye.z / (eye.z - p.z);
+  const x = eye.x + t * (p.x - eye.x);
+  const y = eye.y + t * (p.y - eye.y);
+  if (!Number.isFinite(x + y)) return false;
+  out.x = x;
+  out.y = y;
+  out.z = 0;
+  return true;
+}
+
+/** What `pickMenu` found, for the pick itself and for the diagnostic line of the headset (`menu pick miss`). */
+export interface MenuPick<T extends PickSlot> {
+  /** The control that takes the pinch, or null. */
+  hit: T | null;
+  /** The control whose rectangle is closest to where the pinch is seen (same as `hit` when there is one), or null without slots. */
+  nearest: T | null;
+  /** Gap, in the plane of the menu, between the seen point and the rectangle of `nearest`: 0 inside, else the distance outside along each axis, signed like the offset (point minus rectangle edge). */
+  gapX: number;
+  gapY: number;
+  /** Distance of the pinch point from the plane of the menu: positive toward the head, negative behind the panel. */
+  depth: number;
+  /** True when the line of sight was used (the eye was in front of the plane), false when only the point itself counted. */
+  usedEye: boolean;
+}
+
+const pLocal: FrameLocal = { x: 0, y: 0, z: 0 };
+const eLocal: FrameLocal = { x: 0, y: 0, z: 0 };
+const seen: FrameLocal = { x: 0, y: 0, z: 0 };
+
+/** Signed gap of `v` outside `[-half, half]`: 0 inside, else how far outside (positive on the + side, negative on the - side). */
+function gapOutside(v: number, half: number): number {
+  if (v > half) return v - half;
+  if (v < -half) return v + half;
+  return 0;
+}
+
+/**
+ * The control a pinch at `point` takes, seen from `eye` (see the comment above). For each control the point and the eye
+ * are put in its frame; the pinch counts when it is within `depth` behind the plane or `front` in front of it AND
+ * the line of sight crosses the rectangle (without the eye: the point itself is inside it, as for `pickRect`). Among the
+ * controls that match the closest centre wins. `eye` may be null (head not known): then only the point itself counts,
+ * `depth` on both sides. Fills `into` (when given) with what the diagnostic needs; allocates nothing when `into` is given
+ * and reused.
+ */
+export function pickMenu<T extends PickSlot>(
+  point: Point3,
+  eye: Point3 | null,
+  slots: readonly T[],
+  frame: Quat,
+  into: MenuPick<T>,
+  depth = getTuning().pickDepth,
+  front = PICK_FRONT,
+): MenuPick<T> {
+  into.hit = null;
+  into.nearest = null;
+  into.gapX = Infinity;
+  into.gapY = Infinity;
+  into.depth = Number.NaN;
+  into.usedEye = false;
+  const { x: qx, y: qy, z: qz, w: qw } = frame;
+  if (!Number.isFinite(qx + qy + qz + qw)) return into;
+  let bestDistance = Infinity;
+  let nearestGap = Infinity;
+  for (let i = 0; i < slots.length; i += 1) {
+    const slot = slots[i];
+    toFrameLocal(point, slot, frame, pLocal);
+    let x = pLocal.x;
+    let y = pLocal.y;
+    let usedEye = false;
+    if (eye) {
+      toFrameLocal(eye, slot, frame, eLocal);
+      if (projectToPlane(eLocal, pLocal, seen)) {
+        x = seen.x;
+        y = seen.y;
+        usedEye = true;
+      }
+    }
+    const sized = slot.halfWidth > 0 && slot.halfHeight > 0;
+    const gx = gapOutside(x, slot.halfWidth);
+    const gy = gapOutside(y, slot.halfHeight);
+    if (sized && Number.isFinite(gx + gy)) {
+      const gap = Math.hypot(gx, gy);
+      if (gap < nearestGap) {
+        nearestGap = gap;
+        into.nearest = slot;
+        into.gapX = gx;
+        into.gapY = gy;
+        into.depth = pLocal.z;
+        into.usedEye = usedEye;
+      }
+    }
+    if (!sized) continue;
+    // With the eye, only where the point is SEEN counts (the raw point of a hand in front of a card may be beside another
+    // card); without it, the point itself within `depth`, as `pickRect`.
+    const reach = usedEye ? front : depth;
+    if (!(pLocal.z >= -depth && pLocal.z <= reach && gx === 0 && gy === 0)) continue;
+    const distance = Math.hypot(x, y);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      into.hit = slot;
+    }
+  }
+  return into;
+}
+
+/** A fresh, empty `MenuPick` to reuse across calls. */
+export function createMenuPick<T extends PickSlot>(): MenuPick<T> {
+  return { hit: null, nearest: null, gapX: Infinity, gapY: Infinity, depth: Number.NaN, usedEye: false };
+}
+
+/**
+ * True when a pinch at `point`, seen from `eye`, lands on the panel of the menu itself (not only on a control): the
+ * extent of the panel (`extent`, metres from `origin`, the bottom centre of the menu, already scaled) grown by
+ * `margin`, with the same depth window as `pickMenu`. The menu takes such a pinch and does nothing with it, so a miss
+ * between two cards never falls through to the model behind (headset bug 2026-11-11, symptom 2).
+ */
+export function pointOnMenuPanel(
+  point: Point3,
+  eye: Point3 | null,
+  origin: Point3,
+  frame: Quat,
+  extent: Readonly<PanelExtent>,
+  margin = PANEL_MARGIN,
+  depth = getTuning().pickDepth,
+  front = PANEL_FRONT,
+): boolean {
+  const { x: qx, y: qy, z: qz, w: qw } = frame;
+  if (!Number.isFinite(qx + qy + qz + qw)) return false;
+  toFrameLocal(point, origin, frame, pLocal);
+  let x = pLocal.x;
+  let y = pLocal.y;
+  let reach = depth;
+  if (eye) {
+    toFrameLocal(eye, origin, frame, eLocal);
+    if (projectToPlane(eLocal, pLocal, seen)) {
+      x = seen.x;
+      y = seen.y;
+      reach = front;
+    }
+  }
+  if (!(pLocal.z >= -depth && pLocal.z <= reach)) return false;
+  return Math.abs(x) <= extent.halfWidth + margin && y >= extent.bottom - margin && y <= extent.top + margin;
+}
