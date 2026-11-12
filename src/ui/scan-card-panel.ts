@@ -7,7 +7,7 @@
 
 import { PanelDocument, PanelUI, type Entity, type UIKit, type World } from '@iwsdk/core';
 import { tagEntity } from '../components/tag-entity';
-import { CARD_HEIGHT, CARD_TITLE_COMPACT_SIZE, SCAN_CARD_ID, cardAnchor } from '../logic/room-view';
+import { CARD_HEIGHT, CARD_MEASURES_SIZE, CARD_TITLE_COMPACT_SIZE, CARD_TITLE_SIZE, SCAN_CARD_ID, cardAnchor } from '../logic/room-view';
 import { pitchOfForward, yawOfForward } from '../logic/menu-anchor';
 import { applyPanelLook } from './panel-theme';
 import { disposePanelEntity } from './panel-lifecycle';
@@ -41,6 +41,8 @@ export interface CardModel {
   readonly closeText: string;
   /** True for a name too long for one line at the normal size (the title is set smaller, never below 2.4). */
   readonly compactTitle?: boolean;
+  /** Font size of the measures line in UIKit units (default `CARD_MEASURES_SIZE`); smaller for a long "About ..." line, never below 2.4. */
+  readonly measuresSize?: number;
 }
 
 export class ScanCardPanel {
@@ -159,8 +161,8 @@ export class ScanCardPanel {
     if (!model || !this.applied) return;
     this.title?.setProperties({ text: model.title });
     // A long name is set smaller (the size grows with large text like every other length of the card, `scale`).
-    if (model.compactTitle) this.title?.setProperties({ fontSize: CARD_TITLE_COMPACT_SIZE * this.scale });
-    this.measures?.setProperties({ text: model.measures });
+    this.title?.setProperties({ fontSize: (model.compactTitle ? CARD_TITLE_COMPACT_SIZE : CARD_TITLE_SIZE) * this.scale });
+    this.measures?.setProperties({ text: model.measures, fontSize: (model.measuresSize ?? CARD_MEASURES_SIZE) * this.scale });
     this.closeText?.setProperties({ text: model.closeText });
     this.addText?.setProperties({ text: model.addText });
     const colors = getUiColors();

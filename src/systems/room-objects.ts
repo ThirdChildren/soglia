@@ -34,13 +34,15 @@ import {
 } from '../logic/room-scan';
 import type { RoomObstacle } from '../logic/room-pieces';
 import { volumeCenter } from '../logic/room-scan-log';
-import { CARD_EXTENT, pickCardControl, type CardControl } from '../logic/room-view';
+import { CARD_EXTENT, CARD_MEASURES_MAX_WIDTH, CARD_MEASURES_SIZES, pickCardControl, type CardControl } from '../logic/room-view';
+import { fitSizedLine } from '../logic/text-fit';
 import { addScanned, type Store } from '../logic/state';
 import { panelFontSupports } from '../ui/fonts';
 import { ScanCardPanel, type CardModel } from '../ui/scan-card-panel';
 import { OUTLINE_CAPACITY, ScanOutlines, type OutlineState } from '../ui/scan-outlines';
 import { strings } from '../ui/strings';
 import { isHighContrast, onAccessChange } from '../ui/theme';
+import { closeOpenMenu } from './palm-menu';
 import { onPinchStart, pinchClaims, pinchPoint, type Hand } from './pinch-input';
 import { isRoomView } from './view-mode';
 import { onRoomViewChange } from './room-view';
@@ -55,8 +57,6 @@ const HANDS: readonly Hand[] = ['left', 'right'];
 export interface RoomObjectsHooks {
   /** Called after a piece was added to the state (the app joins it to the catalog). */
   onAdded?(piece: ScannedPiece): void;
-  /** False when there is no catalog to join (the piece is still saved). */
-  catalogReady?: boolean;
 }
 
 interface Entry {
@@ -98,8 +98,8 @@ export function isScanCardOpen(): boolean {
  * card of a piece, or a piece to take) and the closing of its card. It is a bridge, not an import, because that system imports this one.
  */
 export interface PieceBridge {
-  /** Called after the card of a real object had no use for the pinch; `volumeDistance` is the distance to the volume the hand points at, -1 for none. True when the pinch is taken. */
-  handlePinch(hand: Hand, volumeDistance: number): boolean;
+  /** Called after the card of a real object had no use for the pinch; true when the pinch is taken (a control of a card, or a piece the hand points at). */
+  handlePinch(hand: Hand): boolean;
   /** Closes the card of a virtual piece (a real object was selected). */
   closeCard(via: string): void;
 }
@@ -120,6 +120,11 @@ export function getRoomObstacles(): readonly RoomObstacle[] {
 /** Distance to the real volume `hand` points at, metres; -1 when the hand points at none (or the room view is off). */
 export function volumeHoverDistance(hand: Hand): number {
   return activeSystem ? activeSystem.hoverDistance[hand] : -1;
+}
+
+/** The real volume `hand` points at, or null when it points at none (or the room view is off). Do not modify. */
+export function volumeHoverVolume(hand: Hand): Readonly<ScanVolume> | null {
+  return activeSystem ? (activeSystem.hoverVolume(hand)) : null;
 }
 
 /** Closes the card of a real object (the card of a virtual piece opened, or the session is suspended). */
@@ -210,6 +215,10 @@ export class RoomObjectsSystem extends createSystem({
   }
 
   /** A volume of the scan: kept when it is furniture of a plausible size. */
+  hoverVolume(hand: Hand): Readonly<ScanVolume> | null {
+    return this.hover[hand]?.volume ?? null;
+  }
+
   private onVolume(entity: Entity): void {
     const ctx = context;
     if (!ctx || this.entries.length >= OUTLINE_CAPACITY || this.entries.some((e) => e.entity === entity)) return;
@@ -365,8 +374,8 @@ export class RoomObjectsSystem extends createSystem({
         return;
       }
     }
-    // A control of the card of a virtual piece, or a virtual piece to take (nearer than the real object the hand points at).
-    if (pieceBridge?.handlePinch(hand, this.hoverDistance[hand])) return;
+    // A control of the card of a virtual piece, or a virtual piece to take (in front of, or buried in, the real object the hand points at).
+    if (pieceBridge?.handlePinch(hand)) return;
     const target = this.hover[hand];
     if (target) this.select(target);
   }
@@ -375,6 +384,8 @@ export class RoomObjectsSystem extends createSystem({
     const ctx = context;
     if (!ctx) return;
     pieceBridge?.closeCard('object');
+    // The card and the pinned menu are pinned at the same place in front of the head: one at a time (the menu comes back with its button).
+    closeOpenMenu();
     this.selected = entry;
     const [w, d, h] = entry.info.cm;
     slog(`mr object selected label=${entry.info.key} size=${w}x${d}x${h}`);
@@ -403,11 +414,18 @@ export class RoomObjectsSystem extends createSystem({
 
   private cardModel(entry: Entry): CardModel {
     const [w, d, h] = entry.info.cm;
-    const ascii = !panelFontSupports(strings.room.measures(w, d, h));
+    const ascii = !panelFontSupports(strings.room.measuresAbout(w, d, h));
+    // The boxes of a scan are rough: the line says "About", in the long form if the card has room, else a shorter one or a smaller size.
+    const measures = fitSizedLine(
+      [strings.room.measuresAbout(w, d, h, ascii), strings.room.measuresAboutCompact(w, d, h, ascii), strings.room.measuresAboutShort(w, d, h, ascii)],
+      CARD_MEASURES_SIZES,
+      CARD_MEASURES_MAX_WIDTH,
+    );
     const status = context ? addStatus(context.store.get().scannedFurniture, entry.info) : ({ kind: 'full' } as const);
     return {
       title: entry.info.name,
-      measures: strings.room.measures(w, d, h, ascii),
+      measures: measures.text,
+      measuresSize: measures.fontSize,
       action: status.kind === 'add' ? 'add' : status.kind,
       addText: status.kind === 'add' ? strings.room.addToMine : status.kind === 'added' ? strings.room.added : strings.room.full,
       closeText: strings.room.close,

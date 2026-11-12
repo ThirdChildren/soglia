@@ -12,12 +12,16 @@ import {
   createPieceBox,
   createRoomEvaluation,
   evaluateRoomPiece,
+  formatFloorLine,
   formatPiecePlaced,
   formatPieceRemoved,
   isFlatBody,
+  isFloorLabel,
   isTap,
   nextQuarter,
+  nextRoomInstance,
   onFloor,
+  pieceBeatsVolume,
   pieceBox,
   rayFloorPoint,
   rayRollDeg,
@@ -61,6 +65,30 @@ describe('chooseFloorHeight', () => {
   });
   it('ignores values that are not finite', () => {
     expect(chooseFloorHeight([NaN, 0.2, -Infinity])).toBe(0.2);
+  });
+});
+
+describe('isFloorLabel and the floor log line', () => {
+  it('knows the floor label in any letter case and nothing else', () => {
+    expect(isFloorLabel('floor')).toBe(true);
+    expect(isFloorLabel('Floor')).toBe(true);
+    expect(isFloorLabel('FLOOR')).toBe(true);
+    expect(isFloorLabel('floors')).toBe(false);
+    expect(isFloorLabel('ceiling')).toBe(false);
+    expect(isFloorLabel('flo0r')).toBe(false);
+    expect(isFloorLabel('')).toBe(false);
+    expect(isFloorLabel(undefined)).toBe(false);
+    expect(isFloorLabel(5)).toBe(false);
+  });
+  it('writes the line the QA reads', () => {
+    expect(formatFloorLine(0, 1, [{ minX: -1.7, maxX: 1.6, minZ: -1.9, maxZ: 3.6 }])).toBe('mr floor y=0.00 planes=1 bounds=-1.7..1.6x-1.9..3.6');
+    expect(formatFloorLine(0, 0, [])).toBe('mr floor y=0.00 planes=0 bounds=');
+    expect(
+      formatFloorLine(0.05, 2, [
+        { minX: 0, maxX: 1, minZ: 0, maxZ: 1 },
+        { minX: 2, maxX: 3, minZ: 2, maxZ: 3 },
+      ]),
+    ).toBe('mr floor y=0.05 planes=2 bounds=0.0..1.0x0.0..1.0;2.0..3.0x2.0..3.0');
   });
 });
 
@@ -180,6 +208,64 @@ describe('pieceBox and the pick by the ray', () => {
     const hit: VolumeHit = { index: -1, distance: 0 };
     expect(pickVolume({ x: 0, y: 0.4, z: 3 }, { x: 0, y: 0, z: -1 }, [far, near], 8, hit)).toBe(true);
     expect(hit.index).toBe(1);
+  });
+});
+
+describe('pieceBeatsVolume: a virtual piece and a real object on the same ray', () => {
+  // A couch 2 x 1 x 1 m centred at z = -2 (its front face at z = -1.5); the hand at the origin points along -z at the height of both.
+  const couch: ScanVolume = { center: [0, 0.5, -2], rotation: [0, 0, 0, 1], extents: [2, 1, 1] };
+  const origin = { x: 0, y: 0.5, z: 0 };
+  const dir = { x: 0, y: 0, z: -1 };
+  const hit: VolumeHit = { index: -1, distance: 0 };
+  const small = (z: number): ScanVolume => pieceBox(body({ id: 'p', x: 0, z, size: [0.6, 0.6, 0.6] }), 0.2, createPieceBox());
+  const verdict = (z: number): boolean => {
+    expect(pickVolume(origin, dir, [small(z)], 8, hit)).toBe(true);
+    return pieceBeatsVolume(origin, dir, hit.distance, rayVolumeDistance(origin, dir, couch), couch);
+  };
+
+  it('takes the piece in front of the couch', () => {
+    expect(verdict(-0.8)).toBe(true);
+  });
+  it('takes the piece buried in the couch (its front face is inside the volume)', () => {
+    expect(verdict(-2)).toBe(true);
+    expect(verdict(-1.9)).toBe(true);
+  });
+  it('leaves the couch to the ray when the piece is behind it', () => {
+    expect(verdict(-3.5)).toBe(false);
+  });
+  it('takes the piece whose front face is just beyond the back of the couch as behind it, and one that touches the back as buried', () => {
+    expect(verdict(-2.9)).toBe(false); // front face at -2.6, the back of the couch at -2.5
+    expect(verdict(-2.75)).toBe(true); // front face at -2.45: inside
+  });
+  it('takes the piece when the hand points at no real object', () => {
+    expect(pieceBeatsVolume(origin, dir, 2, -1, null)).toBe(true);
+    expect(pieceBeatsVolume(origin, dir, 2, -1, couch)).toBe(true);
+    expect(pieceBeatsVolume(origin, dir, 2, 0.5, null)).toBe(true);
+  });
+  it('wins an exact tie and never wins without a piece hit or with input that is not usable', () => {
+    expect(pieceBeatsVolume(origin, dir, 1.5, 1.5, couch)).toBe(true);
+    expect(pieceBeatsVolume(origin, dir, -1, 1.5, couch)).toBe(false);
+    expect(pieceBeatsVolume(origin, dir, Number.NaN, 1.5, couch)).toBe(false);
+    expect(pieceBeatsVolume(origin, { x: 0, y: 0, z: 0 }, 3, 1.5, couch)).toBe(false);
+  });
+  it('works with the rotated volumes of a real scan (the couch of the IWER room)', () => {
+    const real = volumeOf(COUCH);
+    const o = { x: real.center[0], y: real.center[1] + 2, z: real.center[2] };
+    const down = { x: 0, y: -1, z: 0 };
+    const volumeDistance = rayVolumeDistance(o, down, real);
+    expect(volumeDistance).toBeGreaterThan(0);
+    // A piece standing on the floor under the couch's top: the ray meets the couch first, and the piece's top face is inside the couch.
+    const buried = pieceBox(body({ id: 'b', x: real.center[0], z: real.center[2], size: [0.6, 0.6, 0.7] }), 0, createPieceBox());
+    expect(pickVolume(o, down, [buried], 8, hit)).toBe(true);
+    expect(pieceBeatsVolume(o, down, hit.distance, volumeDistance, real)).toBe(true);
+  });
+});
+
+describe('nextRoomInstance per type', () => {
+  it('counts from 1 and goes up by one', () => {
+    expect(nextRoomInstance(0)).toBe(1);
+    expect(nextRoomInstance(1)).toBe(2);
+    expect(nextRoomInstance(Number.NaN)).toBe(1);
   });
 });
 

@@ -59,6 +59,11 @@ export const strings = {
     itemSize: (width: number, depth: number, ascii = false): string => formatSize(width, depth, ascii),
     /** "0.35×0.35 m": the same without the spaces, for a measure that would touch the border of its card. */
     itemSizeCompact: (width: number, depth: number, ascii = false): string => formatSizeCompact(width, depth, ascii),
+    /** "~1.7 × 0.8 m": the size of a piece made from a room scan is approximate (the scan boxes are rough): rounded to 10 cm, and the sign says so. */
+    itemSizeAbout: (width: number, depth: number, ascii = false): string => `~${formatSize(Math.round(width * 10) / 10, Math.round(depth * 10) / 10, ascii)}`,
+    /** "~1.7×0.8 m": the same without the spaces. */
+    itemSizeAboutCompact: (width: number, depth: number, ascii = false): string =>
+      `~${formatSizeCompact(Math.round(width * 10) / 10, Math.round(depth * 10) / 10, ascii)}`,
   },
   /** Shown above the model until the palm menu has been opened once (T2.16); plain ASCII. */
   hint: {
@@ -89,6 +94,21 @@ export const strings = {
     measures: (widthCm: number, depthCm: number, heightCm: number, ascii = false): string => {
       const sign = ascii ? 'x' : '×';
       return `${widthCm} ${sign} ${depthCm} ${sign} ${heightCm} cm`;
+    },
+    /** "About 169 × 82 × 82 cm": the measures of a scanned object come from rough scan boxes, so they are not exact. */
+    measuresAbout: (widthCm: number, depthCm: number, heightCm: number, ascii = false): string => {
+      const sign = ascii ? 'x' : '×';
+      return `About ${widthCm} ${sign} ${depthCm} ${sign} ${heightCm} cm`;
+    },
+    /** "About 169×82×82 cm": the same without the spaces around the sign, for a card that is too narrow for the long form. */
+    measuresAboutCompact: (widthCm: number, depthCm: number, heightCm: number, ascii = false): string => {
+      const sign = ascii ? 'x' : '×';
+      return `About ${widthCm}${sign}${depthCm}${sign}${heightCm} cm`;
+    },
+    /** "~169×82×82 cm": the shortest form, for the biggest objects. */
+    measuresAboutShort: (widthCm: number, depthCm: number, heightCm: number, ascii = false): string => {
+      const sign = ascii ? 'x' : '×';
+      return `~${widthCm}${sign}${depthCm}${sign}${heightCm} cm`;
     },
   },
   /** The coach of the first minute (M5, D60): two short lines, one for each step. */

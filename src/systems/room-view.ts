@@ -1,7 +1,9 @@
 // The two views of the mixed reality mode (`?mr=1`, plan MR, decision DMR2, task MR.3): the model on the table, or the real room.
 // The toggle is `ui:room-button`, ONE small panel in front of the head ("My room" on the model, "Model" in the room; the geometry
 // and the numbers that keep it inside the 30 degree cone are in src/logic/room-view.ts). A pinch of one hand inside its rectangle
-// claims that hand as `menu` (the highest priority, like the Menu buttons) and switches the view. In the room view the model and
+// claims that hand as `menu` (the highest priority, like the Menu buttons) and switches the view. Beside it sits `ui:room-menu-button`
+// ("Menu"): the fixed Menu buttons of the model are away in the room view, so this one lets a single hand open and close the pinned menu
+// (rule 9) and pick a piece from it with the same hand. The pair is anchored together and follows the pitch of the head. In the room view the model and
 // everything that hangs from it is hidden (the root of the model is not visible), its buttons stay away (`isModelHidden`) and its
 // gestures are off (`isTabletopLocked`). Logs `mr view=room|model`.
 //
@@ -16,18 +18,22 @@
 import { createSystem, Quaternion, Vector3, type Entity, type World } from '@iwsdk/core';
 import { slog } from '../log';
 import { LARGE_TEXT_FACTOR } from '../logic/access';
-import { yawOfForward } from '../logic/menu-anchor';
+import { pitchOfForward, yawOfForward } from '../logic/menu-anchor';
 import { glideYaw, REANCHOR_GLIDE_SECONDS } from '../logic/tabletop-button';
 import {
   ROOM_BUTTON_MAX_DISTANCE,
   ROOM_BUTTON_MIN_MOVE,
   ROOM_BUTTON_REANCHOR_ANGLE_DEG,
   ROOM_BUTTON_REANCHOR_SECONDS,
+  ROOM_BUTTONS_HALF_WIDTH,
+  ROOM_MENU_BUTTON_HALF_WIDTH,
   formatMrView,
+  formatRoomButtonReanchored,
   formatRoomButtonShown,
   otherView,
   pickRoomButton,
   roomButtonAnchor,
+  roomButtonCenter,
   roomButtonView,
   type RoomButtonView,
   type RoomView,
@@ -35,6 +41,7 @@ import {
 import { RoomButtonPanel } from '../ui/room-button-panel';
 import { strings } from '../ui/strings';
 import { isLargeText } from '../ui/theme';
+import { closeMenu, getMenuMode, openPinnedMenu } from './palm-menu';
 import { onPinchStart, pinchClaims, pinchPoint, type Hand } from './pinch-input';
 import { isRealScale, isRoomView, isViewTransitioning, setRoomViewFlag } from './view-mode';
 
@@ -42,6 +49,8 @@ const widthFactor = (): number => (isLargeText() ? LARGE_TEXT_FACTOR : 1);
 
 interface RoomViewContext {
   panel: RoomButtonPanel;
+  /** The `Menu` button beside the toggle. */
+  menuPanel: RoomButtonPanel;
   /** The root of the model: hidden in the room view. */
   root: Entity;
 }
@@ -52,7 +61,7 @@ const listeners = new Set<(view: RoomView) => void>();
 
 /** Creates the button and registers the system. `root` is the entity of the model on the table (`miniature.root`). */
 export function createRoomView(world: World, root: Entity): void {
-  context = { panel: new RoomButtonPanel(world, strings.room.toRoom), root };
+  context = { panel: new RoomButtonPanel(world, strings.room.toRoom), menuPanel: new RoomButtonPanel(world, strings.menu.button, 'menu'), root };
   world.registerSystem(RoomViewSystem);
 }
 
@@ -85,7 +94,9 @@ export class RoomViewSystem extends createSystem({}) {
   private readonly headForward = new Vector3();
   private readonly headQuaternion = new Quaternion();
   private readonly point = new Vector3();
-  /** Where the button is now (it glides from `from` to `to` after a new anchoring) and how it is turned. */
+  private readonly toggleCenter = { x: 0, y: 0, z: 0 };
+  private readonly menuCenter = { x: 0, y: 0, z: 0 };
+  /** Where the middle of the pair of buttons is now (it glides from `from` to `to` after a new anchoring) and how it is turned. */
   private readonly current = { x: 0, y: 0, z: 0 };
   private readonly from = { x: 0, y: 0, z: 0 };
   private readonly to = { x: 0, y: 0, z: 0 };
@@ -108,15 +119,20 @@ export class RoomViewSystem extends createSystem({}) {
     const ctx = context;
     if (!ctx) return;
     ctx.panel.prepare();
+    ctx.menuPanel.prepare();
     const head = this.world.player.head;
     const visible =
       this.world.renderer.xr.isPresenting &&
       head.position.lengthSq() !== 0 &&
       !isRealScale() &&
       !isViewTransitioning() &&
-      ctx.panel.ready;
+      ctx.panel.ready &&
+      ctx.menuPanel.ready;
     if (!visible) {
-      if (this.shown) ctx.panel.place(0, 0, 0, 0, false);
+      if (this.shown) {
+        ctx.panel.place(0, 0, 0, 0, false);
+        ctx.menuPanel.place(0, 0, 0, 0, false);
+      }
       this.shown = false;
       this.secondsOut = 0;
       return;
@@ -128,22 +144,30 @@ export class RoomViewSystem extends createSystem({}) {
     this.headForward.set(0, 0, -1).applyQuaternion(this.headQuaternion);
     if (!this.shown) {
       this.toYaw = yawOfForward(this.headForward.x, this.headForward.z);
-      roomButtonAnchor(this.headPosition, this.toYaw, this.to);
+      roomButtonAnchor(this.headPosition, this.toYaw, this.to, pitchOfForward(this.headForward.x, this.headForward.y, this.headForward.z), widthFactor());
       this.copy(this.to, this.current);
       this.yaw = this.toYaw;
       this.glide = REANCHOR_GLIDE_SECONDS;
       this.shown = true;
       this.secondsOut = 0;
-      roomButtonView(this.current, this.yaw, this.headPosition, this.headForward, this.view, widthFactor());
+      roomButtonView(this.current, this.yaw, this.headPosition, this.headForward, this.view, widthFactor(), ROOM_BUTTONS_HALF_WIDTH);
       slog(formatRoomButtonShown(this.view));
     } else {
       this.followGaze(delta);
     }
-    ctx.panel.place(this.current.x, this.current.y, this.current.z, this.yaw, true);
+    this.centers();
+    ctx.panel.place(this.toggleCenter.x, this.toggleCenter.y, this.toggleCenter.z, this.yaw, true);
+    ctx.menuPanel.place(this.menuCenter.x, this.menuCenter.y, this.menuCenter.z, this.yaw, true);
+  }
+
+  /** The centres of the two buttons from the middle of the pair. */
+  private centers(): void {
+    roomButtonCenter(this.current, this.yaw, 'toggle', widthFactor(), this.toggleCenter);
+    roomButtonCenter(this.current, this.yaw, 'menu', widthFactor(), this.menuCenter);
   }
 
   private followGaze(delta: number): void {
-    roomButtonView(this.current, this.yaw, this.headPosition, this.headForward, this.view, widthFactor());
+    roomButtonView(this.current, this.yaw, this.headPosition, this.headForward, this.view, widthFactor(), ROOM_BUTTONS_HALF_WIDTH);
     const out = this.view.distance > ROOM_BUTTON_MAX_DISTANCE ? 180 : this.view.centerAngleDeg;
     const step = Number.isFinite(delta) && delta > 0 ? delta : 0;
     this.secondsOut = out > ROOM_BUTTON_REANCHOR_ANGLE_DEG ? this.secondsOut + step : 0;
@@ -163,7 +187,7 @@ export class RoomViewSystem extends createSystem({}) {
 
   private reanchor(): void {
     const yaw = yawOfForward(this.headForward.x, this.headForward.z);
-    roomButtonAnchor(this.headPosition, yaw, this.point);
+    roomButtonAnchor(this.headPosition, yaw, this.point, pitchOfForward(this.headForward.x, this.headForward.y, this.headForward.z), widthFactor());
     const moved = Math.hypot(this.point.x - this.current.x, this.point.y - this.current.y, this.point.z - this.current.z);
     if (!(moved > ROOM_BUTTON_MIN_MOVE)) return;
     this.copy(this.current, this.from);
@@ -171,7 +195,8 @@ export class RoomViewSystem extends createSystem({}) {
     this.fromYaw = this.yaw;
     this.toYaw = yaw;
     this.glide = 0;
-    slog('mr button reanchored');
+    roomButtonView(this.to, yaw, this.headPosition, this.headForward, this.view, widthFactor(), ROOM_BUTTONS_HALF_WIDTH);
+    slog(formatRoomButtonReanchored(this.view));
   }
 
   private copy(a: { x: number; y: number; z: number }, b: { x: number; y: number; z: number }): void {
@@ -185,13 +210,23 @@ export class RoomViewSystem extends createSystem({}) {
     // A control of an open menu (or anyone else) has this pinch already: it is not a press on the button.
     if (pinchClaims.ownerOf(hand) !== null) return;
     pinchPoint(hand, this.point);
-    if (!pickRoomButton(this.point, this.current, this.yaw, widthFactor())) return;
-    // With a piece in the hand the button does not react: the pinch of the other hand rotates the piece.
+    this.centers();
+    const isToggle = pickRoomButton(this.point, this.toggleCenter, this.yaw, widthFactor());
+    const isMenu = !isToggle && pickRoomButton(this.point, this.menuCenter, this.yaw, widthFactor(), ROOM_MENU_BUTTON_HALF_WIDTH);
+    if (!isToggle && !isMenu) return;
+    // With a piece in the hand the buttons do not react: the pinch of the other hand rotates the piece.
     if (pinchClaims.anyClaimed('furniture')) {
-      slog('mr button ignored reason=piece-held');
+      slog(`mr ${isMenu ? 'menu ' : ''}button ignored reason=piece-held`);
       return;
     }
     if (!pinchClaims.claim(hand, 'menu')) return;
+    if (isMenu) {
+      // The pinned menu toggles like the fixed Menu button of the model; the hand that pressed it can pick a piece from it.
+      slog(`mr menu button pressed hand=${hand}`);
+      if (getMenuMode() === 'pinned') closeMenu('button');
+      else openPinnedMenu(hand);
+      return;
+    }
     slog(`mr button pressed hand=${hand}`);
     setRoomView(otherView(currentRoomView()));
   }

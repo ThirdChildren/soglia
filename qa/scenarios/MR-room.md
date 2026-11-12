@@ -1,5 +1,7 @@
 # S-MR · Realtà mista: la mia stanza
 
+> **Changelog 2026-11-12 (dopo le correzioni della revisione)**: il pulsante `My room`/`Model` ha accanto `Menu` (`ui:room-menu-button`) e la coppia sta 0,215 m sopra gli occhi (`mr button shown distance=0.59 maxAngleDeg=25.5`); schede e coppia restano nel cono di 30° anche con la testa inclinata; le misure dei mobili veri sono "About …"; un pezzo virtuale vince sul mobile vero solo se è davanti o dentro. Aggiunto il percorso a una mano in S-MR.3.
+
 > **Changelog 2026-11-12**: scenario creato per il gate PC della funzione MR (`docs/plans/MR.md`, MR.1–MR.5). Coordinate della stanza sintetica `office_large` dell'emulatore (piano `floor` a y = 0; divano vero centro (1,03; 0,42; −0,65), lungo z da −1,5 a −0,2, x da 0,62 a 1,44; scaffale alto (1,10; 0,73; 0,40)): vanno rilette dai log `room mesh …` all'esecuzione.
 
 **Tipo**: PC (emulatore IWER, `dev.emulator.environment: office_large`) · **Regole di `CLAUDE.md`**: 1, 2, 3, 5, 7, 8, 9, 10
@@ -23,6 +25,8 @@ Parametri base: `house=apartment-a&role=visitor&reset=1&seed=1&debug=1&pinch=gri
 4. Pizzico breve sul pezzo → scheda `Remove`/`Close`; `Remove` → `mr piece removed … reason=card`; rilascio fuori dal pavimento → `reason=off-floor`.
 5. 12 pezzi → `mr piece limit reached max=12` e `Room is full`; draw call ≤ 100 per vista; la prima posa mostra `Room layout is not saved`.
 6. `Model` nasconde i pezzi, `My room` li rimostra.
+7. **Una mano sola** (solo la destra): `My room` → `Menu` (`ui:room-menu-button`) → voce → pezzo posato col raggio → rotazione col polso (rollio della mano) → pizzico sul pezzo → `Remove`.
+8. Pezzo dentro il divano vero: si riprende; pezzo dietro il divano: il pizzico sul divano apre la scheda del divano.
 
 ## S-MR.4 · Ciclo di vita
 1. F8/F9 con un pezzo nuovo in mano: nessun pezzo duplicato o perso; scheda chiusa (`via=suspend`); la vista resta.

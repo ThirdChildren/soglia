@@ -10,7 +10,7 @@
 import { satDepth, type Rect } from './footprint';
 import { OVERLAP_TOLERANCE_FURNITURE } from './placement-rules';
 import { verticalAxis } from './room-scan-log';
-import { createScanVolume, type ScanVolume, type Vec3Like } from './room-scan';
+import { createScanVolume, rayVolumeDistance, type ScanVolume, type Vec3Like } from './room-scan';
 import { FLAT_HEIGHT, normalizeRotation } from './catalog';
 
 /** At most this many virtual pieces in the room at once (`Room is full` beyond it). */
@@ -40,6 +40,22 @@ export function chooseFloorHeight(heights: ArrayLike<number>): number {
     if (Number.isFinite(h) && h < lowest) lowest = h;
   }
   return lowest === Infinity ? 0 : lowest;
+}
+
+/** At most this many scanned floor rectangles are kept (a room has a handful of floor planes). */
+export const MAX_FLOOR_BOUNDS = 16;
+
+/** True when a semantic label of a plane says `floor`, in any letter case. Allocates nothing (no lower-cased copy of the string). */
+export function isFloorLabel(label: unknown): boolean {
+  if (typeof label !== 'string' || label.length !== 5) return false;
+  const a = label.charCodeAt(0) | 0x20;
+  return (
+    a === 102 && // f
+    (label.charCodeAt(1) | 0x20) === 108 && // l
+    (label.charCodeAt(2) | 0x20) === 111 && // o
+    (label.charCodeAt(3) | 0x20) === 111 && // o
+    (label.charCodeAt(4) | 0x20) === 114 // r
+  );
 }
 
 /** The part of the floor that was scanned: an axis-aligned rectangle on the floor, metres. */
@@ -173,6 +189,34 @@ export function createPieceBox(): ScanVolume {
   return createScanVolume();
 }
 
+const hitPointScratch = { x: 0, y: 0, z: 0 };
+
+/**
+ * Which one a ray takes when it points at a virtual piece and at a real volume. The ray came from `origin` along `dir` (any length);
+ * `pieceDistance` is the distance to the piece box, `volumeDistance` the distance to `volume` (-1 or a null volume for none).
+ * The piece wins when it is nearer than the volume, or when the point where the ray enters the piece lies inside the volume (a piece put
+ * down in a couch: it is buried and would otherwise never be reachable). A piece that is farther than the volume and outside it is
+ * behind it: the volume wins. No piece hit (`pieceDistance` < 0) never wins. Allocates nothing.
+ */
+export function pieceBeatsVolume(
+  origin: Vec3Like,
+  dir: Vec3Like,
+  pieceDistance: number,
+  volumeDistance: number,
+  volume: Readonly<ScanVolume> | null,
+): boolean {
+  if (!(pieceDistance >= 0) || !Number.isFinite(pieceDistance)) return false;
+  if (!volume || !(volumeDistance >= 0)) return true;
+  if (pieceDistance <= volumeDistance) return true;
+  const length = Math.hypot(dir.x, dir.y, dir.z);
+  if (!(length > 1e-9)) return false;
+  hitPointScratch.x = origin.x + (dir.x / length) * pieceDistance;
+  hitPointScratch.y = origin.y + (dir.y / length) * pieceDistance;
+  hitPointScratch.z = origin.z + (dir.z / length) * pieceDistance;
+  // A distance of 0 from a point is only returned for a point inside the box (the direction is irrelevant then).
+  return rayVolumeDistance(hitPointScratch, dir, volume) === 0;
+}
+
 // --- Collision ---------------------------------------------------------------------------------------------------------------
 
 /** The world direction of local axis `axis` (0, 1, 2) of a box turned by the unit quaternion `q`, written into `out`. */
@@ -302,6 +346,16 @@ export function evaluateRoomPiece(
   out.valid = best === 0;
   out.depth = best;
   return out;
+}
+
+/** Body of the `mr floor` log line: `mr floor y=0.00 planes=1 bounds=-2.4..2.4x-3.0..3.0` (metres; bounds separated by `;`). */
+export function formatFloorLine(y: number, planes: number, bounds: readonly Readonly<FloorBounds>[]): string {
+  let text = '';
+  for (let i = 0; i < bounds.length; i += 1) {
+    const b = bounds[i];
+    text += `${i > 0 ? ';' : ''}${b.minX.toFixed(1)}..${b.maxX.toFixed(1)}x${b.minZ.toFixed(1)}..${b.maxZ.toFixed(1)}`;
+  }
+  return `mr floor y=${y.toFixed(2)} planes=${planes} bounds=${text}`;
 }
 
 /** Body of the `mr piece placed` log line (without the `[soglia] ` prefix). */

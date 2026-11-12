@@ -52,6 +52,7 @@ import {
 import { menuSelectable } from '../logic/menu-dim';
 import { recenterMiniature, setTool, undo, type Store } from '../logic/state';
 import { stableId } from '../logic/ids';
+import { isScanId } from '../logic/room-scan';
 import { fitLine } from '../logic/text-fit';
 import { MenuAnchor } from '../ui/menu-anchor';
 import { strings } from '../ui/strings';
@@ -278,8 +279,15 @@ export class MenuItemsSystem extends createSystem({}) {
       items.map((item) => ({
         name: item.name,
         // The long form "1.6 × 2.0 m", or "0.35×0.35 m" when the long one would touch the border (R25).
+        // A piece made from a room scan has rough measures: "~1.7 × 0.8 m" (when even the short form touches the border, the plain one).
         size: fitLine(
-          [strings.menu.itemSize(item.size[0], item.size[1], ascii), strings.menu.itemSizeCompact(item.size[0], item.size[1], ascii)],
+          isScanId(item.id)
+            ? [
+                strings.menu.itemSizeAbout(item.size[0], item.size[1], ascii),
+                strings.menu.itemSizeAboutCompact(item.size[0], item.size[1], ascii),
+                strings.menu.itemSizeCompact(item.size[0], item.size[1], ascii),
+              ]
+            : [strings.menu.itemSize(item.size[0], item.size[1], ascii), strings.menu.itemSizeCompact(item.size[0], item.size[1], ascii)],
           ITEM_NAME_MAX_WIDTH,
           ITEM_NAME_SIZE,
           ITEM_SIZE_MARGIN,

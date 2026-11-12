@@ -236,6 +236,11 @@ export interface ScannedPiece {
 }
 
 const SCAN_ID_PATTERN = /^my-scan-([a-z0-9]+)-([1-9][0-9]*)$/;
+
+/** True for the id of a piece made from a room scan (`my-scan-couch-1`): its measures are approximate. */
+export function isScanId(id: string): boolean {
+  return SCAN_ID_PATTERN.test(id);
+}
 const MAX_NAME_LENGTH = 40;
 const MAX_SIDE_METRES = 10;
 

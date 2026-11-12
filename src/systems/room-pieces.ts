@@ -50,6 +50,7 @@ import { REASON_LABEL_MIN_DISTANCE, VIEW_CONE_HALF_ANGLE_DEG } from '../logic/me
 import { scaleExtent } from '../logic/menu';
 import {
   FLOOR_RAY_MAX_DISTANCE,
+  MAX_FLOOR_BOUNDS,
   MAX_ROOM_PIECES,
   activeNotice,
   canAddRoomPiece,
@@ -57,10 +58,14 @@ import {
   createPieceBox,
   createRoomEvaluation,
   evaluateRoomPiece,
+  formatFloorLine,
   formatPiecePlaced,
   formatPieceRemoved,
+  isFloorLabel,
   isTap,
+  nextRoomInstance,
   onFloor,
+  pieceBeatsVolume,
   pieceBox,
   rayFloorPoint,
   rayRollDeg,
@@ -82,8 +87,9 @@ import type { OutlineState } from '../ui/scan-outlines';
 import { strings } from '../ui/strings';
 import { isHighContrast, onAccessChange } from '../ui/theme';
 import { onMenuItemPick, releaseMenuHand } from './menu-items';
+import { closeOpenMenu } from './palm-menu';
 import { onPinchEnd, onPinchStart, pinchClaims, pinchPoint, type Hand } from './pinch-input';
-import { closeScanCard, getRoomObstacles, registerPieceBridge, volumeHoverDistance } from './room-objects';
+import { closeScanCard, getRoomObstacles, registerPieceBridge, volumeHoverDistance, volumeHoverVolume } from './room-objects';
 import { isScanEmpty, onScanEmptyChange } from './room-scan-status';
 import { onRoomViewChange } from './room-view';
 import { isRoomView } from './view-mode';
@@ -200,11 +206,6 @@ export function closeRoomCards(via: string): void {
   activeSystem?.closeCard(via);
 }
 
-/** Number of virtual pieces in the room (the one in the hand, new, not counted). For the QA. */
-export function roomPieceCount(): number {
-  return activeSystem?.pieces.length ?? 0;
-}
-
 export class RoomPiecesSystem extends createSystem({
   planes: { required: [XRPlane] },
 }) {
@@ -213,13 +214,18 @@ export class RoomPiecesSystem extends createSystem({
   private readonly boxes: ScanVolume[] = [];
   private held: Held | null = null;
   private selected: Piece | null = null;
-  private instance = 0;
+  /** Last instance number used per catalog id (`room:piece-chair#2`): a number is never reused inside a session. */
+  private readonly instances = new Map<string, number>();
   private everPlaced = false;
 
   private floorY = 0;
-  private floorBounds: FloorBounds[] = [];
+  private readonly floorBounds: FloorBounds[] = [];
+  /** The rectangles of the scanned floor, reused at every read. */
+  private readonly boundsPool: FloorBounds[] = Array.from({ length: MAX_FLOOR_BOUNDS }, () => ({ minX: 0, maxX: 0, minZ: 0, maxZ: 0 }));
+  /** The rounded values of the last `mr floor` line (height, planes, rectangles): a new line only when they change. */
+  private readonly floorSignature = new Float64Array(3 + MAX_FLOOR_BOUNDS * 4).fill(Number.NaN);
+  private readonly floorValues = new Float64Array(4);
   private floorSeconds = 0;
-  private lastFloorLog = '';
   private readonly floorHeights: number[] = [];
   private readonly corner = new Vector3();
 
@@ -255,7 +261,7 @@ export class RoomPiecesSystem extends createSystem({
     const ctx = context;
     if (!ctx) return;
     registerPieceBridge({
-      handlePinch: (hand, volumeDistance) => this.handlePinch(hand, volumeDistance),
+      handlePinch: (hand) => this.handlePinch(hand),
       closeCard: (via) => this.closeCard(via),
     });
     this.cleanupFuncs.push(
@@ -336,48 +342,69 @@ export class RoomPiecesSystem extends createSystem({
 
   // --- the floor ---------------------------------------------------------------------------------------------------------------
 
-  /** Reads the floor planes: the lowest height and the scanned parts. Logs `mr floor` when it changed. */
+  /**
+   * Reads the floor planes: the lowest height and the scanned parts. Runs every `FLOOR_REFRESH_SECONDS`, so it allocates nothing: the
+   * rectangles live in a pool, the heights in a list that is emptied and filled again, and the log line (the only string) is built
+   * only when the rounded values changed.
+   */
   private refreshFloor(): void {
     this.floorHeights.length = 0;
-    const bounds: FloorBounds[] = [];
+    let count = 0;
     for (const entity of this.queries.planes.entities) {
       const plane = entity.getValue(XRPlane, '_plane') as
-        | { semanticLabel?: string; polygon?: ArrayLike<{ x: number; y: number; z: number }> }
+        | { semanticLabel?: unknown; polygon?: ArrayLike<{ x: number; y: number; z: number }> }
         | undefined;
       const object = entity.object3D;
-      if (!plane || !object || String(plane.semanticLabel ?? '').toLowerCase() !== 'floor') continue;
+      if (!plane || !object || !isFloorLabel(plane.semanticLabel)) continue;
       object.updateWorldMatrix(true, false);
       object.getWorldPosition(this.point);
       this.floorHeights.push(this.point.y);
       const polygon = plane.polygon;
-      if (!polygon || polygon.length === 0) continue;
-      let minX = Infinity;
-      let maxX = -Infinity;
-      let minZ = Infinity;
-      let maxZ = -Infinity;
+      if (!polygon || polygon.length === 0 || count >= MAX_FLOOR_BOUNDS) continue;
+      const bounds = this.boundsPool[count];
+      bounds.minX = Infinity;
+      bounds.maxX = -Infinity;
+      bounds.minZ = Infinity;
+      bounds.maxZ = -Infinity;
       for (let i = 0; i < polygon.length; i += 1) {
         this.corner.set(polygon[i].x, polygon[i].y ?? 0, polygon[i].z).applyMatrix4(object.matrixWorld);
-        if (this.corner.x < minX) minX = this.corner.x;
-        if (this.corner.x > maxX) maxX = this.corner.x;
-        if (this.corner.z < minZ) minZ = this.corner.z;
-        if (this.corner.z > maxZ) maxZ = this.corner.z;
+        if (this.corner.x < bounds.minX) bounds.minX = this.corner.x;
+        if (this.corner.x > bounds.maxX) bounds.maxX = this.corner.x;
+        if (this.corner.z < bounds.minZ) bounds.minZ = this.corner.z;
+        if (this.corner.z > bounds.maxZ) bounds.maxZ = this.corner.z;
       }
-      if (maxX > minX && maxZ > minZ) bounds.push({ minX, maxX, minZ, maxZ });
+      if (bounds.maxX > bounds.minX && bounds.maxZ > bounds.minZ) {
+        this.floorBounds[count] = bounds;
+        count += 1;
+      }
     }
+    this.floorBounds.length = count;
     const y = chooseFloorHeight(this.floorHeights);
     const changed = Math.abs(y - this.floorY) > FLOOR_EPSILON;
     this.floorY = changed ? y : this.floorY;
-    this.floorBounds = bounds;
     if (changed) {
-      for (const piece of this.pieces) this.seat(piece);
+      for (const piece of this.pieces) this.pose(piece);
     }
-    const text = `y=${this.floorY.toFixed(2)} planes=${this.floorHeights.length} bounds=${bounds
-      .map((b) => `${b.minX.toFixed(1)}..${b.maxX.toFixed(1)}x${b.minZ.toFixed(1)}..${b.maxZ.toFixed(1)}`)
-      .join(';')}`;
-    if (text !== this.lastFloorLog) {
-      this.lastFloorLog = text;
-      slog(`mr floor ${text}`);
+    // The log line: the rounded values of this read against the last one logged (no string unless something changed).
+    const signature = this.floorSignature;
+    let different = signature[0] !== Math.round(this.floorY * 100) || signature[1] !== this.floorHeights.length || signature[2] !== count;
+    signature[0] = Math.round(this.floorY * 100);
+    signature[1] = this.floorHeights.length;
+    signature[2] = count;
+    for (let i = 0; i < count; i += 1) {
+      const b = this.floorBounds[i];
+      const at = 3 + i * 4;
+      const values = this.floorValues;
+      values[0] = Math.round(b.minX * 10);
+      values[1] = Math.round(b.maxX * 10);
+      values[2] = Math.round(b.minZ * 10);
+      values[3] = Math.round(b.maxZ * 10);
+      for (let k = 0; k < 4; k += 1) {
+        if (signature[at + k] !== values[k]) different = true;
+        signature[at + k] = values[k];
+      }
     }
+    if (different) slog(formatFloorLine(this.floorY, this.floorHeights.length, this.floorBounds));
   }
 
   // --- the ray -----------------------------------------------------------------------------------------------------------------
@@ -392,10 +419,15 @@ export class RoomPiecesSystem extends createSystem({
     return true;
   }
 
-  /** The nearest virtual piece the ray read by `readRay` points at. Writes its distance into `hit`. */
-  private pickPiece(): Piece | null {
+  /**
+   * The virtual piece the ray read by `readRay` takes: the nearest one it points at, unless the real object the hand points at is in front of
+   * it (a piece behind a couch is the couch's), while a piece in front of the object, or buried in it, is the piece's. Writes the distance to
+   * the piece into `hit`.
+   */
+  private pickPiece(hand: Hand): Piece | null {
     if (this.pieces.length === 0) return null;
     if (!pickVolume(this.origin, this.direction, this.boxes, RAY_MAX_DISTANCE, this.hit)) return null;
+    if (!pieceBeatsVolume(this.origin, this.direction, this.hit.distance, volumeHoverDistance(hand), volumeHoverVolume(hand))) return null;
     return this.pieces[this.hit.index];
   }
 
@@ -421,16 +453,14 @@ export class RoomPiecesSystem extends createSystem({
           cursor = true;
         }
       } else {
-        const volumeDistance = volumeHoverDistance(hand);
-        const piece = held ? null : this.pickPiece();
-        const pieceDistance = piece ? this.hit.distance : -1;
+        const piece = held ? null : this.pickPiece(hand);
         let best = -1;
-        // A virtual piece wins over a real object it is in or behind: the pieces are what the user moves (a piece left over a couch must stay grabbable).
+        // A piece wins over a real object when it is in front of it or buried in it (a piece left in a couch must stay reachable); behind it, the object wins.
         if (piece) {
-          best = pieceDistance;
+          best = this.hit.distance;
           this.hoverPiece[hand] = piece;
-        } else if (volumeDistance >= 0) {
-          best = volumeDistance;
+        } else {
+          best = volumeHoverDistance(hand);
         }
         if (best >= 0) {
           length = best;
@@ -478,8 +508,9 @@ export class RoomPiecesSystem extends createSystem({
     }
     releaseMenuHand(hand);
     if (!pinchClaims.claim(hand, 'furniture')) return;
-    this.instance += 1;
-    const id = stableId.roomPiece(catalogId, this.instance);
+    const instance = nextRoomInstance(this.instances.get(catalogId) ?? 0);
+    this.instances.set(catalogId, instance);
+    const id = stableId.roomPiece(catalogId, instance);
     const object = ctx.visuals.create(item);
     object.visible = false; // until the ray meets the floor
     const entity = this.world.createTransformEntity(object);
@@ -532,7 +563,7 @@ export class RoomPiecesSystem extends createSystem({
   }
 
   /** The pinch of the room view, offered by the room objects system before it selects an object. True when taken here. */
-  private handlePinch(hand: Hand, volumeDistance: number): boolean {
+  private handlePinch(hand: Hand): boolean {
     const ctx = context;
     if (!ctx || this.held) return false;
     // A control of the card of a piece.
@@ -544,11 +575,10 @@ export class RoomPiecesSystem extends createSystem({
         return true;
       }
     }
-    // A placed piece the hand points at wins over the real object it also points at (it may sit inside it).
+    // A placed piece the hand points at, unless a real object is in front of it (then the object is for the room objects system).
     if (!ctx.visuals || !this.readRay(hand)) return false;
-    const piece = this.pickPiece();
+    const piece = this.pickPiece(hand);
     if (!piece) return false;
-    void volumeDistance;
     releaseMenuHand(hand);
     if (!pinchClaims.claim(hand, 'furniture')) return false;
     closeScanCard('piece');
@@ -713,10 +743,6 @@ export class RoomPiecesSystem extends createSystem({
     return true;
   }
 
-  private removePiece(piece: Piece, reason: string): void {
-    this.drop(piece, reason);
-  }
-
   private clearAll(reason: string): void {
     this.cancelHeld(reason);
     for (const piece of [...this.pieces]) this.drop(piece, reason);
@@ -732,11 +758,6 @@ export class RoomPiecesSystem extends createSystem({
     piece.object.position.set(body.x, this.floorY, body.z);
     piece.object.rotation.y = -body.rotationDeg * DEG_TO_RAD;
     pieceBox(body, this.floorY, piece.box);
-  }
-
-  /** The floor moved: sit every piece on it again. */
-  private seat(piece: Piece): void {
-    this.pose(piece);
   }
 
   /** Judges `piece` against the real volumes and `against` pieces: all the others when `all`, the earlier ones otherwise. */
@@ -790,6 +811,8 @@ export class RoomPiecesSystem extends createSystem({
     const ctx = context;
     if (!ctx) return;
     closeScanCard('piece');
+    // The card and the pinned menu are pinned at the same place in front of the head: one at a time (the menu comes back with its button).
+    closeOpenMenu();
     this.selected = piece;
     this.world.player.head.getWorldPosition(this.headPosition);
     this.world.player.head.getWorldQuaternion(this.headQuaternion);
@@ -807,7 +830,7 @@ export class RoomPiecesSystem extends createSystem({
       this.closeCard('button');
       return;
     }
-    this.removePiece(piece, 'card');
+    this.drop(piece, 'card');
   }
 
   closeCard(via: string): void {
