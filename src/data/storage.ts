@@ -4,6 +4,7 @@
 // with ONE warning, once. Without storage the app works as before and simply does not save.
 
 import { swarn } from '../log';
+import { isHouseFileKey } from '../logic/house-file';
 import { isSogliaKey } from '../logic/persistence';
 
 /** Key used once to test that writing works; removed at once. */
@@ -134,11 +135,11 @@ export function createSafeStorage(
   };
 }
 
-/** Removes every `soglia:v1:*` key (`reset=1`). Returns how many were removed. */
+/** Removes every `soglia:v1:*` key (`reset=1`) except the loaded houses (HF4: they are data, not state). Returns how many were removed. */
 export function clearSogliaKeys(storage: SafeStorage): number {
   let removed = 0;
   for (const key of storage.keys()) {
-    if (!isSogliaKey(key)) continue;
+    if (!isSogliaKey(key) || isHouseFileKey(key)) continue;
     if (storage.remove(key)) removed++;
   }
   return removed;

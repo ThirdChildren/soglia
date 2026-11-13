@@ -2,6 +2,8 @@
 // show. Unknown ids are rejected before any network request.
 
 import { checkHouse, type House } from '../logic/house';
+import { isFileHouseId } from '../logic/house-file';
+import type { HouseFiles } from './house-files';
 import { slog } from '../log';
 import { houseUrl, isKnownHouse } from './houses';
 
@@ -12,7 +14,12 @@ export type LoadHouseResult =
   /** The file was fetched but is not JSON or fails `checkHouse`. One readable line per error. */
   | { ok: false; reason: 'invalid'; id: string; errors: string[] };
 
-export async function loadHouse(id: string): Promise<LoadHouseResult> {
+/**
+ * `file-<id>` is a home the user loaded from a file (HF4): it comes from `houseFiles` (storage), never from the network,
+ * and an id that is not there is `not-found` like any unknown home. Other ids are the demo houses.
+ */
+export async function loadHouse(id: string, houseFiles?: HouseFiles): Promise<LoadHouseResult> {
+  if (isFileHouseId(id)) return houseFiles ? houseFiles.read(id) : { ok: false, reason: 'not-found', id };
   if (!isKnownHouse(id)) return { ok: false, reason: 'not-found', id };
   if (typeof fetch !== 'function') {
     slog('feature fetch unavailable');
