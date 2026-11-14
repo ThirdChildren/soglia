@@ -6,6 +6,7 @@ import { serialize, deserializeWithReport, SCALE, TABLETOP_VIEW } from './state'
 import type { AppState, DiscardedIssue, FurnitureSnapshot, RestorePrefs, StoredIssue, ViewState } from './state';
 import { MAX_PIECES, type PlacedPiece } from './placement-rules';
 import type { Role } from './params';
+import type { ScannedPiece } from './room-scan';
 
 /** Every key the project writes starts with this prefix; `reset=1` removes all of them. */
 export const KEY_PREFIX = 'soglia:v1:';
@@ -74,6 +75,8 @@ export interface Restorable {
   issuesSeeded: boolean;
   /** The saved sun time, or null when none was saved (or `timeExplicit`: the session keeps the time the URL named). */
   sunTime: string | null;
+  /** The saved objects of the room added to the user's own furniture (plan MR), as copies. */
+  scanned: ScannedPiece[];
   /** Saved issues left out for good (malformed, repeated, over the limit): the caller logs them. */
   discardedIssues: DiscardedIssue[];
   /** Pieces left out for good (a room that is gone), with the reason (the caller logs them). */
@@ -116,6 +119,7 @@ export function pickRestorable(saved: string, ctx: RestoreContext): Restorable |
     nextIssue: state.nextIssue,
     issuesSeeded: state.issuesSeeded,
     sunTime: ctx.timeExplicit === true ? null : savedSunTime,
+    scanned: state.scannedFurniture as ScannedPiece[],
     discardedIssues,
   };
 

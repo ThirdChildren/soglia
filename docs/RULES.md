@@ -81,6 +81,7 @@ rispetto a questa sintesi; aggiunti sotto i dettagli del modulo di consegna e de
   critico sta ai bordi. (Prima scelta dell'utente, scartata il 2026-10-10 dopo il calcolo: un solo
   pulsante al centro del bordo verso l'utente, che cadrebbe a ≈ 0,29 m dalla testa, sotto il minimo
   di 0,5 m; vedi `docs/plans/M3.md`, D32.)
+- **Host solo di sviluppo: `www.unpkg.com` per la stanza sintetica dell'emulatore IWER** (`dev.emulator.environment` in `iwsdk.config.json`, aggiunto per la realtà mista il 2026-11-11): la scarica il plugin di sviluppo `@iwsdk/vite-plugin-dev` solo con il dev server; non è nel `dist/` (verificato con grep: nel bundle resta solo la stringa inerte della configurazione) e non parte sul Quest con la build pubblicata (voce di conferma in `qa/device/DEBT.md`).
 - **Host esterni noti nel bundle di produzione** (default di `@iwsdk/core` / `@iwsdk/xr-input`,
   verificato su `@iwsdk/core` 1.0.1, nessuna opzione per cambiarli):
   `unpkg.com` (decoder Draco/KTX2, scatta solo caricando un glTF compresso, vietato sopra),

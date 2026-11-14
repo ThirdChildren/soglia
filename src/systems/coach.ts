@@ -39,8 +39,9 @@ import { isLargeText, LARGE_TEXT_FACTOR } from '../ui/theme';
 import { onFurnitureReleased } from './furniture-grab';
 import { isIssuePanelOpen } from './issue-panel';
 import { pinchClaims } from './pinch-input';
-import { isRealScale, isViewTransitioning } from './view-mode';
+import { isModelHidden, isViewTransitioning } from './view-mode';
 import { isViewPanelOpen } from './view-panel';
+import { isScanCardOpen } from './room-objects';
 
 /** The text of the grab step hangs this high above the middle of the model, and at least this high above the eyes (over the pinned menu), metres. */
 const TEXT_ABOVE_MODEL = 0.13;
@@ -154,11 +155,11 @@ export class CoachSystem extends createSystem({ named: { required: [StableId] } 
       this.dispose();
       return;
     }
-    const panelOpen = isIssuePanelOpen() || isViewPanelOpen();
+    const panelOpen = isIssuePanelOpen() || isViewPanelOpen() || isScanCardOpen();
     const visible = coachVisible(step, {
       onboardingStep: state.prefs.onboardingStep,
       presenting: this.world.renderer.xr.isPresenting,
-      realScale: isRealScale() || isViewTransitioning(),
+      realScale: isModelHidden() || isViewTransitioning(),
       // A piece in a hand: the coach waits out of sight, the clock runs.
       holding: pinchClaims.anyClaimed('furniture'),
       // The Issues or View panel open (they stand where the text and the hand are): the coach waits out of sight, the clock stops.

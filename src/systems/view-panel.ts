@@ -46,7 +46,7 @@ import { ViewPanel } from '../ui/view-panel';
 import { closeIssuePanel, isIssuePanelOpen } from './issue-panel';
 import { closeOpenMenu, getMenuMode, onMenuOpening } from './palm-menu';
 import { onPinchStart, pinchClaims, pinchPoint, type Hand } from './pinch-input';
-import { isRealScale, isViewTransitioning } from './view-mode';
+import { isModelHidden, isViewTransitioning } from './view-mode';
 
 interface ViewPanelContext {
   panel: ViewPanel;
@@ -190,7 +190,7 @@ export class ViewPanelSystem extends createSystem({}) {
       return;
     }
     // The panel belongs to the table-top model: never opened at real scale or while the view changes.
-    if (isRealScale() || isViewTransitioning()) {
+    if (isModelHidden() || isViewTransitioning()) {
       slog('view panel unavailable reason=real-scale');
       return;
     }
@@ -219,7 +219,7 @@ export class ViewPanelSystem extends createSystem({}) {
       return;
     }
     // At real scale the panel has nothing to act on, and its controls would sit in the real-size house.
-    if (isRealScale() || isViewTransitioning()) {
+    if (isModelHidden() || isViewTransitioning()) {
       this.close('view');
       return;
     }

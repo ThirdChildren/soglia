@@ -38,6 +38,13 @@ export const stableId = {
   /** Debug-only objects (`debug:fov-mask`, M6): present only with `debug=1`. */
   debug: (name: string): string => make('debug', name),
   pin: (issueId: string): string => make('pin', issueId),
+  /** A virtual piece at real scale in the room of the mixed reality mode: `room:piece-<catalogId>#<n>` (`n` is a positive integer). */
+  roomPiece: (catalogId: string, n: number): string => {
+    if (!Number.isInteger(n) || n < 1) {
+      throw new Error(`Invalid room piece instance number: ${String(n)}`);
+    }
+    return `${make('room', `piece-${catalogId}`)}#${n}`;
+  },
   /** `furniture:<catalogId>#<n>`; `n` is the 1-based instance counter (positive integer). */
   furniture: (catalogId: string, n: number): string => {
     if (!Number.isInteger(n) || n < 1) {
