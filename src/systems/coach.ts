@@ -38,6 +38,7 @@ import { strings } from '../ui/strings';
 import { isLargeText, LARGE_TEXT_FACTOR } from '../ui/theme';
 import { onFurnitureReleased } from './furniture-grab';
 import { isIssuePanelOpen } from './issue-panel';
+import { getPalmMenuPanel } from './palm-menu';
 import { pinchClaims } from './pinch-input';
 import { isModelHidden, isViewTransitioning } from './view-mode';
 import { isViewPanelOpen } from './view-panel';
@@ -46,6 +47,8 @@ import { isScanCardOpen } from './room-objects';
 /** The text of the grab step hangs this high above the middle of the model, and at least this high above the eyes (over the pinned menu), metres. */
 const TEXT_ABOVE_MODEL = 0.13;
 const TEXT_ABOVE_EYES = 0.31;
+/** With the menu open (it fills the middle of the view, UI fix 1) the words hang this far under its bottom edge, metres (centre of the text). */
+const TEXT_BELOW_MENU = 0.05;
 /** The hand is a little larger than a real hand, so it reads at 0.5 m (the same as the first onboarding). */
 const HAND_SIZE = 1.25;
 /** From the origin of the ghost hand to the point where its thumb and index meet, along its fingers, at the hand size, metres. */
@@ -204,6 +207,7 @@ export class CoachSystem extends createSystem({ named: { required: [StableId] } 
     if (!root) return;
     root.getWorldPosition(this.spot);
 
+    let underMenu = false;
     if (step === 'menu-button') {
       const button = this.find(MENU_BUTTON_IDS[menuButtonSide(ctx.store.get().prefs.leftHandMenu)]);
       // The button is not placed yet (or hidden): nothing to point at.
@@ -248,6 +252,14 @@ export class CoachSystem extends createSystem({ named: { required: [StableId] } 
       this.text.x = this.to.x;
       this.text.y = Math.max(this.to.y + TEXT_ABOVE_MODEL, this.headPosition.y + TEXT_ABOVE_EYES);
       this.text.z = this.to.z;
+      // The menu opens in front of the eyes now, so the banner must not sit over its cards: it hangs right under the menu.
+      const menu = getPalmMenuPanel();
+      if (menu) {
+        this.text.x = menu.framePosition.x;
+        this.text.y = menu.framePosition.y - TEXT_BELOW_MENU * (isLargeText() ? LARGE_TEXT_FACTOR : 1);
+        this.text.z = menu.framePosition.z;
+        underMenu = true;
+      }
     }
 
     // The hand: its fingers point along the line from the head to the thing, its thumb and index meet on it.
@@ -268,8 +280,9 @@ export class CoachSystem extends createSystem({ named: { required: [StableId] } 
     const label = step === 'menu-button' ? strings.coach.menuButton : strings.coach.grab;
     if (!ctx.panel.exists) ctx.panel.create(id, label);
     this.extent.halfWidth = this.textHalfWidth(label);
-    // The first step's words are already placed inside the cone (and `anchorInCone` leaves them where they are).
-    anchorInCone(this.text, this.headPosition, this.headForward, this.extent, TEXT_FIT, this.text, true);
+    // The first step's words are already placed inside the cone (and `anchorInCone` leaves them where they are); the words under the open menu
+    // stay where they are (the cone would push them up over its cards).
+    if (!underMenu) anchorInCone(this.text, this.headPosition, this.headForward, this.extent, TEXT_FIT, this.text, true);
     ctx.panel.update(this.text.x, this.text.y, this.text.z, head, true);
   }
 

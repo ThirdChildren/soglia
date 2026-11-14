@@ -8,7 +8,7 @@
 import { PanelDocument, PanelUI, type Entity, type UIKit, type World } from '@iwsdk/core';
 import { tagEntity } from '../components/tag-entity';
 import { applyPanelLook } from './panel-theme';
-import { getUiColors } from './theme';
+import { buttonLook, getUiColors } from './theme';
 
 /** The "Menu" button (8 x 6 cm), the "Issues" button above it (9 x 6 cm, T4.6a) and the "View" button above that (8 x 6 cm, T5.5): same look, own layout file. */
 export type ButtonPanelKind = 'menu' | 'issues' | 'view';
@@ -82,9 +82,10 @@ export class MenuButtonPanel {
   /** Gives the button the colours of the preference that is on. Returns how many things it recoloured (0 before the layout has loaded). */
   private paint(): number {
     if (!this.applied || !this.root || !this.label) return 0;
-    const colors = getUiColors();
-    this.root.setProperties({ backgroundColor: colors.surface, borderColor: colors.border });
-    this.label.setProperties({ color: colors.ink });
+    // The "Menu" button is the main one (primary); "Issues" and "View" are secondary (UI fix 3).
+    const look = buttonLook(this.kind === 'menu' ? 'primary' : 'secondary');
+    this.root.setProperties({ backgroundColor: look.backgroundColor, borderColor: getUiColors().border });
+    this.label.setProperties({ color: look.color });
     return 1;
   }
 }

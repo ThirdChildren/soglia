@@ -9,7 +9,7 @@ import { PanelDocument, PanelUI, type Entity, type UIKit, type World } from '@iw
 import { tagEntity } from '../components/tag-entity';
 import { ROOM_BUTTON_ID, ROOM_MENU_BUTTON_ID, type RoomButtonKind } from '../logic/room-view';
 import { applyPanelLook } from './panel-theme';
-import { getUiColors } from './theme';
+import { buttonLook, getUiColors } from './theme';
 
 /** The toggle ("My room" / "Model", 12 x 5 cm) and the `Menu` button beside it (8 x 5 cm): same look, own layout file. */
 const PANEL_ASSET: Readonly<Record<RoomButtonKind, string>> = { toggle: 'room-button', menu: 'room-menu-button' };
@@ -88,9 +88,9 @@ export class RoomButtonPanel {
   /** Gives the button the colours of the preference that is on. Returns how many things it recoloured (0 before the layout has loaded). */
   private paint(): number {
     if (!this.applied || !this.root || !this.label) return 0;
-    const colors = getUiColors();
-    this.root.setProperties({ backgroundColor: colors.surface, borderColor: colors.border });
-    this.label.setProperties({ color: colors.ink });
+    const look = buttonLook('secondary');
+    this.root.setProperties({ backgroundColor: look.backgroundColor, borderColor: getUiColors().border });
+    this.label.setProperties({ color: look.color });
     return 1;
   }
 }

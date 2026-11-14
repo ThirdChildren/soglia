@@ -27,6 +27,7 @@ import {
   VIEW_BODY_INNER_WIDTH,
   VIEW_BODY_PADDING_TOP,
   VIEW_BUTTON_WIDTH,
+  VIEW_CELL_GAP,
   VIEW_CONTROL_IDS,
   VIEW_CONTROL_SLOTS,
   VIEW_HEADER_HEIGHT,
@@ -157,7 +158,7 @@ describe('the panel is as big as the menu and its layout file says so', () => {
 
   it('the row fits the body and the rows fit the body (also the two rows T5.11 adds)', () => {
     expect(VIEW_ROW_WIDTH).toBeLessThanOrEqual(VIEW_BODY_INNER_WIDTH + 1e-9);
-    expect(VIEW_LABEL_WIDTH + VIEW_BUTTON_WIDTH * 2 + VIEW_VALUE_WIDTH + 3 * 0.4).toBeCloseTo(VIEW_ROW_WIDTH, 9);
+    expect(VIEW_LABEL_WIDTH + VIEW_BUTTON_WIDTH * 2 + VIEW_VALUE_WIDTH + 3 * VIEW_CELL_GAP).toBeCloseTo(VIEW_ROW_WIDTH, 9);
     const bodyHeight = num(styleOf(panelSource, 'view-panel-body'), 'height');
     const inside = bodyHeight - 2 * VIEW_BODY_BORDER - VIEW_BODY_PADDING_TOP - VIEW_SUMMARY_HEIGHT;
     const rows = (n: number): number => n * VIEW_ROW_HEIGHT + n * VIEW_ROW_GAP;

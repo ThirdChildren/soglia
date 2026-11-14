@@ -89,6 +89,12 @@ export function pinnedMenuAnchor(
   return out;
 }
 
+/** The pitch (radians) the pinned panels follow for a gaze pitch of `pitchRad`: clamped to `PANEL_PITCH_MIN_DEG` .. `PANEL_PITCH_MAX_DEG`; 0 when not finite. */
+export function panelAnchorPitchRad(pitchRad: number): number {
+  if (!Number.isFinite(pitchRad)) return 0;
+  return Math.max(PANEL_PITCH_MIN_DEG * DEG_TO_RAD, Math.min(PANEL_PITCH_MAX_DEG * DEG_TO_RAD, pitchRad));
+}
+
 /**
  * Where a pinned panel (the menu, the View panel, the Issues panel) opens: `PANEL_DISTANCE` (about half a metre) in front of the head along
  * the horizontal gaze, its bottom `PANEL_DROP` below the eyes (so its middle is a little below them) and raised or lowered by
@@ -111,9 +117,7 @@ export function pinnedPanelAnchor(
   const drop = large ? PINNED_DROP_LARGE : PANEL_DROP;
   const usable = Number.isFinite(head.x + head.y + head.z);
   const yaw = Number.isFinite(yawRad) ? yawRad : 0;
-  const pitch = Number.isFinite(pitchRad)
-    ? Math.max(PANEL_PITCH_MIN_DEG * DEG_TO_RAD, Math.min(PANEL_PITCH_MAX_DEG * DEG_TO_RAD, pitchRad))
-    : 0;
+  const pitch = panelAnchorPitchRad(pitchRad);
   const hx = usable ? head.x : FALLBACK_HEAD.x;
   const hy = usable ? head.y : FALLBACK_HEAD.y;
   const hz = usable ? head.z : FALLBACK_HEAD.z;

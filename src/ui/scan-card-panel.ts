@@ -11,7 +11,7 @@ import { CARD_HEIGHT, CARD_MEASURES_SIZE, CARD_TITLE_COMPACT_SIZE, CARD_TITLE_SI
 import { pitchOfForward, yawOfForward } from '../logic/menu-anchor';
 import { applyPanelLook } from './panel-theme';
 import { disposePanelEntity } from './panel-lifecycle';
-import { chipLook, getUiColors, isLargeText, onAccessChange, panelScale } from './theme';
+import { buttonLook, getUiColors, isLargeText, onAccessChange, panelScale } from './theme';
 
 const PANEL_ASSET = 'scan-card';
 const ROOT_ELEMENT = 'scan-card-root';
@@ -166,16 +166,17 @@ export class ScanCardPanel {
     this.closeText?.setProperties({ text: model.closeText });
     this.addText?.setProperties({ text: model.addText });
     const colors = getUiColors();
-    const dark = chipLook(true);
-    // The pressable button is dark with light text (the look of a chosen chip); `Added` and `Mine is full` are only a word, faint.
+    const main = buttonLook('primary');
+    // The pressable button is the primary one (blue, white text); `Added` and `Mine is full` are only a word, faint.
     if (model.action === 'add') {
-      this.add?.setProperties({ backgroundColor: dark.backgroundColor, borderColor: colors.border, opacity: 1 });
-      this.addText?.setProperties({ color: dark.color });
+      this.add?.setProperties({ backgroundColor: main.backgroundColor, borderColor: colors.border, opacity: 1 });
+      this.addText?.setProperties({ color: main.color });
     } else {
       this.add?.setProperties({ backgroundColor: colors.surface, borderColor: colors.border, opacity: FAINT_OPACITY });
       this.addText?.setProperties({ color: colors.ink });
     }
-    this.close?.setProperties({ backgroundColor: colors.surface, borderColor: colors.border });
-    this.closeText?.setProperties({ color: colors.ink });
+    const secondary = buttonLook('secondary');
+    this.close?.setProperties({ backgroundColor: secondary.backgroundColor, borderColor: colors.border });
+    this.closeText?.setProperties({ color: secondary.color });
   }
 }

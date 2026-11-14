@@ -38,7 +38,7 @@ import {
   type MenuTabId,
   type PanelExtent,
 } from '../logic/menu';
-import { pinnedAnchorPitchRad, pinnedConeAngleDeg, pinnedPanelAnchor, pitchOfForward, yawOfForward } from '../logic/menu-anchor';
+import { panelAnchorPitchRad, pinnedConeAngleDeg, pinnedPanelAnchor, pitchOfForward, yawOfForward } from '../logic/menu-anchor';
 import {
   MENU_FRAME_MAX_DISTANCE,
   MENU_FRAME_MAX_DISTANCE_LARGE,
@@ -69,8 +69,8 @@ const ROOT_ELEMENT = 'palm-menu-root';
 const MENU_RENDER_ORDER = 1000;
 /** Icons are drawn just above the panel. */
 const ICON_RENDER_ORDER = 1001;
-/** Icon size in UIKit units; an icon is scaled to fit its drawing, so the narrow chevrons are drawn smaller. */
-const ICON_SIZE: Readonly<Record<ButtonId, number>> = { undo: 2.4, prev: 2, next: 2, recenter: 2.4 };
+/** Icon size in UIKit units; at most the 1.4 cm slot of the layout, so icon (1.4) + gap (0.6) + label (2.64) always fit the 5.4 cm inside a bar button (UI fix 3: they overlapped). */
+const ICON_SIZE: Readonly<Record<ButtonId, number>> = { undo: 1.4, prev: 1.2, next: 1.2, recenter: 1.4 };
 const BUTTON_LABELS: Readonly<Record<ButtonId, string>> = {
   undo: strings.menu.undo,
   prev: strings.menu.previous,
@@ -194,7 +194,7 @@ export class PalmMenuPanel {
     const pitch = pitchOfForward(this.headForward.x, this.headForward.y, this.headForward.z);
     this.setScale(panelScale());
     pinnedPanelAnchor(this.headPosition, this.pinnedYaw, pitch, this.extentValue, isLargeText(), this.pinnedAnchor);
-    slog(`menu pinned pitchDeg=${degrees1(pitch)} anchorPitchDeg=${degrees1(pinnedAnchorPitchRad(pitch))}`);
+    slog(`menu pinned pitchDeg=${degrees1(pitch)} anchorPitchDeg=${degrees1(panelAnchorPitchRad(pitch))}`);
     this.pinnedPlaced = false;
     this.create();
   }

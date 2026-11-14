@@ -7,7 +7,7 @@
 import { PanelDocument, PanelUI, Quaternion, Vector3, type Entity, type Object3D, type UIKit, type World } from '@iwsdk/core';
 import { tagEntity } from '../components/tag-entity';
 import { stableId } from '../logic/ids';
-import { pinnedAnchorPitchRad, pinnedConeAngleDeg, pinnedPanelAnchor, pitchOfForward, yawOfForward } from '../logic/menu-anchor';
+import { panelAnchorPitchRad, pinnedConeAngleDeg, pinnedPanelAnchor, pitchOfForward, yawOfForward } from '../logic/menu-anchor';
 import type { Vec3Like } from '../logic/palm';
 import {
   VIEW_ROWS,
@@ -94,7 +94,7 @@ export class ViewPanel {
     const pitch = pitchOfForward(this.headForward.x, this.headForward.y, this.headForward.z);
     this.panelLayout = viewLayout(isLargeText());
     pinnedPanelAnchor(this.headPosition, this.yaw, pitch, layoutExtent(this.panelLayout), isLargeText(), this.anchor);
-    slog(`view panel pitchDeg=${degrees1(pitch)} anchorPitchDeg=${degrees1(pinnedAnchorPitchRad(pitch))}`);
+    slog(`view panel pitchDeg=${degrees1(pitch)} anchorPitchDeg=${degrees1(panelAnchorPitchRad(pitch))}`);
     const entity = this.world.createTransformEntity();
     tagEntity(entity, stableId.ui('view-panel'));
     entity.addComponent(PanelUI, { config: this.panelLayout.asset });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MENU_EXTENT, scaleExtent } from '../../src/logic/menu';
-import { pinnedConeAngleDeg, pinnedPanelAnchor, pinnedPanelPoint } from '../../src/logic/menu-anchor';
+import { panelAnchorPitchRad, pinnedConeAngleDeg, pinnedPanelAnchor, pinnedPanelPoint } from '../../src/logic/menu-anchor';
 import {
   PANEL_DISTANCE,
   PANEL_DROP,
@@ -79,7 +79,7 @@ describe.each(PANELS)('pinnedPanelAnchor: $name', ({ extent, large }) => {
     }
   });
 
-  it('is never nearer than 0.5 m (rule 8) and its corners are never farther than 0.8 m, for the gaze of the window (-20 to +10 degrees)', () => {
+  it('is never nearer than 0.5 m (rule 8) and its corners are never farther than 0.8 m, for the gaze of the window (-20 to +8 degrees)', () => {
     const corner = out();
     for (let pitch = PANEL_PITCH_MIN_DEG; pitch <= PANEL_PITCH_MAX_DEG; pitch += 1) {
       const a = pinnedPanelAnchor(HEAD, 0.4, pitch * DEG, extent, large, out());
@@ -141,5 +141,16 @@ describe('the middle of the panel at a level gaze', () => {
     expect(HEAD.y - middleY).toBeLessThan(0.08);
     expect(dist({ x: a.x, y: middleY, z: a.z }, HEAD)).toBeGreaterThanOrEqual(0.5);
     expect(dist({ x: a.x, y: middleY, z: a.z }, HEAD)).toBeLessThanOrEqual(0.55);
+  });
+});
+
+describe('panelAnchorPitchRad', () => {
+  it('is the identity inside the window, bounded outside it, and 0 for a pitch that is not finite', () => {
+    expect(panelAnchorPitchRad(0)).toBe(0);
+    expect(panelAnchorPitchRad(-10 * DEG)).toBeCloseTo(-10 * DEG, 12);
+    expect(panelAnchorPitchRad(-80 * DEG)).toBeCloseTo(PANEL_PITCH_MIN_DEG * DEG, 12);
+    expect(panelAnchorPitchRad(80 * DEG)).toBeCloseTo(PANEL_PITCH_MAX_DEG * DEG, 12);
+    expect(panelAnchorPitchRad(Number.NaN)).toBe(0);
+    expect(panelAnchorPitchRad(Number.POSITIVE_INFINITY)).toBe(0);
   });
 });

@@ -8,7 +8,7 @@ import { PanelDocument, PanelUI, type Entity, type UIKit, type World } from '@iw
 import { tagEntity } from '../components/tag-entity';
 import { ROTATE_BUTTON_ID } from '../logic/rotate-button';
 import { applyPanelLook } from './panel-theme';
-import { getUiColors } from './theme';
+import { buttonLook, getUiColors } from './theme';
 
 const PANEL_ASSET = 'rotate-button';
 const ROOT_ELEMENT = 'rotate-button-root';
@@ -71,8 +71,8 @@ export class RotateButtonPanel {
     this.label = text;
     text.setProperties({ text: this.text });
     this.applied = true;
-    const colors = getUiColors();
-    this.root?.setProperties({ backgroundColor: colors.surface, borderColor: colors.border });
-    text.setProperties({ color: colors.ink });
+    const look = buttonLook('secondary');
+    this.root?.setProperties({ backgroundColor: look.backgroundColor, borderColor: getUiColors().border });
+    text.setProperties({ color: look.color });
   }
 }

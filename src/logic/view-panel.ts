@@ -88,8 +88,8 @@ export const VIEW_LABEL_WIDTH = 11;
 /** Space left of the label inside its cell (the layout file says the same). */
 export const VIEW_LABEL_PADDING = 0.4;
 export const VIEW_BUTTON_WIDTH = 6;
-export const VIEW_VALUE_WIDTH = 10.8;
-export const VIEW_CELL_GAP = 0.4;
+export const VIEW_VALUE_WIDTH = 10;
+export const VIEW_CELL_GAP = 0.6;
 /** Width of a row (what the cells add up to) and of the body inside its border. */
 export const VIEW_ROW_WIDTH = VIEW_LABEL_WIDTH + VIEW_BUTTON_WIDTH + VIEW_VALUE_WIDTH + VIEW_BUTTON_WIDTH + 3 * VIEW_CELL_GAP;
 export const VIEW_BODY_INNER_WIDTH = VIEW_PANEL.width - 2 * VIEW_BODY_BORDER;
@@ -193,7 +193,7 @@ export const VIEW_LAYOUT_NORMAL: ViewLayout = {
   valueWidth: VIEW_VALUE_WIDTH,
   cellGap: VIEW_CELL_GAP,
   closeWidth: ISSUE_BAR_BUTTON_WIDTH,
-  noteWidth: 26.6,
+  noteWidth: 26.2,
 };
 
 /** Text of 3.0 cm. A line of it is 3.3 cm, so the rows are 3.8 cm: still one pinch target each, and seven of them fit. */
@@ -218,10 +218,10 @@ export const VIEW_LAYOUT_LARGE: ViewLayout = {
   labelWidth: 13.4,
   labelPadding: 0.4,
   buttonWidth: 6,
-  valueWidth: 12,
-  cellGap: 0.4,
+  valueWidth: 11.6,
+  cellGap: 0.6,
   closeWidth: 10,
-  noteWidth: 29.6,
+  noteWidth: 29.2,
 };
 
 export function viewLayout(large: boolean): ViewLayout {

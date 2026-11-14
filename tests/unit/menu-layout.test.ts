@@ -182,6 +182,30 @@ describe('the single menu panel (palm-menu.uikitml)', () => {
     expect(MIN_TEXT_SIZE).toBe(2.4);
   });
 
+  it('keeps the icon, the gap and the label of a bar button inside the button, so they never overlap (UI fix 3)', () => {
+    const styleOf = (id: string): Record<string, number> => {
+      const match = new RegExp(`id="${id}"[^>]*style="([^"]*)"`).exec(source);
+      if (!match) throw new Error(`element ${id} not found`);
+      const out: Record<string, number> = {};
+      for (const part of match[1].split(';')) {
+        const [key, value] = part.split(':').map((x) => x.trim());
+        if (key && value && /^-?[0-9.]+$/.test(value)) out[key] = Number(value);
+      }
+      return out;
+    };
+    for (const button of BUTTONS) {
+      const box = styleOf(`menu-btn-${button}`);
+      const icon = styleOf(`menu-btn-${button}-icon`);
+      const label = styleOf(`menu-btn-${button}-label`);
+      const inner = box.height - 2 * box['border-width'];
+      const content = icon.height + icon['margin-bottom'] + label['font-size'] * label['line-height'];
+      expect(content, button).toBeLessThanOrEqual(inner);
+      expect(icon.width, button).toBeLessThanOrEqual(box.width - 2 * box['border-width']);
+      // The icon the code draws fits the slot of the layout.
+      expect(icon.height, button).toBeGreaterThanOrEqual(1);
+    }
+  });
+
   it('has one label and one icon slot for each button, a label for each tab and a name and a size for each card', () => {
     for (const button of BUTTONS) {
       expect(source).toContain(`id="menu-btn-${button}-icon"`);

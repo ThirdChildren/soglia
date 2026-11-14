@@ -1,6 +1,6 @@
 // All colours of the model in one place (decision D11 in docs/plans/M1.md). Flat tints, no
 // textures. Floors are mid-tone and walls are light, so the two read apart at a glance.
-// Since M5 (T5.12, D58) every set has a high-contrast twin; `getPalette()`, `getUiColors()` and `getFitColors()` answer for
+// Since M5 (T5.12, D58) every set has a high-contrast twin; `getPalette()`, and `getUiColors()` answer for
 // the preference that is on NOW (`setAccessibility`), so no constant is read at import time. The pairs of text and
 // background are checked against WCAG ratios in tests/unit/theme-contrast.test.ts.
 //
@@ -134,6 +134,14 @@ export const uiColors = {
   /** Background of the selected chip, row or tab, and the text on it. */
   active: '#1a1a1a',
   activeInk: '#ffffff',
+  /**
+   * The two kinds of button (UI fix 3): `primary` is the one main action of a panel or of the fixed buttons (the Menu button, `Close`), a
+   * strong blue with white text; `secondary` is every other button, chip or tab that is not selected: a pale blue-grey with the dark ink. A
+   * selected chip is `active` (dark). Cards that only show something stay on the `surface`.
+   */
+  primary: '#1f4fd8',
+  primaryInk: '#ffffff',
+  secondary: '#e3e9f3',
 } as const;
 
 export interface UiColors {
@@ -143,9 +151,15 @@ export interface UiColors {
   readonly inkSoft: string;
   readonly active: string;
   readonly activeInk: string;
+  readonly primary: string;
+  readonly primaryInk: string;
+  readonly secondary: string;
 }
 
-/** High contrast (D58): black panels, white text, a yellow border 0.4 cm wide; the selected chip is yellow with black text. */
+/**
+ * High contrast (D58): black panels, white text, a yellow border 0.4 cm wide; the selected chip is yellow with black text. The main
+ * button is bright cyan with black text, the other buttons are dark grey with white text (the yellow border keeps them apart from the panel).
+ */
 export const highContrastUiColors: UiColors = {
   surface: '#000000',
   ink: '#ffffff',
@@ -153,6 +167,9 @@ export const highContrastUiColors: UiColors = {
   inkSoft: '#ffffff',
   active: '#ffd400',
   activeInk: '#000000',
+  primary: '#33d6ff',
+  primaryInk: '#000000',
+  secondary: '#2b2b2b',
 };
 
 /** The colours of the flat UI panels now: `uiColors`, or `highContrastUiColors` while the contrast preference is on. */
@@ -160,10 +177,19 @@ export function getUiColors(): UiColors {
   return highContrast ? highContrastUiColors : uiColors;
 }
 
-/** The look of a chip, a row or a tab: the selected one is dark with light text (yellow with black text in high contrast), the others are on the surface. */
+/** The look of a chip, a row or a tab: the selected one is dark with light text (yellow with black text in high contrast), the others are `secondary` buttons. */
 export function chipLook(active: boolean): { readonly backgroundColor: string; readonly color: string } {
   const c = getUiColors();
-  return active ? { backgroundColor: c.active, color: c.activeInk } : { backgroundColor: c.surface, color: c.ink };
+  return active ? { backgroundColor: c.active, color: c.activeInk } : { backgroundColor: c.secondary, color: c.ink };
+}
+
+/** The look of a button: `primary` (the main action) or `secondary` (every other one). */
+export type ButtonKind = 'primary' | 'secondary';
+
+/** Background and text colour of a button of `kind` for the preference that is on. */
+export function buttonLook(kind: ButtonKind): { readonly backgroundColor: string; readonly color: string } {
+  const c = getUiColors();
+  return kind === 'primary' ? { backgroundColor: c.primary, color: c.primaryInk } : { backgroundColor: c.secondary, color: c.ink };
 }
 
 // --- Contrast ratios (WCAG 2.x) --------------------------------------------------------------------------------------------
@@ -201,10 +227,13 @@ export function themedColor(property: UiColorProperty, original: string): string
   const c = original.toLowerCase();
   switch (property) {
     case 'backgroundColor':
-      return c === uiColors.surface ? highContrastUiColors.surface : original;
+      if (c === uiColors.surface) return highContrastUiColors.surface;
+      if (c === uiColors.primary) return highContrastUiColors.primary;
+      return c === uiColors.secondary ? highContrastUiColors.secondary : original;
     case 'borderColor':
       return c === uiColors.border ? highContrastUiColors.border : original;
     case 'color':
+      if (c === uiColors.primaryInk) return highContrastUiColors.primaryInk;
       return c === uiColors.ink || SOFT_INKS.has(c) ? highContrastUiColors.ink : original;
   }
 }

@@ -158,7 +158,7 @@ describe('the layouts of the View panel', () => {
     expect(viewLayout(true)).toBe(VIEW_LAYOUT_LARGE);
     expect(layoutExtent(VIEW_LAYOUT_NORMAL)).toEqual(VIEW_PANEL_EXTENT);
     expect(layoutControlSlots(VIEW_LAYOUT_NORMAL)).toEqual(viewControlSlots());
-    expect(layoutRowWidth(VIEW_LAYOUT_NORMAL)).toBeCloseTo(35.2 - 0.2, 9);
+    expect(layoutRowWidth(VIEW_LAYOUT_NORMAL)).toBeCloseTo(34.8, 9);
   });
 
   describe.each([[VIEW_LAYOUT_NORMAL], [VIEW_LAYOUT_LARGE]])('layout large=$large', (l: ViewLayout) => {

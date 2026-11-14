@@ -126,11 +126,11 @@ export const PINNED_DROP_LARGE = 0.235;
 export const PANEL_DISTANCE = 0.52;
 export const PANEL_DROP = 0.22;
 /**
- * The panels follow the pitch of the gaze at the opening within this range (degrees, positive = looking up), so a user who looks down
+ * The panels follow the pitch of the gaze at the opening within this range (degrees, positive = looking up; the upper limit is the 8 of the room-view buttons, which hang just above the menu), so a user who looks down
  * at the table-top model finds the panel in front of the eyes, not at the horizon. Beyond it `uprightAnchorInCone` keeps the panel in the cone.
  */
 export const PANEL_PITCH_MIN_DEG = -20;
-export const PANEL_PITCH_MAX_DEG = 10;
+export const PANEL_PITCH_MAX_DEG = 8;
 
 // --- The "Palm up for the menu" hint ---------------------------------------------------------
 
