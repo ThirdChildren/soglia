@@ -38,7 +38,7 @@ import {
   type MenuTabId,
   type PanelExtent,
 } from '../logic/menu';
-import { pinnedAnchorPitchRad, pinnedConeAngleDeg, pinnedMenuAnchor, pitchOfForward, yawOfForward } from '../logic/menu-anchor';
+import { pinnedAnchorPitchRad, pinnedConeAngleDeg, pinnedPanelAnchor, pitchOfForward, yawOfForward } from '../logic/menu-anchor';
 import {
   MENU_FRAME_MAX_DISTANCE,
   MENU_FRAME_MAX_DISTANCE_LARGE,
@@ -193,7 +193,7 @@ export class PalmMenuPanel {
     this.pinnedYaw = yawOfForward(this.headForward.x, this.headForward.z);
     const pitch = pitchOfForward(this.headForward.x, this.headForward.y, this.headForward.z);
     this.setScale(panelScale());
-    pinnedMenuAnchor(this.headPosition, this.pinnedYaw, this.pinnedAnchor, pitch, isLargeText());
+    pinnedPanelAnchor(this.headPosition, this.pinnedYaw, pitch, this.extentValue, isLargeText(), this.pinnedAnchor);
     slog(`menu pinned pitchDeg=${degrees1(pitch)} anchorPitchDeg=${degrees1(pinnedAnchorPitchRad(pitch))}`);
     this.pinnedPlaced = false;
     this.create();

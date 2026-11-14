@@ -288,7 +288,7 @@ describe('a state saved by M3, written out by hand (no role-independent new fiel
     expect(state.issues).toEqual([]);
     expect(state.nextIssue).toBe(FIRST_NEW_ISSUE);
     expect(state.issuesSeeded).toBe(false);
-    expect(state.prefs).toEqual({ onboardingStep: 'done', menuOpened: true, moveInVisible: false, contrast: false, largeText: false, coach: 'done' });
+    expect(state.prefs).toEqual({ onboardingStep: 'done', menuOpened: true, moveInVisible: false, contrast: false, largeText: false, leftHandMenu: false, coach: 'done' });
     expect(state.furniture.map((p) => p.id)).toEqual(['furniture:armchair#1']);
     expect(state.nextInstance).toEqual({ armchair: 2 });
     expect(state.view).toEqual({ kind: 'viewpoint', id: 'V1' });

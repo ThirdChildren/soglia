@@ -40,7 +40,7 @@ import { INFO_TEXT_LINES, type InfoModel } from '../logic/info-panel';
 import { ISSUE_URGENCIES } from '../logic/issues';
 import { ROLES, type Role } from '../logic/params';
 import { PANEL_CENTER, scaleExtent } from '../logic/menu';
-import { pinnedAnchorPitchRad, pinnedConeAngleDeg, pinnedMenuAnchor, pitchOfForward, yawOfForward } from '../logic/menu-anchor';
+import { pinnedAnchorPitchRad, pinnedConeAngleDeg, pinnedPanelAnchor, pitchOfForward, yawOfForward } from '../logic/menu-anchor';
 import type { Vec3Like } from '../logic/palm';
 import { slog } from '../log';
 import { panelFontSupports } from './fonts';
@@ -283,7 +283,7 @@ export class IssuePanel {
     const pitch = pitchOfForward(this.headForward.x, this.headForward.y, this.headForward.z);
     // With large text the whole panel is 1.25 times bigger (3.0 cm text, same layout) and hangs a little farther, centred on the eyes.
     this.panelScaleValue = panelScale();
-    pinnedMenuAnchor(this.headPosition, this.yaw, this.anchor, pitch, isLargeText());
+    pinnedPanelAnchor(this.headPosition, this.yaw, pitch, scaleExtent(ISSUE_PANEL_EXTENT, this.panelScaleValue), isLargeText(), this.anchor);
     slog(`issues panel pitchDeg=${degrees1(pitch)} anchorPitchDeg=${degrees1(pinnedAnchorPitchRad(pitch))}`);
     const entity = this.world.createTransformEntity();
     tagEntity(entity, stableId.ui('issue-panel'));

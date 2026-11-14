@@ -31,6 +31,11 @@ export function formatAccessText(large: boolean, source: AccessSource): string {
   return `access text=${large ? 'large' : 'normal'} source=${source} menu=${MENU_TEXT_WITH_LARGE} issues=${ISSUES_TEXT_WITH_LARGE}`;
 }
 
+/** `access hand=left source=ui`: the hand the Menu, Issues and View buttons are for (UI fix 1). */
+export function formatAccessHand(left: boolean, source: AccessSource): string {
+  return `access hand=${left ? 'left' : 'right'} source=${source}`;
+}
+
 /** `access applied recolored=7`: the preference was applied to the panels and materials that already existed. */
 export function formatAccessApplied(recolored: number): string {
   return `access applied recolored=${recolored}`;

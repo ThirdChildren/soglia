@@ -1,8 +1,8 @@
-<div id="view-panel-root" style="display: flex; flex-direction: column; align-items: center; width: 36; height: 37.6;">
+<div id="view-panel-root" style="display: flex; flex-direction: column; align-items: center; width: 36; height: 41.2;">
   <div id="view-panel-title-box" style="display: flex; flex-direction: row; align-items: center; justify-content: center; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a; flex-direction: column; width: 36; height: 4;">
     <span id="view-panel-title" style="font-size: 2.6; font-weight: bold; color: #1a1a1a; line-height: 1.1; text-align: center;">-</span>
   </div>
-  <div id="view-panel-body" style="display: flex; flex-direction: column; align-items: center; justify-content: flex-start; width: 36; height: 26.6; margin-top: 0.4; padding-top: 0.4; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a;">
+  <div id="view-panel-body" style="display: flex; flex-direction: column; align-items: center; justify-content: flex-start; width: 36; height: 30.2; margin-top: 0.4; padding-top: 0.4; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a;">
     <div id="view-panel-summary-box" style="display: flex; flex-direction: row; align-items: center; justify-content: center; width: 35.2; height: 3.4;">
       <span id="view-panel-summary" style="font-size: 2.4; font-weight: normal; color: #1a1a1a; line-height: 1.1; text-align: center;">-</span>
     </div>
@@ -88,6 +88,20 @@
       </div>
       <div id="view-panel-text-more" style="display: flex; flex-direction: row; align-items: center; justify-content: center; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a; width: 6; height: 3.3; margin-left: 0.4;">
         <span id="view-panel-text-more-label" style="font-size: 2.4; font-weight: bold; color: #1a1a1a; line-height: 1.1; text-align: center;">-</span>
+      </div>
+    </div>
+    <div id="view-panel-row-hand" style="display: flex; flex-direction: row; align-items: center; width: 35; height: 3.3; margin-top: 0.3;">
+      <div style="display: flex; flex-direction: row; align-items: center; justify-content: flex-start; width: 11; height: 3.3; padding-left: 0.4;">
+        <span id="view-panel-hand-label" style="font-size: 2.4; font-weight: bold; color: #1a1a1a; line-height: 1.1; text-align: left;">-</span>
+      </div>
+      <div id="view-panel-hand-less" style="display: flex; flex-direction: row; align-items: center; justify-content: center; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a; width: 6; height: 3.3; margin-left: 0.4;">
+        <span id="view-panel-hand-less-label" style="font-size: 2.4; font-weight: bold; color: #1a1a1a; line-height: 1.1; text-align: center;">-</span>
+      </div>
+      <div id="view-panel-hand-value-box" style="display: flex; flex-direction: row; align-items: center; justify-content: center; width: 10.8; height: 3.3; margin-left: 0.4;">
+        <span id="view-panel-hand-value" style="font-size: 2.4; font-weight: bold; color: #1a1a1a; line-height: 1.1; text-align: center;">-</span>
+      </div>
+      <div id="view-panel-hand-more" style="display: flex; flex-direction: row; align-items: center; justify-content: center; background-color: #ffffff; border-radius: 2; border-width: 0.4; border-color: #1a1a1a; width: 6; height: 3.3; margin-left: 0.4;">
+        <span id="view-panel-hand-more-label" style="font-size: 2.4; font-weight: bold; color: #1a1a1a; line-height: 1.1; text-align: center;">-</span>
       </div>
     </div>
   </div>

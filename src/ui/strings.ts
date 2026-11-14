@@ -182,9 +182,12 @@ export const strings = {
     button: 'View',
     title: 'View',
     close: 'Close',
-    rows: { zoom: 'Zoom', turn: 'Turn', month: 'Month', hour: 'Hour', contrast: 'Contrast', text: 'Text' },
-    /** The values of the two switches (D58). */
-    switches: { on: 'On', off: 'Off', normal: 'Normal', large: 'Large' },
+    rows: { zoom: 'Zoom', turn: 'Turn', month: 'Month', hour: 'Hour', contrast: 'Contrast', text: 'Text', hand: 'Hand' },
+    /** The values of the switches (D58); `left` and `right` are the two values of the Hand row (which hand the Menu, Issues and View buttons are for). */
+    switches: { on: 'On', off: 'Off', normal: 'Normal', large: 'Large', left: 'Left', right: 'Right' },
+    /** The two buttons of the Hand row: `L` picks the left hand, `R` the right hand. */
+    handLess: 'L',
+    handMore: 'R',
     less: '-',
     more: '+',
     /** `Sun 14° SE` (`deg` when the local panel font has no degree sign). */

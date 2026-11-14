@@ -120,6 +120,8 @@ export interface AppState {
     readonly contrast: boolean;
     /** Large text (3.0 cm instead of 2.4) in the panels and the labels (M5, D58). Saved; `text=` in the URL wins. */
     readonly largeText: boolean;
+    /** The fixed Menu / Issues / View buttons are on the LEFT of the model (for the left hand) instead of the right (UI fix 1). Saved; absent in an older state means off. */
+    readonly leftHandMenu: boolean;
     /** The step of the coach that shows the Menu button and the first piece (M5, D60). Saved. */
     readonly coach: CoachStep;
   };
@@ -155,6 +157,8 @@ export type RestorePrefs = Pick<AppState['prefs'], 'onboardingStep' | 'menuOpene
   /** Absent: the preference stays as the session has it (an older state, or the URL named it: `contrast=`, D58). */
   readonly contrast?: boolean;
   readonly largeText?: boolean;
+  /** Absent: the preference stays as the session has it (an older state). */
+  readonly leftHandMenu?: boolean;
   /** Absent: the coach stays as the session has it (an older state: `deserialize` already chose the step). */
   readonly coach?: CoachStep;
 };
@@ -182,6 +186,7 @@ export type Action =
   | { readonly type: 'setCoach'; readonly step: CoachStep }
   | { readonly type: 'setContrast'; readonly on: boolean }
   | { readonly type: 'setLargeText'; readonly on: boolean }
+  | { readonly type: 'setLeftHandMenu'; readonly on: boolean }
   | { readonly type: 'setSunTime'; readonly sunTime: string }
   | { readonly type: 'addScanned'; readonly piece: ScannedPiece }
   | { readonly type: 'stepSunTime'; readonly unit: SunStepUnit; readonly delta: number }
@@ -318,6 +323,10 @@ export function setContrast(on: boolean): Action {
 export function setLargeText(on: boolean): Action {
   return { type: 'setLargeText', on };
 }
+/** Menu buttons for the left hand (true) or the right hand (false, the default). Not a boolean: ignored. */
+export function setLeftHandMenu(on: boolean): Action {
+  return { type: 'setLeftHandMenu', on };
+}
 /** Show or hide the move-in pins on the model (D48). Not a boolean: ignored. */
 export function setMoveIn(visible: boolean): Action {
   return { type: 'setMoveIn', visible };
@@ -392,6 +401,7 @@ export function createInitialState(params: Params): AppState {
       moveInVisible: false,
       contrast: params.contrast,
       largeText: params.text === 'large',
+      leftHandMenu: false,
       coach: 'menu-button',
     },
     furniture: [],
@@ -657,6 +667,10 @@ export function reduce(state: AppState, action: Action): AppState {
       if (typeof action.on !== 'boolean' || action.on === state.prefs.largeText) return state;
       return { ...state, prefs: { ...state.prefs, largeText: action.on } };
     }
+    case 'setLeftHandMenu': {
+      if (typeof action.on !== 'boolean' || action.on === state.prefs.leftHandMenu) return state;
+      return { ...state, prefs: { ...state.prefs, leftHandMenu: action.on } };
+    }
     case 'setSunTime': {
       const sunTime = parseSunTime(action.sunTime);
       if (sunTime === null || sunTime === state.sunTime) return state;
@@ -791,6 +805,7 @@ export function reduce(state: AppState, action: Action): AppState {
           moveInVisible,
           contrast: typeof prefs.contrast === 'boolean' ? prefs.contrast : state.prefs.contrast,
           largeText: typeof prefs.largeText === 'boolean' ? prefs.largeText : state.prefs.largeText,
+          leftHandMenu: typeof prefs.leftHandMenu === 'boolean' ? prefs.leftHandMenu : state.prefs.leftHandMenu,
           coach: (COACH_STEPS as readonly string[]).includes(prefs.coach as string) ? (prefs.coach as CoachStep) : state.prefs.coach,
         },
         view,
@@ -922,6 +937,8 @@ export function deserializeWithReport(
   // Added in M5 (D58): absent or broken means off (a convenience, not worth the whole state).
   const contrast = prefs.contrast === true;
   const largeText = prefs.largeText === true;
+  // Added in the UI fixes: absent or broken means the right hand (the default).
+  const leftHandMenu = prefs.leftHandMenu === true;
 
   let furniture: PlacedPiece[] = [];
   if ('furniture' in data) {
@@ -996,7 +1013,7 @@ export function deserializeWithReport(
       role: role as Role,
       miniature: { scale: clampScale(scale), yawDeg: yawDeg + 0, offset },
       selectedRoomId,
-      prefs: { onboardingStep: step as OnboardingStep, menuOpened, moveInVisible, contrast, largeText, coach },
+      prefs: { onboardingStep: step as OnboardingStep, menuOpened, moveInVisible, contrast, largeText, leftHandMenu, coach },
       furniture,
       nextInstance,
       history,

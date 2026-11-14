@@ -28,7 +28,7 @@ import {
   type CoachReason,
 } from '../logic/coach';
 import { MINIATURE_ROOT_ID } from '../logic/ids';
-import { BUTTON_HALF_WIDTH, MENU_BUTTON_IDS } from '../logic/menu-button';
+import { BUTTON_HALF_WIDTH, MENU_BUTTON_IDS, menuButtonSide } from '../logic/menu-button';
 import { ROOM_LABEL_MIN_DISTANCE, VIEW_CONE_HALF_ANGLE_DEG } from '../logic/menu-thresholds';
 import { setCoach, type CoachStep, type Store } from '../logic/state';
 import { anchorInCone, type ConeFit } from '../logic/view-fit';
@@ -205,7 +205,7 @@ export class CoachSystem extends createSystem({ named: { required: [StableId] } 
     root.getWorldPosition(this.spot);
 
     if (step === 'menu-button') {
-      const button = this.find(MENU_BUTTON_IDS.right);
+      const button = this.find(MENU_BUTTON_IDS[menuButtonSide(ctx.store.get().prefs.leftHandMenu)]);
       // The button is not placed yet (or hidden): nothing to point at.
       if (!button || !button.visible) {
         this.dispose();

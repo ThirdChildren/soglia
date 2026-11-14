@@ -54,6 +54,19 @@ export const BUTTON_CLEARANCE = 0.01;
  */
 export const BUTTON_MIN_LIFT = BASE_ABOVE + BUTTON_HALF_HEIGHT + BUTTON_CLEARANCE;
 
+/**
+ * The side of the model the Menu / Issues / View buttons are on: the RIGHT by default (for the right hand), the LEFT when the
+ * preference `leftHandMenu` is on (accessibility, rule 9). Only that side has buttons: one hand at a time (UI fix 1).
+ */
+export function menuButtonSide(leftHandMenu: boolean): ButtonSide {
+  return leftHandMenu ? 'left' : 'right';
+}
+
+/** The index of a side in a `ButtonPair` (left first). */
+export function sideIndex(side: ButtonSide): 0 | 1 {
+  return side === 'left' ? 0 : 1;
+}
+
 const RAD_TO_DEG = 180 / Math.PI;
 const DEG_TO_RAD = Math.PI / 180;
 const EPS = 1e-9;

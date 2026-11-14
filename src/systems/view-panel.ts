@@ -18,7 +18,7 @@
 import { createSystem, Vector3, type World } from '@iwsdk/core';
 import { slog } from '../log';
 import type { House } from '../logic/house';
-import { formatAccessContrast, formatAccessText } from '../logic/access';
+import { formatAccessContrast, formatAccessHand, formatAccessText } from '../logic/access';
 import { pickRect, type PickSlot } from '../logic/menu';
 import { pinnedPanelPoint } from '../logic/menu-anchor';
 import type { AppState, Store } from '../logic/state';
@@ -167,6 +167,7 @@ export class ViewPanelSystem extends createSystem({}) {
           lon,
           contrast: state.prefs.contrast,
           largeText: state.prefs.largeText,
+          leftHandMenu: state.prefs.leftHandMenu,
         },
         viewTexts(),
       ),
@@ -303,5 +304,6 @@ export class ViewPanelSystem extends createSystem({}) {
     slog(formatViewStep(row, step.value, step.extra));
     if (row === 'contrast') slog(formatAccessContrast(ctx.store.get().prefs.contrast, 'ui'));
     else if (row === 'text') slog(formatAccessText(ctx.store.get().prefs.largeText, 'ui'));
+    else if (row === 'hand') slog(formatAccessHand(ctx.store.get().prefs.leftHandMenu, 'ui'));
   }
 }

@@ -10,6 +10,9 @@
 // The "Issues" buttons (T4.6a, D47) are two more panels, 7 cm above the "Menu" ones (`ui:issue-button-left/-right`): same place on
 // the ring, same yaw, 9 x 6 cm, and a pinch on one opens (or closes) the Issues panel instead of the menu.
 //
+// Only ONE side has buttons (UI fix 1): the right by default, the left with the accessibility preference `prefs.leftHandMenu`. The
+// buttons of the other side are hidden and cannot be pinched.
+//
 // A pinch of one hand inside the rectangle of a button claims that hand as `menu` (the highest priority: it never
 // grabs a piece, selects a room or starts a gesture) and TOGGLES the pinned menu: closed -> pinned menu opens (it
 // replaces the palm menu if that is open: one menu at a time), pinned open -> it closes. Both buttons do the same.
@@ -38,7 +41,9 @@ import {
   formatIssueButtonView,
   formatViewButtonView,
   issueButtonAnchors,
+  menuButtonSide,
   pickButton,
+  sideIndex,
   viewButtonAnchors,
   widenButtons,
   BUTTON_HALF_WIDTH,
@@ -52,6 +57,7 @@ import { MenuButtonPanel } from '../ui/menu-button-panel';
 import { isLargeText } from '../ui/theme';
 import { strings } from '../ui/strings';
 import { isMiniatureGestureActive } from './miniature-gesture';
+import type { Store } from '../logic/state';
 import { getMiniatureAnchor, getMiniatureAnchorYaw } from './miniature';
 import { closeIssuePanel, isIssuePanelOpen, openIssuePanel } from './issue-panel';
 import { closeMenu, getMenuMode, openPinnedMenu } from './palm-menu';
@@ -60,6 +66,7 @@ import { onPinchStart, pinchClaims, pinchPoint, type Hand } from './pinch-input'
 import { isModelHidden } from './view-mode';
 
 interface MenuButtonContext {
+  store: Store;
   /** The two "Menu" buttons, left first. */
   panels: readonly [MenuButtonPanel, MenuButtonPanel];
   /** The two "Issues" buttons above them (T4.6a), left first. */
@@ -72,8 +79,9 @@ interface MenuButtonContext {
 let context: MenuButtonContext | null = null;
 
 /** Creates the six buttons ("Menu", "Issues" and "View", left and right) and registers the system. */
-export function createMenuButton(world: World): void {
+export function createMenuButton(world: World, store: Store): void {
   context = {
+    store,
     panels: [
       new MenuButtonPanel(world, MENU_BUTTON_IDS.left, strings.menu.button),
       new MenuButtonPanel(world, MENU_BUTTON_IDS.right, strings.menu.button),
@@ -99,8 +107,11 @@ export class MenuButtonSystem extends createSystem({
   private readonly buttons = createButtonPair();
   private readonly issueButtons = createButtonPair();
   private readonly viewButtons = createButtonPair();
-  /** The six pick targets, disjoint (each floor is 1 cm above the one below): the objects are shared with the pairs above. */
-  private readonly targets: readonly ButtonAnchor[] = [...this.buttons, ...this.issueButtons, ...this.viewButtons];
+  /** The pick targets of each side (left, right): three floors each, disjoint (each is 1 cm above the one below); the objects are shared with the pairs above. */
+  private readonly targets: readonly [readonly ButtonAnchor[], readonly ButtonAnchor[]] = [
+    [this.buttons[0], this.issueButtons[0], this.viewButtons[0]],
+    [this.buttons[1], this.issueButtons[1], this.viewButtons[1]],
+  ];
   private readonly view: ButtonView = { distance: 0, angleDeg: 180 };
   private readonly anchor = { x: 0, y: 0, z: 0 };
   private readonly headPosition = new Vector3();
@@ -151,13 +162,16 @@ export class MenuButtonSystem extends createSystem({
     widenButtons(this.buttons, BUTTON_HALF_WIDTH, widen);
     widenButtons(this.issueButtons, ISSUE_BUTTON_HALF_WIDTH, widen);
     widenButtons(this.viewButtons, VIEW_BUTTON_HALF_WIDTH, widen);
+    // One side only: the buttons of the other hand are hidden.
+    const shown = sideIndex(menuButtonSide(ctx.store.get().prefs.leftHandMenu));
     for (let i = 0; i < 2; i += 1) {
+      const on = i === shown;
       const b = this.buttons[i];
-      ctx.panels[i].place(b.x, b.y, b.z, b.yawRad, true);
+      ctx.panels[i].place(b.x, b.y, b.z, b.yawRad, on);
       const c = this.issueButtons[i];
-      ctx.issuePanels[i].place(c.x, c.y, c.z, c.yawRad, true);
+      ctx.issuePanels[i].place(c.x, c.y, c.z, c.yawRad, on);
       const v = this.viewButtons[i];
-      ctx.viewPanels[i].place(v.x, v.y, v.z, v.yawRad, true);
+      ctx.viewPanels[i].place(v.x, v.y, v.z, v.yawRad, on);
     }
     this.logView(head);
   }
@@ -182,7 +196,7 @@ export class MenuButtonSystem extends createSystem({
     // A control of an open menu (or anyone else) has this pinch already: it is not a press on a button.
     if (pinchClaims.ownerOf(hand) !== null) return;
     pinchPoint(hand, this.point);
-    const hit = pickButton(this.point, this.targets);
+    const hit = pickButton(this.point, this.targets[sideIndex(menuButtonSide(context.store.get().prefs.leftHandMenu))]);
     if (!hit) return;
     const isIssues = hit === this.issueButtons[0] || hit === this.issueButtons[1];
     const isView = hit === this.viewButtons[0] || hit === this.viewButtons[1];

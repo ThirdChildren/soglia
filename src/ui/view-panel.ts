@@ -7,7 +7,7 @@
 import { PanelDocument, PanelUI, Quaternion, Vector3, type Entity, type Object3D, type UIKit, type World } from '@iwsdk/core';
 import { tagEntity } from '../components/tag-entity';
 import { stableId } from '../logic/ids';
-import { pinnedAnchorPitchRad, pinnedConeAngleDeg, pinnedMenuAnchor, pitchOfForward, yawOfForward } from '../logic/menu-anchor';
+import { pinnedAnchorPitchRad, pinnedConeAngleDeg, pinnedPanelAnchor, pitchOfForward, yawOfForward } from '../logic/menu-anchor';
 import type { Vec3Like } from '../logic/palm';
 import {
   VIEW_ROWS,
@@ -92,11 +92,11 @@ export class ViewPanel {
     this.headForward.set(0, 0, -1).applyQuaternion(this.headQuaternion);
     this.yaw = yawOfForward(this.headForward.x, this.headForward.z);
     const pitch = pitchOfForward(this.headForward.x, this.headForward.y, this.headForward.z);
-    pinnedMenuAnchor(this.headPosition, this.yaw, this.anchor, pitch);
+    this.panelLayout = viewLayout(isLargeText());
+    pinnedPanelAnchor(this.headPosition, this.yaw, pitch, layoutExtent(this.panelLayout), isLargeText(), this.anchor);
     slog(`view panel pitchDeg=${degrees1(pitch)} anchorPitchDeg=${degrees1(pinnedAnchorPitchRad(pitch))}`);
     const entity = this.world.createTransformEntity();
     tagEntity(entity, stableId.ui('view-panel'));
-    this.panelLayout = viewLayout(isLargeText());
     entity.addComponent(PanelUI, { config: this.panelLayout.asset });
     if (entity.object3D) entity.object3D.visible = false;
     this.entity = entity;
@@ -167,8 +167,8 @@ export class ViewPanel {
     for (const row of VIEW_ROWS) {
       const label = doc.getElementById<UIKit.Text>(`view-panel-${row}-label`);
       const value = doc.getElementById<UIKit.Text>(`view-panel-${row}-value`);
-      doc.getElementById<UIKit.Text>(`view-panel-${row}-less-label`)?.setProperties({ text: minus });
-      doc.getElementById<UIKit.Text>(`view-panel-${row}-more-label`)?.setProperties({ text: strings.view.more });
+      doc.getElementById<UIKit.Text>(`view-panel-${row}-less-label`)?.setProperties({ text: row === 'hand' ? strings.view.handLess : minus });
+      doc.getElementById<UIKit.Text>(`view-panel-${row}-more-label`)?.setProperties({ text: row === 'hand' ? strings.view.handMore : strings.view.more });
       label?.setProperties({ text: strings.view.rows[row] });
       this.rows.set(row, { label, value });
     }

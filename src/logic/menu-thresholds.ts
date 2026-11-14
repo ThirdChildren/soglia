@@ -114,6 +114,24 @@ export const PINNED_PITCH_MAX_DEG = 8;
 export const PINNED_DISTANCE_LARGE = 0.6;
 export const PINNED_DROP_LARGE = 0.235;
 
+// --- Where the pinned panels open (UI fix 1) ----------------------------------------------------------------------
+
+/**
+ * The menu, the View panel and the Issues panel open about half a metre in front of the head, centred on the gaze and a little below the
+ * eyes (the owner's request after the first test on the headset). Their frame (bottom centre) is `PANEL_DISTANCE` in front of the head
+ * along the horizontal gaze and `PANEL_DROP` below the eyes, so the middle of the 0.376 m tall panel is 3 cm below the eye line and, for a
+ * level gaze, the worst corner is 28.7 degrees from the gaze (inside the 30 degree cone of `VIEW_CONE_HALF_ANGLE_DEG`).
+ * (`PINNED_DISTANCE` / `PINNED_DROP` and their tuning knobs are kept for the room-view panels.)
+ */
+export const PANEL_DISTANCE = 0.52;
+export const PANEL_DROP = 0.22;
+/**
+ * The panels follow the pitch of the gaze at the opening within this range (degrees, positive = looking up), so a user who looks down
+ * at the table-top model finds the panel in front of the eyes, not at the horizon. Beyond it `uprightAnchorInCone` keeps the panel in the cone.
+ */
+export const PANEL_PITCH_MIN_DEG = -20;
+export const PANEL_PITCH_MAX_DEG = 10;
+
 // --- The "Palm up for the menu" hint ---------------------------------------------------------
 
 /** The hint floats this far above the anchor of the model, in metres (about 0.5 m from the head). */

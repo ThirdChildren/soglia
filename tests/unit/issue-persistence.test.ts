@@ -126,7 +126,7 @@ describe('a state saved by M3 (without the new fields)', () => {
     expect(state?.issues).toEqual([]);
     expect(state?.nextIssue).toBe(14);
     expect(state?.issuesSeeded).toBe(false);
-    expect(state?.prefs).toEqual({ onboardingStep: 'done', menuOpened: true, moveInVisible: false, contrast: false, largeText: false, coach: 'grab' });
+    expect(state?.prefs).toEqual({ onboardingStep: 'done', menuOpened: true, moveInVisible: false, contrast: false, largeText: false, leftHandMenu: false, coach: 'grab' });
   });
 
   it('restores as "not seeded yet", so the seed comes once', () => {

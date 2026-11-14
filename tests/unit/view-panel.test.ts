@@ -19,8 +19,7 @@ import {
   type ButtonAnchor,
 } from '../../src/logic/menu-button';
 import { MENU_EXTENT, pickRect } from '../../src/logic/menu';
-import { PINNED_PITCH_MAX_DEG, PINNED_PITCH_MIN_DEG } from '../../src/logic/menu-thresholds';
-import { pinnedConeAngleDeg, pinnedMenuAnchor, pinnedPanelPoint } from '../../src/logic/menu-anchor';
+import { pinnedConeAngleDeg, pinnedPanelAnchor, pinnedPanelPoint } from '../../src/logic/menu-anchor';
 import { computeAnchor } from '../../src/logic/placement';
 import {
   VIEW_BAR_HEIGHT,
@@ -114,10 +113,10 @@ const TEXTS: ViewTexts = {
 };
 
 describe('the panel is as big as the menu and its layout file says so', () => {
-  it('is at most 0.36 x 0.376 m and has the extent of the menu', () => {
+  it('is at most 0.36 m wide like the menu, a little taller for the seventh row (0.412 m), with the same bottom and half width', () => {
     expect(VIEW_PANEL.width / 100).toBeLessThanOrEqual(0.36 + 1e-9);
-    expect(VIEW_PANEL.height / 100).toBeLessThanOrEqual(0.376 + 1e-9);
-    expect(VIEW_PANEL_EXTENT).toEqual(MENU_EXTENT);
+    expect(VIEW_PANEL.height / 100).toBeCloseTo(0.412, 9);
+    expect(VIEW_PANEL_EXTENT).toEqual({ halfWidth: MENU_EXTENT.halfWidth, bottom: MENU_EXTENT.bottom, top: VIEW_PANEL.height / 100 });
   });
 
   it('the root of public/ui/view-panel.uikitml has that size and title, body and bar fill it', () => {
@@ -227,11 +226,11 @@ describe('the text is at least 2.4 cm and fits where it is drawn', () => {
   });
 });
 
-describe('the panel is in the cone of 30 degrees at 0.5-0.65 m for the whole window of the pitch of the gaze', () => {
+describe('the panel is in the cone of 30 degrees at 0.5-0.65 m for any pitch of the gaze (pinnedPanelAnchor, UI fix 1)', () => {
   const HEAD = { x: 0.2, y: 1.6, z: -0.3 };
   const DEG = Math.PI / 180;
   function view(pitchDeg: number, yawRad: number) {
-    const anchor = pinnedMenuAnchor(HEAD, yawRad, { x: 0, y: 0, z: 0 }, pitchDeg * DEG);
+    const anchor = pinnedPanelAnchor(HEAD, yawRad, pitchDeg * DEG, VIEW_PANEL_EXTENT, false, { x: 0, y: 0, z: 0 });
     const forward = {
       x: -Math.sin(yawRad) * Math.cos(pitchDeg * DEG),
       y: Math.sin(pitchDeg * DEG),
@@ -239,20 +238,20 @@ describe('the panel is in the cone of 30 degrees at 0.5-0.65 m for the whole win
     };
     return { anchor, forward };
   }
-  it('the cone holds inside the window of the pitch', () => {
+  it('the cone holds for every pitch of the gaze from -60 to +50 degrees', () => {
     for (const yaw of [0, 0.7, -2.1, 3]) {
-      for (let pitch = PINNED_PITCH_MIN_DEG; pitch <= PINNED_PITCH_MAX_DEG + 0.0001; pitch += 0.1) {
+      for (let pitch = -60; pitch <= 50.0001; pitch += 0.5) {
         const { anchor, forward } = view(pitch, yaw);
         expect(pinnedConeAngleDeg(anchor, yaw, HEAD, forward, VIEW_PANEL_EXTENT)).toBeLessThanOrEqual(30.05);
       }
     }
   });
-  it('the level gaze has the worst corner at about 26 degrees and the frame is at 0.585 m', () => {
+  it('the level gaze has the worst corner at about 29 degrees and the frame is at 0.565 m', () => {
     const { anchor, forward } = view(0, 0);
     const angle = pinnedConeAngleDeg(anchor, 0, HEAD, forward, VIEW_PANEL_EXTENT);
-    expect(angle).toBeGreaterThan(25);
-    expect(angle).toBeLessThan(27);
-    expect(Math.hypot(anchor.x - HEAD.x, anchor.y - HEAD.y, anchor.z - HEAD.z)).toBeCloseTo(0.585, 2);
+    expect(angle).toBeGreaterThan(27);
+    expect(angle).toBeLessThanOrEqual(30);
+    expect(Math.hypot(anchor.x - HEAD.x, anchor.y - HEAD.y, anchor.z - HEAD.z)).toBeCloseTo(0.565, 2);
     const corner = { x: 0, y: 0, z: 0 };
     pinnedPanelPoint(anchor, 0, VIEW_PANEL_EXTENT.halfWidth, VIEW_PANEL_EXTENT.top, corner);
     expect(Math.hypot(corner.x - HEAD.x, corner.y - HEAD.y, corner.z - HEAD.z)).toBeLessThanOrEqual(0.65);
@@ -261,8 +260,9 @@ describe('the panel is in the cone of 30 degrees at 0.5-0.65 m for the whole win
 
 describe('the controls', () => {
   it('have one `-` and one `+` per row and a Close, with ids `ui:view-<row>-less|more` and `ui:view-close`', () => {
-    // `-` and `+` of the six rows, the value cell of the two switches (`ui:view-contrast`, `ui:view-text`) and Close.
-    expect(VIEW_CONTROL_IDS).toHaveLength(VIEW_ROWS.length * 2 + 2 + 1);
+    // `-` and `+` of the seven rows, the value cell of the three switches (`ui:view-contrast`, `ui:view-text`, `ui:view-hand`) and Close.
+    expect(VIEW_CONTROL_IDS).toHaveLength(VIEW_ROWS.length * 2 + 3 + 1);
+    expect(viewControlStableId('hand')).toBe('ui:view-hand');
     expect(viewControlStableId('contrast')).toBe('ui:view-contrast');
     expect(viewControlStableId('text')).toBe('ui:view-text');
     expect(viewControlStableId('hour-more')).toBe('ui:view-hour-more');
@@ -302,15 +302,15 @@ describe('the controls', () => {
 
 describe('the model of the rows', () => {
   const inputs = { scale: 0.065, yawDeg: 30, sunTime: '2026-12-21T10:00', lat: 45.07, lon: 7.69 };
-  it('shows zoom, turn, month, hour, contrast and text in that order', () => {
+  it('shows zoom, turn, month, hour, contrast, text and hand in that order', () => {
     const m = buildViewModel(inputs, TEXTS);
-    expect(m.rows.map((r) => r.id)).toEqual(['zoom', 'turn', 'month', 'hour', 'contrast', 'text']);
-    expect(m.rows.map((r) => r.label)).toEqual(['Zoom', 'Turn', 'Month', 'Hour', 'Contrast', 'Text']);
-    expect(m.rows.map((r) => r.value)).toEqual(['130%', '30°', 'Dec', '10:00', 'Off', 'Normal']);
+    expect(m.rows.map((r) => r.id)).toEqual(['zoom', 'turn', 'month', 'hour', 'contrast', 'text', 'hand']);
+    expect(m.rows.map((r) => r.label)).toEqual(['Zoom', 'Turn', 'Month', 'Hour', 'Contrast', 'Text', 'Hand']);
+    expect(m.rows.map((r) => r.value)).toEqual(['130%', '30°', 'Dec', '10:00', 'Off', 'Normal', 'Right']);
   });
-  it('shows the two switches as On and Large when the preferences are on', () => {
-    const m = buildViewModel({ ...inputs, contrast: true, largeText: true }, TEXTS);
-    expect(m.rows.slice(4).map((r) => r.value)).toEqual(['On', 'Large']);
+  it('shows the three switches as On, Large and Left when the preferences are on', () => {
+    const m = buildViewModel({ ...inputs, contrast: true, largeText: true, leftHandMenu: true }, TEXTS);
+    expect(m.rows.slice(4).map((r) => r.value)).toEqual(['On', 'Large', 'Left']);
   });
   it('says where the sun is: 21 Dec 10:00 is 13.7 degrees up, written as 14, in the south-east', () => {
     expect(buildViewModel(inputs, TEXTS).summary).toBe('Sun 14° SE');
@@ -329,7 +329,7 @@ describe('the model of the rows', () => {
   });
   it('follows the store: another hour or month changes the values', () => {
     const m = buildViewModel({ ...inputs, sunTime: '2026-06-21T14:00', scale: 0.03, yawDeg: 345 }, TEXTS);
-    expect(m.rows.map((r) => r.value)).toEqual(['60%', '345°', 'Jun', '14:00', 'Off', 'Normal']);
+    expect(m.rows.map((r) => r.value)).toEqual(['60%', '345°', 'Jun', '14:00', 'Off', 'Normal', 'Right']);
     expect(m.summary).toMatch(/^Sun 6\d° (S|SW)$/);
   });
 });

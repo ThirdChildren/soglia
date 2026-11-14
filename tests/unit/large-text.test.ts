@@ -10,11 +10,11 @@ import {
   widenButtons,
 } from '../../src/logic/menu-button';
 import { pickTabletopButton, tabletopButtonView } from '../../src/logic/tabletop-button';
-import { PINNED_PITCH_MAX_DEG, PINNED_PITCH_MIN_DEG } from '../../src/logic/menu-thresholds';
-import { pinnedConeAngleDeg, pinnedMenuAnchor, pinnedPanelPoint } from '../../src/logic/menu-anchor';
+import { pinnedConeAngleDeg, pinnedPanelAnchor, pinnedPanelPoint } from '../../src/logic/menu-anchor';
 import { MENU_EXTENT, pickRect } from '../../src/logic/menu';
 import {
   VIEW_LAYOUT_LARGE,
+  VIEW_PANEL_EXTENT,
   VIEW_LAYOUT_NORMAL,
   VIEW_LARGE_TEXT_SIZE,
   VIEW_LABEL_PADDING,
@@ -156,7 +156,7 @@ describe('the layouts of the View panel', () => {
   it('the normal layout is the one the constants say', () => {
     expect(viewLayout(false)).toBe(VIEW_LAYOUT_NORMAL);
     expect(viewLayout(true)).toBe(VIEW_LAYOUT_LARGE);
-    expect(layoutExtent(VIEW_LAYOUT_NORMAL)).toEqual(MENU_EXTENT);
+    expect(layoutExtent(VIEW_LAYOUT_NORMAL)).toEqual(VIEW_PANEL_EXTENT);
     expect(layoutControlSlots(VIEW_LAYOUT_NORMAL)).toEqual(viewControlSlots());
     expect(layoutRowWidth(VIEW_LAYOUT_NORMAL)).toBeCloseTo(35.2 - 0.2, 9);
   });
@@ -189,7 +189,7 @@ describe('the layouts of the View panel', () => {
 
     it('every text of the file is the size of the layout (the title a little more)', () => {
       const sizes = [...source.matchAll(/id="([^"]+)"[^>]*font-size: ([0-9.]+)/g)];
-      expect(sizes.length).toBe(1 + 1 + 6 * 4 + 1 + 1);
+      expect(sizes.length).toBe(1 + 1 + 7 * 4 + 1 + 1);
       for (const [, id, size] of sizes) expect(Number.parseFloat(size), id).toBeCloseTo(id === 'view-panel-title' ? l.titleSize : l.textSize, 9);
       expect(l.textSize).toBeGreaterThanOrEqual(l.large ? 3 : 2.4);
     });
@@ -224,7 +224,7 @@ describe('the layouts of the View panel', () => {
     it('every control is inside the panel and none touches another', () => {
       const extent = layoutExtent(l);
       const slots = layoutControlSlots(l);
-      expect(slots).toHaveLength(VIEW_ROWS.length * 2 + 2 + 1);
+      expect(slots).toHaveLength(VIEW_ROWS.length * 2 + 3 + 1);
       for (const s of slots) {
         expect(s.dx - s.halfWidth).toBeGreaterThanOrEqual(-extent.halfWidth - 1e-9);
         expect(s.dx + s.halfWidth).toBeLessThanOrEqual(extent.halfWidth + 1e-9);
@@ -262,7 +262,7 @@ describe('the layouts of the View panel', () => {
       const DEG = Math.PI / 180;
       const extent = layoutExtent(l);
       function view(pitchDeg: number, yawRad: number) {
-        const anchor = pinnedMenuAnchor(HEAD, yawRad, { x: 0, y: 0, z: 0 }, pitchDeg * DEG);
+        const anchor = pinnedPanelAnchor(HEAD, yawRad, pitchDeg * DEG, extent, l.large, { x: 0, y: 0, z: 0 });
         const forward = {
           x: -Math.sin(yawRad) * Math.cos(pitchDeg * DEG),
           y: Math.sin(pitchDeg * DEG),
@@ -270,9 +270,9 @@ describe('the layouts of the View panel', () => {
         };
         return { anchor, forward };
       }
-      it('stays at 30 degrees or less', () => {
+      it('stays at 30 degrees or less, for any pitch of the gaze', () => {
         for (const yaw of [0, 0.7, -2.1, 3]) {
-          for (let pitch = PINNED_PITCH_MIN_DEG; pitch <= PINNED_PITCH_MAX_DEG + 0.0001; pitch += 0.1) {
+          for (let pitch = -60; pitch <= 50.0001; pitch += 0.5) {
             const { anchor, forward } = view(pitch, yaw);
             expect(pinnedConeAngleDeg(anchor, yaw, HEAD, forward, extent), `pitch ${pitch.toFixed(1)}`).toBeLessThanOrEqual(30.05);
           }
@@ -285,7 +285,7 @@ describe('the layouts of the View panel', () => {
           pinnedPanelPoint(anchor, 0, dx, dy, corner);
           const d = Math.hypot(corner.x - HEAD.x, corner.y - HEAD.y, corner.z - HEAD.z);
           expect(d).toBeGreaterThanOrEqual(0.5);
-          expect(d).toBeLessThanOrEqual(0.65);
+          expect(d).toBeLessThanOrEqual(l.large ? 0.7 : 0.65);
         }
       });
     });
@@ -294,7 +294,7 @@ describe('the layouts of the View panel', () => {
   it('large text makes the panel wider and taller than the normal one, and it does not hide the model more than it must', () => {
     expect(VIEW_LAYOUT_LARGE.width).toBeGreaterThan(VIEW_LAYOUT_NORMAL.width);
     expect(VIEW_LAYOUT_LARGE.height).toBeGreaterThan(VIEW_LAYOUT_NORMAL.height);
-    expect(VIEW_LAYOUT_LARGE.height).toBeLessThanOrEqual(42);
+    expect(VIEW_LAYOUT_LARGE.height).toBeLessThanOrEqual(46);
     expect(VIEW_VALUE_WIDTH).toBe(VIEW_LAYOUT_NORMAL.valueWidth);
   });
 });

@@ -77,7 +77,7 @@ import { ErrorPanelSystem, showErrorPanel } from './ui/error-panel';
 import { loadPanelFonts } from './ui/fonts';
 import { FurnitureVisuals } from './ui/furniture-visuals';
 import { strings } from './ui/strings';
-import { startupAccessLines } from './logic/access';
+import { formatAccessHand, startupAccessLines } from './logic/access';
 import { installAccess } from './systems/access';
 import { createCoach } from './systems/coach';
 import { createRotateButton } from './systems/rotate-button';
@@ -207,6 +207,7 @@ async function start(): Promise<void> {
     })) {
       slog(line);
     }
+    if (prefs.leftHandMenu) slog(formatAccessHand(true, 'saved'));
     // The theme before anything is built (the model, the panels), then it follows the store (D58).
     installAccess(store);
     // The sun time: `time=` (already in the store), else the saved one, else the local time of the house now (D54).
@@ -266,7 +267,7 @@ async function start(): Promise<void> {
       setMenuTabData({ mine: sections.mine, fit: sections.fit, measure: true });
     }
     // The Menu buttons (T3.3b) come after the menu items (a control of an open menu wins a pinch) and before the grab and the drag.
-    createMenuButton(world);
+    createMenuButton(world, store);
     // The way back from real scale with one hand (T4.R1): same place in the order, since a pinch on it is a `menu` claim.
     createTabletopButton(world);
     // The toggle between the model and the real room (plan MR, DMR2): only in a mixed reality world.
