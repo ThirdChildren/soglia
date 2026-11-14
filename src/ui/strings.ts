@@ -115,6 +115,11 @@ export const strings = {
     itemSize: (width: number, depth: number, ascii = false): string => formatSize(width, depth, ascii),
     /** "0.35×0.35 m": the same without the spaces, for a measure that would touch the border of its card. */
     itemSizeCompact: (width: number, depth: number, ascii = false): string => formatSizeCompact(width, depth, ascii),
+    /** "~1.7 × 0.8 m": the size of a piece made from a room scan is approximate (the scan boxes are rough): rounded to 10 cm, and the sign says so. */
+    itemSizeAbout: (width: number, depth: number, ascii = false): string => `~${formatSize(Math.round(width * 10) / 10, Math.round(depth * 10) / 10, ascii)}`,
+    /** "~1.7×0.8 m": the same without the spaces. */
+    itemSizeAboutCompact: (width: number, depth: number, ascii = false): string =>
+      `~${formatSizeCompact(Math.round(width * 10) / 10, Math.round(depth * 10) / 10, ascii)}`,
   },
   /** Shown above the model until the palm menu has been opened once (T2.16); plain ASCII. */
   hint: {
@@ -123,6 +128,44 @@ export const strings = {
   /** Real scale (T3.12, T4.R1, D49): the button in front of the head that takes a one-handed user back to the model on the table. */
   viewpoint: {
     tabletopButton: 'Tabletop',
+  },
+  /** The mixed reality mode (`?mr=1`, plan MR): the toggle between the model and the real room, and the card of a real object. */
+  room: {
+    /** The toggle in the model view; in the room view it reads `toModel`. */
+    toRoom: 'My room',
+    toModel: 'Model',
+    addToMine: 'Add to Mine',
+    /** Shown instead of the button for an object that is already in Mine. */
+    added: 'Added',
+    /** Shown instead of the button when Mine cannot hold more scanned objects. */
+    full: 'Mine is full',
+    close: 'Close',
+    /** The first button of the card of a virtual piece (it takes the place of `Add to Mine`). */
+    remove: 'Remove',
+    /** Notices of the room view (public/ui/room-notice.uikitml): short, plain English. */
+    scanEmpty: 'No room scan found. Set up your space in the headset settings (Space Setup), then reopen Soglia.',
+    notSaved: 'Room layout is not saved',
+    roomFull: 'Room is full',
+    /** "210 × 90 × 85 cm": width, depth and height in whole centimetres (plain x when the local panel font is missing). */
+    measures: (widthCm: number, depthCm: number, heightCm: number, ascii = false): string => {
+      const sign = ascii ? 'x' : '×';
+      return `${widthCm} ${sign} ${depthCm} ${sign} ${heightCm} cm`;
+    },
+    /** "About 169 × 82 × 82 cm": the measures of a scanned object come from rough scan boxes, so they are not exact. */
+    measuresAbout: (widthCm: number, depthCm: number, heightCm: number, ascii = false): string => {
+      const sign = ascii ? 'x' : '×';
+      return `About ${widthCm} ${sign} ${depthCm} ${sign} ${heightCm} cm`;
+    },
+    /** "About 169×82×82 cm": the same without the spaces around the sign, for a card that is too narrow for the long form. */
+    measuresAboutCompact: (widthCm: number, depthCm: number, heightCm: number, ascii = false): string => {
+      const sign = ascii ? 'x' : '×';
+      return `About ${widthCm}${sign}${depthCm}${sign}${heightCm} cm`;
+    },
+    /** "~169×82×82 cm": the shortest form, for the biggest objects. */
+    measuresAboutShort: (widthCm: number, depthCm: number, heightCm: number, ascii = false): string => {
+      const sign = ascii ? 'x' : '×';
+      return `~${widthCm}${sign}${depthCm}${sign}${heightCm} cm`;
+    },
   },
   /** The coach of the first minute (M5, D60): two short lines, one for each step. */
   coach: {

@@ -76,3 +76,18 @@ export function fitLine(candidates: readonly string[], maxWidth: number, fontSiz
   }
   return candidates.length > 0 ? candidates[candidates.length - 1] : '';
 }
+
+/**
+ * The first pair (candidate, size) that fits a single line of `maxWidth`: the candidates are tried in order (longest wording first), each
+ * at the sizes in order (largest first). When none fits, the last candidate at the last size. Empty input gives the empty string at
+ * size 0. Used for the measures of a scanned object on its card, which say "About" when they can.
+ */
+export function fitSizedLine(candidates: readonly string[], sizes: readonly number[], maxWidth: number): FittedName {
+  if (candidates.length === 0 || sizes.length === 0) return { text: candidates[candidates.length - 1] ?? '', fontSize: sizes[sizes.length - 1] ?? 0 };
+  for (const candidate of candidates) {
+    for (const size of sizes) {
+      if (textWidth(candidate, size) <= maxWidth) return { text: candidate, fontSize: size };
+    }
+  }
+  return { text: candidates[candidates.length - 1], fontSize: sizes[sizes.length - 1] };
+}

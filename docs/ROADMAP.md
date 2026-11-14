@@ -19,6 +19,7 @@ Legenda stato: ⬜ da fare · 🟨 in corso · ✅ PC-done · 🟩 Device-done
 | M4 Segnalazioni e persistenza | 2 – 8 nov (PC-done atteso dom 8, limite lun 9) | ✅ PC-done 2026-11-04 (piano: `docs/plans/M4.md`; report: `qa/reports/M4-2026-11-03.md`; `contest-reviewer`: APPROVATO CON AVVISI, nessun bloccante; nota vocale, tastiera di sistema, conferma completa del punto di vista e corsivo W4 non fatti; gate visore in debito, vedi `qa/device/DEBT.md`; ramo `m4`) |
 | M5 Luce, agente, accessibilità, realtà mista (**ridotta**) | 9 – 12 nov (PC-done entro gio 12, 23:59; iniziata ven 6 nov) | ✅ PC-done 2026-11-06 (piano: `docs/plans/M5.md`; report: `qa/reports/M5-2026-11-06.md`; `contest-reviewer`: APPROVATO CON AVVISI, nessun bloccante, avvisi correggibili chiusi; T5.RA fatta; realtà mista, ombre vere, mappa e confronto tagliati; gate visore in debito, vedi `qa/device/DEBT.md`) |
 | M6 Integrazione con il visore | **fase A** (strumenti, senza visore) sab 7 – lun 9 nov; **fase B** con il Quest (arriva mar 10): sessioni 10 – 13 nov, sessione principale ven 13; ripiego: prova di fumo del link 15 – 16 nov | 🟨 **fase A PC-done 2026-11-07, fase B dal 10 nov** (gate PC della fase A SUPERATO: report `qa/reports/M6-2026-11-07.md`, zero bloccanti, avvisi A3/A4 in correzione; nessuna voce Device-done) · piano consegnato 2026-11-07 (piano: `docs/plans/M6.md`; guida utente: `docs/QUEST_SETUP.md`; scenari fase A: `qa/scenarios/M6-*.md`; realtà mista tagliata e fuori dal gate) |
+| MR Realtà mista (opt-in `?mr=1`) | 11 – 15 nov (ramo `claude/eager-mendel-skcibe`; unione dopo la prova sul visore in una stanza (la seconda non serve, decisione del 2026-11-14), entro dom 15 mattina) | ✅ PC-done 2026-11-12 (piano `docs/plans/MR.md`; report `qa/reports/MR-2026-11-12.md`; `contest-reviewer`: codice senza violazioni, avvisi in correzione; Device-done in attesa) |
 | M7 Rifinitura e consegna | 14 – 17 nov (consegna interna mar 17, 18:00; scadenza mer 18 nov, 12:00 PT = 21:00 in Italia) | ⬜ |
 
 ### Calendario ripianificato (2026-11-02)
@@ -299,7 +300,7 @@ sul visore in due stanze), ombre (si evita R-A), modalità una mano completa. Il
 | S5.9 Budget (aggiunto) | `qa/scenarios/M5-budget.md`: K1–K18, caso peggiore previsto ~82; ≥ 85 apre T5.RA |
 | S5.10 Regressione rapida (aggiunto) | `qa/scenarios/M5-regression.md`: S1.2, S1.3, S1.6, S2.1–S2.9, S3.0–S3.9, S4.1, S4.3–S4.8 con `pinch=grip` |
 
-**Gate visore**: ~~realtà mista in due stanze mai provate prima~~ (**tagliata e fuori dal gate**, D74 del piano M6),
+**Gate visore**: realtà mista in due stanze mai provate prima: **ripresa il 2026-11-11 come funzione opt-in `?mr=1`** sul ramo `claude/eager-mendel-skcibe` (piano `docs/plans/MR.md`, gate PC superato `qa/reports/MR-2026-11-12.md`; Device-done in attesa; entra in `main` solo dopo la prova in due stanze entro domenica 15 mattina) (prima: tagliata, D74 del piano M6),
 fps con le chiazze di luce del sole (non ci sono ombre vere), contrasto leggibile, sessione completa di 10 minuti
 senza fastidio. (Riallineato il 2026-11-07 con `docs/DEVICE_CHECKLIST.md`.)
 
@@ -321,8 +322,7 @@ certificato, debug remoto, Meta VR CLI e "Strumenti di M6"): `docs/QUEST_SETUP.m
   default (gio sera, entro il congelamento), S4 riverifica e gate (ven 13); ripiego L1–L3 se il visore tarda.
   Esecuzione di `docs/DEVICE_CHECKLIST.md` (riallineata il 2026-11-07) e di `qa/device/DEBT.md` per priorità; taratura
   con protocolli a soglie numeriche; budget grafico reale con criterio D71 (nessuna finestra di 2 s sotto 60 fps).
-- **Realtà mista: TAGLIATA e fuori dal gate** (decisione esplicita D74, conferma di M5: `mr=1` non ha effetto). Non
-  si prova e non si cita nella demo; resta solo il dato di `[soglia:env]` sul browser.
+- **Realtà mista: ripresa il 2026-11-11 (decisione dell'utente, versione completa)** come funzione opt-in `?mr=1`: mobili veri dalla scansione Space Setup (contorni, misure, `Add to Mine` verso il FitCheck) e mobili virtuali a grandezza reale sul pavimento. Piano `docs/plans/MR.md`, gate PC superato (`qa/reports/MR-2026-11-12.md`), Device-done in attesa: si prova in due stanze ed entra nella demo solo se supera la prova entro domenica 15 mattina. (Prima: tagliata, D74.)
 
 **Gate**: tutte le voci della checklist superate o motivate (le righe `alta` di DEBT.md per milestone, D77); fps ≥ 60
 in tutta la demo (D71); nessuna dichiarazione "funziona sul visore" senza il report in `qa/device/`.

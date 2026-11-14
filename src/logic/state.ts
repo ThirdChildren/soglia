@@ -10,9 +10,11 @@ import type { Issue, StoredIssue } from './issues';
 import { applyTransition } from './issue-state';
 import type { IssueAction, TransitionDenied, TransitionResult } from './issue-state';
 import { can, isRole } from './permissions';
+import { MAX_SCANNED, cloneScanned, findScannedDuplicate, isScannedPiece, sanitizeScanned, toCm } from './room-scan';
+import type { ScannedPiece } from './room-scan';
 import { FALLBACK_SUN_TIME, parseSunTime, stepHour, stepMonth, sunTimeFromParam } from './sun-time';
 
-export type { PlacedPiece, StoredIssue };
+export type { PlacedPiece, ScannedPiece, StoredIssue };
 
 /** The number the first new issue gets (D42): the demo file already holds `issue-010`, `-012` and `-013`. */
 export const FIRST_NEW_ISSUE = 14;
@@ -139,6 +141,12 @@ export interface AppState {
   readonly issuesSeeded: boolean;
   /** The local time of the house the sun is shown at (D54): `YYYY-MM-DDTHH:MM`, always a real date-time. Saved. */
   readonly sunTime: string;
+  /**
+   * Objects of the real room that the user added to their own furniture in mixed reality (`Add to Mine`, plan MR, DMR4), at most
+   * MAX_SCANNED. Saved only when there are some (a state without any is byte-identical to one of before MR); they join the catalog
+   * as own pieces.
+   */
+  readonly scannedFurniture: readonly ScannedPiece[];
 }
 
 /** The saved preferences as a restore may give them: `moveInVisible` can be absent (an older state). */
@@ -175,6 +183,7 @@ export type Action =
   | { readonly type: 'setContrast'; readonly on: boolean }
   | { readonly type: 'setLargeText'; readonly on: boolean }
   | { readonly type: 'setSunTime'; readonly sunTime: string }
+  | { readonly type: 'addScanned'; readonly piece: ScannedPiece }
   | { readonly type: 'stepSunTime'; readonly unit: SunStepUnit; readonly delta: number }
   | {
       readonly type: 'placeFurniture';
@@ -212,6 +221,8 @@ export type Action =
       readonly issuesSeeded?: boolean;
       /** Absent or null: the sun time stays as it is (the URL named one, or nothing was saved). */
       readonly sunTime?: string | null;
+      /** Absent: the scanned pieces stay as they are. */
+      readonly scanned?: readonly ScannedPiece[];
     };
 
 export type SunStepUnit = 'hour' | 'month';
@@ -280,6 +291,13 @@ export function transitionIssue(id: string, action: IssueAction, nowIso: string,
 /** Sets the sun time (D54). Text that is not a real `YYYY-MM-DDTHH:MM` is ignored; the same time again changes nothing. Not undoable. */
 export function setSunTime(sunTime: string): Action {
   return { type: 'setSunTime', sunTime };
+}
+/**
+ * Adds an object of the room to the user's own furniture (plan MR, DMR4). Ignored when it is not a valid `ScannedPiece`, repeats an
+ * id, is the same kind and size as one already there, or the list is full (MAX_SCANNED). Not undoable.
+ */
+export function addScanned(piece: ScannedPiece): Action {
+  return { type: 'addScanned', piece };
 }
 /**
  * Steps the sun time by `delta` hours (wrapping 24 on the same day) or months (wrapping Dec to Jan in the same year,
@@ -351,6 +369,7 @@ export function restoreSaved(saved: {
   nextIssue?: number;
   issuesSeeded?: boolean;
   sunTime?: string | null;
+  scanned?: readonly ScannedPiece[];
 }): Action {
   return { type: 'restoreSaved', ...saved };
 }
@@ -384,6 +403,7 @@ export function createInitialState(params: Params): AppState {
     nextIssue: FIRST_NEW_ISSUE,
     issuesSeeded: false,
     sunTime: sunTimeFromParam(params.time) ?? DEFAULT_SUN_TIME,
+    scannedFurniture: [],
   };
 }
 
@@ -648,6 +668,15 @@ export function reduce(state: AppState, action: Action): AppState {
       const sunTime = action.unit === 'hour' ? stepHour(state.sunTime, action.delta) : stepMonth(state.sunTime, action.delta);
       return sunTime === state.sunTime ? state : { ...state, sunTime };
     }
+    case 'addScanned': {
+      const piece = action.piece;
+      if (!isScannedPiece(piece) || state.scannedFurniture.length >= MAX_SCANNED) return state;
+      if (state.scannedFurniture.some((p) => p.id === piece.id)) return state;
+      if (findScannedDuplicate(state.scannedFurniture, piece.label, [toCm(piece.size[0]), toCm(piece.size[1]), toCm(piece.size[2])])) {
+        return state;
+      }
+      return { ...state, scannedFurniture: [...state.scannedFurniture, cloneScanned(piece)] };
+    }
     case 'seedIssues': {
       if (state.issuesSeeded || !Array.isArray(action.issues)) return state;
       const wanted = action.issues.filter((i) => isIssue(i) && (i.kind === 'issue' || i.kind === 'baseline'));
@@ -769,6 +798,7 @@ export function reduce(state: AppState, action: Action): AppState {
         nextIssue: nextIssueFor(counter, issues),
         issuesSeeded: typeof action.issuesSeeded === 'boolean' ? action.issuesSeeded : state.issuesSeeded,
         sunTime: (typeof action.sunTime === 'string' ? parseSunTime(action.sunTime) : null) ?? state.sunTime,
+        scannedFurniture: action.scanned === undefined || !Array.isArray(action.scanned) ? state.scannedFurniture : sanitizeScanned(action.scanned),
       };
     }
     default:
@@ -813,6 +843,8 @@ export function createStore(initial: AppState): Store {
 export function serialize(state: AppState): string {
   const saved: Record<string, unknown> = { ...state };
   delete saved.tool;
+  // Added in MR: written only when there are scanned pieces, so a state without any is the same text as before.
+  if (state.scannedFurniture.length === 0) delete saved.scannedFurniture;
   return JSON.stringify(saved);
 }
 
@@ -954,6 +986,8 @@ export function deserializeWithReport(
   const issuesSeeded = data.issuesSeeded === true;
   // Added in M5 (D62): absent or broken means "none saved" (the caller then uses the default), never a rejection.
   const savedSunTime = 'sunTime' in data ? parseSunTime(data.sunTime) : null;
+  // Added in MR: absent or broken means none; a broken entry goes away alone.
+  const scannedFurniture = Array.isArray(data.scannedFurniture) ? sanitizeScanned(data.scannedFurniture) : [];
 
   return {
     state: {
@@ -972,6 +1006,7 @@ export function deserializeWithReport(
       nextIssue,
       issuesSeeded,
       sunTime: savedSunTime ?? DEFAULT_SUN_TIME,
+      scannedFurniture,
     },
     discardedIssues,
     savedSunTime,

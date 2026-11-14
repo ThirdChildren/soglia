@@ -1,5 +1,5 @@
 // Pure URL / dev-file parameter parsing: no imports from @iwsdk/core or three.
-// Recognised keys: house, role, reset, seed, time, debug, mr, glyphs, furnish, failmodels, failmy, failcatalog, pinch, contrast, text, hud.
+// Recognised keys: house, role, reset, seed, time, debug, mr, glyphs, furnish, failmodels, failmy, failcatalog, noscan, pinch, contrast, text, hud.
 // The tuning keys `t_<name>` are NOT parameters of this module: `src/logic/tuning.ts` reads them (T6.A4, D66).
 // Unknown values fall back to the default and produce a warning returned as data;
 // the caller decides how to log it.
@@ -33,6 +33,7 @@ export type ParamKey =
   | 'failmodels'
   | 'failmy'
   | 'failcatalog'
+  | 'noscan'
   | 'pinch'
   | 'contrast'
   | 'text'
@@ -74,6 +75,11 @@ export interface Params {
    * honoured together with `debug=1`, like `failmy`.
    */
   failcatalog: boolean;
+  /**
+   * `noscan=1` (with `mr=1`): the scene understanding system is left off, so the room scan is empty as on a headset with no Space Setup
+   * (plan MR, MR.5). Only honoured together with `debug=1`, like `failmy`.
+   */
+  noscan: boolean;
   /**
    * `pinch=auto|grip|joints` (development aid, D31): `auto` (default) and `joints` use the hand joints when the
    * session provides them; `grip` always uses the grip space, as in M2 (to re-run the older QA scenarios).
@@ -125,6 +131,7 @@ export const DEFAULT_PARAMS: Readonly<Params> = Object.freeze({
   failmodels: false,
   failmy: false,
   failcatalog: false,
+  noscan: false,
   pinch: 'auto',
   contrast: false,
   text: 'normal',
@@ -192,6 +199,7 @@ const FIELD_PARSERS: { [K in ParamKey]: (raw: string) => FieldResult<Params[K]> 
   failmodels: parseFlag,
   failmy: parseFlag,
   failcatalog: parseFlag,
+  noscan: parseFlag,
   pinch: (raw) =>
     (PINCH_MODES as readonly string[]).includes(raw)
       ? { ok: true, value: raw as PinchMode }
@@ -284,6 +292,11 @@ export function mergeParams(
     params.failcatalog = false;
     explicit.splice(explicit.indexOf('failcatalog'), 1);
     warnings.push('param failcatalog ignored: needs debug=1');
+  }
+  if (params.noscan && !params.debug) {
+    params.noscan = false;
+    explicit.splice(explicit.indexOf('noscan'), 1);
+    warnings.push('param noscan ignored: needs debug=1');
   }
   if (params.glyphs && !params.debug) {
     params.glyphs = false;

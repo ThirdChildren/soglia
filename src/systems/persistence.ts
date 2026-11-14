@@ -19,6 +19,7 @@ import {
   type SaveReason,
 } from '../logic/persistence';
 import type { PlacedPiece } from '../logic/placement-rules';
+import type { ScannedPiece } from '../logic/room-scan';
 import { deserialize, restoreSaved, seedIssues, type AppState, type Store } from '../logic/state';
 
 /** `reset=1`: removes every saved state before anything is read. */
@@ -37,6 +38,19 @@ export interface RestoreOutcome {
   /** True when a saved `contrast` / `largeText` of `true` came back (not named in the URL), for the `access ... source=saved` line (D58). */
   contrastRestored: boolean;
   textRestored: boolean;
+}
+
+/**
+ * The objects of the room that the user added to their own furniture in an earlier session (plan MR, `Add to Mine`), read from the saved
+ * state of `houseId` BEFORE the catalog is merged: a saved piece of such an object needs its catalog entry to be restored, not parked.
+ * Empty without usable storage or a saved state. Nothing is logged or removed here; `restoreSavedState` does that.
+ */
+export function readSavedScanned(storage: SafeStorage, houseId: string): ScannedPiece[] {
+  if (!storage.available()) return [];
+  const saved = storage.get(storageKey(houseId));
+  if (saved === null) return [];
+  const state = deserialize(saved);
+  return state !== null && state.houseId === houseId ? [...state.scannedFurniture] : [];
 }
 
 /**
@@ -137,7 +151,8 @@ function savedPartChanged(prev: AppState, next: AppState): boolean {
     prev.issues !== next.issues ||
     prev.nextIssue !== next.nextIssue ||
     prev.issuesSeeded !== next.issuesSeeded ||
-    prev.sunTime !== next.sunTime
+    prev.sunTime !== next.sunTime ||
+    prev.scannedFurniture !== next.scannedFurniture
   );
 }
 
@@ -164,7 +179,8 @@ export function attachPersistence(store: Store, storage: SafeStorage, parked: re
     const state = store.get();
     slog(
       `state saved key=${key} pieces=${state.furniture.length} bytes=${utf8Length(text)} reason=${reason} ` +
-        `issues=${state.issues.length} role=${state.role} parked=${written} sun=${state.sunTime}`,
+        `issues=${state.issues.length} role=${state.role} parked=${written} sun=${state.sunTime}` +
+        (state.scannedFurniture.length > 0 ? ` scanned=${state.scannedFurniture.length}` : ''),
     );
   };
 

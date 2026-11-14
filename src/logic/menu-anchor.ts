@@ -135,3 +135,76 @@ export function pinnedConeAngleDeg(
   }
   return Number.isFinite(worst) ? worst : 180;
 }
+
+const FIT_STEPS = 20;
+const fitForward: Point3Like = { x: 0, y: 0, z: -1 };
+const fitHead: Point3Like = { x: 0, y: 0, z: 0 };
+
+/**
+ * Keeps an upright panel (the pinned menu's kind: turned about the vertical axis only, facing back along the horizontal gaze `yawRad`)
+ * inside the view cone of `halfAngleDeg` around the gaze (yaw `yawRad`, pitch `pitchRad`), even when the head pitch is beyond what
+ * `pinnedMenuAnchor` follows (its pitch is clamped, so a panel opened while looking steeply down would stay near the horizon).
+ * `desired` is the anchor the pinned logic gave; when the whole panel (`extent` from the anchor, as `pinnedConeAngleDeg`) already fits it
+ * is returned unchanged. Otherwise the anchor slides along a straight line toward the point that puts the middle of the panel on the
+ * gaze at the same distance from the head, and stops at the first point that fits (bisection): the panel moves only as far as needed.
+ * When even the centred panel does not fit (a cone narrower than the panel) the centred position is returned. Input that is not finite
+ * gives `desired` back. Writes into `out` (which may be `desired`) and returns it. Meant for the moment a panel is anchored (it makes one small
+ * closure when the panel has to move), never for every frame.
+ */
+export function uprightAnchorInCone(
+  desired: Readonly<Point3Like>,
+  yawRad: number,
+  pitchRad: number,
+  head: Readonly<Point3Like>,
+  extent: Readonly<PanelExtent>,
+  halfAngleDeg: number,
+  out: Point3Like,
+): Point3Like {
+  const usable = Number.isFinite(desired.x + desired.y + desired.z + head.x + head.y + head.z + yawRad + pitchRad + halfAngleDeg);
+  const dx = desired.x;
+  const dy = desired.y;
+  const dz = desired.z;
+  out.x = dx;
+  out.y = dy;
+  out.z = dz;
+  if (!usable) return out;
+  const cosP = Math.cos(pitchRad);
+  fitForward.x = -Math.sin(yawRad) * cosP;
+  fitForward.y = Math.sin(pitchRad);
+  fitForward.z = -Math.cos(yawRad) * cosP;
+  fitHead.x = head.x;
+  fitHead.y = head.y;
+  fitHead.z = head.z;
+  if (pinnedConeAngleDeg(out, yawRad, fitHead, fitForward, extent) <= halfAngleDeg) return out;
+
+  const distance = Math.hypot(dx - head.x, dy - head.y, dz - head.z);
+  if (!(distance > EPS)) return out;
+  const yMid = (extent.bottom + extent.top) / 2;
+  const tx = head.x + fitForward.x * distance;
+  const ty = head.y + fitForward.y * distance - yMid;
+  const tz = head.z + fitForward.z * distance;
+  // The blend is a chord: its middle is nearer to the head than the ends. A point nearer than `distance` is pushed back out along the line
+  // from the head (a panel never comes closer than where the pinned logic put it, rule 8: 0.5-0.8 m).
+  const blend = (t: number): void => {
+    out.x = dx + (tx - dx) * t;
+    out.y = dy + (ty - dy) * t;
+    out.z = dz + (tz - dz) * t;
+    const d = Math.hypot(out.x - head.x, out.y - head.y, out.z - head.z);
+    if (d > EPS && d < distance) {
+      const k = distance / d;
+      out.x = head.x + (out.x - head.x) * k;
+      out.y = head.y + (out.y - head.y) * k;
+      out.z = head.z + (out.z - head.z) * k;
+    }
+  };
+  let lo = 0;
+  let hi = 1;
+  for (let i = 0; i < FIT_STEPS; i += 1) {
+    const mid = (lo + hi) / 2;
+    blend(mid);
+    if (pinnedConeAngleDeg(out, yawRad, fitHead, fitForward, extent) <= halfAngleDeg) hi = mid;
+    else lo = mid;
+  }
+  blend(hi);
+  return out;
+}

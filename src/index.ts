@@ -23,6 +23,7 @@ import { createHouseFilePanel } from './ui/house-file-panel';
 import { describeError, slog, swarn } from './log';
 import { formatParamsLine, hasInvalidHouse, mergeParams, parseParams } from './logic/params';
 import { mergeCatalog, menuSections } from './logic/catalog';
+import { scannedToCatalogItem } from './logic/room-scan';
 import { planRadius } from './logic/house-layout';
 import { createInitialState, createStore, setMiniature, setMiniatureOffset, setSunTime } from './logic/state';
 import { createIssueClock, observeIssues } from './logic/issue-clock';
@@ -46,6 +47,7 @@ import { attachLifecycle } from './systems/lifecycle';
 import {
   attachPersistence,
   clearSavedState,
+  readSavedScanned,
   restoreSavedState,
   seedDemoIssues,
   type Persistence,
@@ -65,6 +67,11 @@ import { createPins } from './systems/pins';
 import { createSun } from './systems/sun';
 import { createViewpoint } from './systems/viewpoint';
 import { isRealScale } from './systems/view-mode';
+import { chooseMrEntry, mixedRealityOptions, watchMrSessionRefusal } from './systems/mixed-reality';
+import { RoomScanSystem } from './systems/room-scan';
+import { createRoomObjects } from './systems/room-objects';
+import { attachRoomPieceVisuals, createRoomPieces } from './systems/room-pieces';
+import { createRoomView } from './systems/room-view';
 import { createFadeOverlay } from './ui/fade-overlay';
 import { ErrorPanelSystem, showErrorPanel } from './ui/error-panel';
 import { loadPanelFonts } from './ui/fonts';
@@ -94,10 +101,16 @@ async function start(): Promise<void> {
   const storage = createSafeStorage();
   if (params.reset) clearSavedState(storage);
 
-  const world = await World.create(
-    document.getElementById('scene-container') as HTMLDivElement,
-    projectOptions,
-  );
+  // `mr=1`: a mixed reality world (`immersive-ar`, scene understanding on) when the browser can do it; else the VR world of
+  // the project, as without the parameter (DMR1). Only a COPY of the project options changes, never the object of the SDK.
+  const mrEntry = await chooseMrEntry(params.mr);
+  const worldOptions = mrEntry.mode === 'ar' ? mixedRealityOptions(projectOptions, params.noscan) : projectOptions;
+  const world = await World.create(document.getElementById('scene-container') as HTMLDivElement, worldOptions);
+  if (mrEntry.mode === 'ar') {
+    slog(`mr world created mode=immersive-ar sceneUnderstanding=${params.noscan ? 'off' : 'on'}`);
+    world.registerSystem(RoomScanSystem);
+    watchMrSessionRefusal();
+  }
   installLocalHands(world);
   installLocalControllers(world);
   world.registerSystem(ErrorPanelSystem);
@@ -144,7 +157,9 @@ async function start(): Promise<void> {
   if (params.glyphs) showGlyphTest(world);
   // The catalog the whole app works with: the catalog items plus the user's own pieces (T3.8, D34). A failed load of
   // the own pieces only hides their tab; an own id that the catalog already uses is left out (the catalog wins).
-  const merged = catalogResult.ok ? mergeCatalog(catalogResult.items, myResult.ok ? myResult.items : []) : null;
+  // The objects of the room added to Mine in an earlier session (plan MR) join the own pieces: a saved piece of one of them needs its entry.
+  const scannedItems = readSavedScanned(storage, params.house).map(scannedToCatalogItem);
+  const merged = catalogResult.ok ? mergeCatalog(catalogResult.items, [...(myResult.ok ? myResult.items : []), ...scannedItems]) : null;
   if (merged) for (const id of merged.duplicates) swarn(`my furniture item discarded id=${id} reason=duplicate-id`);
   if (result.ok) {
     // Put the saved furniture and preferences back before the systems start, so the first-use hints and the
@@ -254,12 +269,31 @@ async function start(): Promise<void> {
     createMenuButton(world);
     // The way back from real scale with one hand (T4.R1): same place in the order, since a pinch on it is a `menu` claim.
     createTabletopButton(world);
+    // The toggle between the model and the real room (plan MR, DMR2): only in a mixed reality world.
+    if (mrEntry.mode === 'ar') createRoomView(world, miniature.root);
     // The Issues panel (T4.6a): its Close/Back controls are a `menu` claim too, so it goes after the menu and the buttons.
     createIssuePanel(world, store, result.house, issueClock, infoPoints);
     // The View panel (T5.5): its controls are a `menu` claim too, so it goes right after the Issues panel.
     createViewPanel(world, store, result.house);
     // The coach of the first minute (T5.15): not interactive; it reads the menu buttons and the release of a piece, so it goes after them.
     createCoach(world, store);
+    // The real objects of the room (plan MR, DMR3, DMR4): outlines, the ray of the hands, the card and `Add to Mine`. After every control that
+    // is a `menu` claim, before the tape measure and the grab: in the room view it takes every pinch the controls above did not.
+    if (mrEntry.mode === 'ar') {
+      createRoomObjects(world, store, {
+        onAdded: (piece) => {
+          // The piece joins the catalog the systems share (they look pieces up by id at use time) and the tab Mine of the menu.
+          if (!merged) return;
+          const item = scannedToCatalogItem(piece);
+          if (merged.items.some((existing) => existing.id === item.id)) return;
+          merged.items.push(item);
+          merged.mine.push(item);
+          setMenuTabData({ mine: [...merged.mine] });
+        },
+      });
+      // The virtual pieces at real scale (MR.4) and the ray of the hands: right after the room objects (they use its volumes and its hover).
+      createRoomPieces(world, merged ? merged.items : []);
+    }
     // The tape measure claims the pinch above the grab (and below the menu): register it after the menu, before the grab (T3.14).
     createMeasure(world, store, result.house, merged ? merged.items : [], built.entity, miniature.root);
     // The long pinch (T4.5): after the tape measure (a point wins), before the grab (it waits for the claims of the later systems).
@@ -267,6 +301,7 @@ async function start(): Promise<void> {
     if (merged) {
       const visuals = new FurnitureVisuals(merged.items);
       await visuals.preload(params.failmodels);
+      if (mrEntry.mode === 'ar') attachRoomPieceVisuals(visuals);
       createFurniture(world, store, result.house, merged.items, visuals, built.entity);
       createFurnitureReasons(world, merged.items);
       createFurnitureGrab(world, store, result.house, merged.items, visuals, built.entity, miniature.root);

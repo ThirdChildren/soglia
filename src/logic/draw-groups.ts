@@ -32,7 +32,7 @@ const HOUSE_IDS: ReadonlySet<string> = new Set(['table:plinth']);
  * The tape measure (T3.14, D36) draws its two points and its tape as ONE instanced mesh, `ui:measure-instances`, so it
  * is a marker too; its label (`ui:measure-label`) and its hint (`ui:measure-hint`) are panels and stay in `ui`.
  */
-const MARKER_UI_PREFIXES: readonly string[] = ['ui:fit-marker-', 'ui:measure-instances'];
+const MARKER_UI_PREFIXES: readonly string[] = ['ui:fit-marker-', 'ui:measure-instances', 'ui:scan-outlines'];
 
 /*
  * M4 (T4.12): the pins of the issues are ONE instanced mesh named `pin:instances` (src/ui/pin-markers.ts) and so `markers`, like every

@@ -135,7 +135,7 @@ import { panelFontSupports } from '../ui/fonts';
 import { onPinchStart, pinchClaims, pinchPoint, type Hand } from './pinch-input';
 import { runAgentStaging } from './furniture';
 import { pickPinAt, setPinRing } from './pins';
-import { isRealScale, isViewTransitioning } from './view-mode';
+import { isModelHidden, isViewTransitioning } from './view-mode';
 
 /** The texts of the list (src/ui/strings.ts): the logic builds the rows from them. */
 const LIST_TEXTS: ListTexts = strings.issues.list;
@@ -396,7 +396,7 @@ export class IssuePanelSystem extends createSystem({}) {
       return;
     }
     // The panel belongs to the table-top model (its pins and fixtures): never opened at real scale or while the view changes.
-    if (isRealScale() || isViewTransitioning()) {
+    if (isModelHidden() || isViewTransitioning()) {
       slog('issues panel unavailable reason=real-scale');
       return;
     }
@@ -666,7 +666,7 @@ export class IssuePanelSystem extends createSystem({}) {
     }
     // A pinch on a viewpoint marker takes the user to real scale with the panel open (T4.6a doubt, T4.11): the panel is closed from
     // the moment the fade starts, so no panel is left in the real-size house with controls for a model that is not there.
-    if (isRealScale() || isViewTransitioning()) {
+    if (isModelHidden() || isViewTransitioning()) {
       this.close('view');
       return;
     }
