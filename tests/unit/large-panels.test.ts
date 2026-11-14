@@ -115,7 +115,7 @@ describe('the menu at large text', () => {
 
   it('keeps the six cards of a page and the four buttons of the bar: nothing is cut for large text', () => {
     // The panel is the same one, bigger: every control of the normal layout is still there at the same relative place.
-    expect(tabSlots(['items', 'mine', 'measure'])).toHaveLength(3);
+    expect(tabSlots(['items', 'mine'])).toHaveLength(2);
   });
 });
 

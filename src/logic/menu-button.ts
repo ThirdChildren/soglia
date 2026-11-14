@@ -299,8 +299,6 @@ export interface RoomSelectionInputs {
    * selected at real scale and a pinch that started a transition is not a selection. Absent = false.
    */
   viewpointActive?: boolean;
-  /** The tape measure is on (`AppState.tool`, T3.14, D36): a pinch on the model puts a point, it never selects a room. Absent = false. */
-  measureActive?: boolean;
 }
 
 /**
@@ -315,8 +313,7 @@ export function roomSelectionAllowed(inputs: Readonly<RoomSelectionInputs>): boo
     inputs.furnitureInteraction ||
     inputs.panActive ||
     inputs.menuHandPinching ||
-    inputs.viewpointActive === true ||
-    inputs.measureActive === true
+    inputs.viewpointActive === true
   );
 }
 

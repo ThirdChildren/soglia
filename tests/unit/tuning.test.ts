@@ -27,9 +27,9 @@ afterEach(() => resetTuning());
 const req = (name: string, raw: string) => ({ name, raw });
 
 describe('the table', () => {
-  it('has the 26 knobs of the plan, each name once, in the same order as TUNING_NAMES', () => {
+  it('has the 25 knobs of the plan, each name once, in the same order as TUNING_NAMES', () => {
     expect(TUNING_TABLE.map((e) => e.name)).toEqual([...TUNING_NAMES]);
-    expect(new Set(TUNING_NAMES).size).toBe(26);
+    expect(new Set(TUNING_NAMES).size).toBe(25);
   });
 
   for (const entry of TUNING_TABLE) {
@@ -328,7 +328,7 @@ describe('parseTuningText', () => {
 
 describe('log lines', () => {
   it('formats the table line', () => {
-    expect(formatTuningTable(true)).toBe('tuning table count=26 debug=true');
+    expect(formatTuningTable(true)).toBe('tuning table count=25 debug=true');
   });
 
   it('formats set, clamped and ignored as in the contract', () => {

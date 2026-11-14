@@ -11,9 +11,9 @@
 //     `onAdded` so the app joins it to the catalog (menu tab `Mine`, FitCheck). An object that is already there shows `Added`.
 //
 // Pinch arbitration: in the room view the pinches of the model do not exist. This system claims EVERY free pinch as `menu` (the
-// highest priority), so no later listener (the grab, the tape measure, the pins, the viewpoint markers, the one-hand drag) gets it.
+// highest priority), so no later listener (the grab, the pins, the viewpoint markers, the one-hand drag) gets it.
 // Register it AFTER every control that is itself a `menu` claim (the menu, the buttons, the room button, the panels, the coach) and
-// BEFORE the tape measure and the furniture grab.
+// BEFORE the furniture grab.
 //
 // Nothing here allocates per frame: the rays, the poses and the hits are preallocated.
 

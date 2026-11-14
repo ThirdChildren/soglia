@@ -223,12 +223,6 @@ describe('what paging does to its input', () => {
     expect(page[1]).toBe(objects[7]);
   });
 
-  it('gives no piece for the tape measure tab, which has a tool and no pieces', () => {
-    const content = { items: make('i', 14), mine: make('m', 3) };
-    expect(tabPieces(content, 'measure')).toEqual([]);
-    expect(pageItems(tabPieces(content, 'measure'), 0)).toEqual([]);
-    expect(pageCount(tabPieces(content, 'measure').length)).toBe(1);
-  });
 });
 
 // --- Log lines ---------------------------------------------------------------------------------------------------------
@@ -282,7 +276,7 @@ describe('the "menu page" log line', () => {
     expect(formatPageLine(1, 14, ['a', 'b'], 'mine')).toBe('menu page 2/3 tab=mine items=a,b');
     expect(formatPageLine(2, 40, ['a', 'b'], 'mine')).toBe('menu page 3/7 tab=mine items=a,b');
     expect(formatPageLine(0, 0, [], 'mine')).toBe('menu page 1/1 tab=mine items=');
-    expect(formatPageLine(0, 0, [], 'measure')).toBe('menu page 1/1 tab=measure items=');
+    expect(formatPageLine(0, 0, [], 'items')).toBe('menu page 1/1 items=');
   });
 
   it('writes one piece, no piece and the page of a stale number without NaN, undefined or Infinity', () => {
@@ -313,10 +307,9 @@ describe('the "menu page" log line', () => {
 });
 
 describe('the "menu tab" log line', () => {
-  it('names the tab: menu tab items, mine and measure', () => {
+  it('names the tab: menu tab items and mine', () => {
     expect(formatTabLine('items')).toBe('menu tab items');
     expect(formatTabLine('mine')).toBe('menu tab mine');
-    expect(formatTabLine('measure')).toBe('menu tab measure');
   });
 
   it('cannot be mistaken for a page line', () => {

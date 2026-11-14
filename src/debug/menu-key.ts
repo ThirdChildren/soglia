@@ -5,7 +5,7 @@
 // test it without moving a hand. It calls the same functions the button will call (`openPinnedMenu`, `closeMenu`), so
 // everything that follows is the real code path; it does not prove that a pinch on the button works.
 //
-// The key F6 that previewed the tab `measure` (T3.5) is gone: since T3.14 the tab appears by itself, with the tape measure.
+// The key F6 that previewed the tab `measure` (T3.5) is gone, and so is the tape measure (removed in the UI fixes).
 //
 // No modifier keys: Shift/Ctrl/Alt/Meta + F7 are left alone.
 

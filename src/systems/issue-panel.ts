@@ -850,10 +850,10 @@ export class IssuePanelSystem extends createSystem({}) {
   /**
    * A short pinch on a pin of the model (D46): the pin nearest to the pinch point within 2 cm takes the hand as `menu` (the highest
    * priority, as a button does) and opens the detail of its issue, opening the panel when it is closed. Nothing happens for a role
-   * without pins, at real scale, while a piece is held, while the tape measure is on, or while the view changes.
+   * without pins, at real scale, while a piece is held, or while the view changes.
    */
   private pressPin(ctx: IssuePanelContext, hand: Hand): void {
-    if (pinchClaims.anyClaimed('furniture') || ctx.store.get().tool === 'measure' || isViewTransitioning()) return;
+    if (pinchClaims.anyClaimed('furniture') || isViewTransitioning()) return;
     pinchPoint(hand, this.point);
     this.pinTuple[0] = this.point.x;
     this.pinTuple[1] = this.point.y;

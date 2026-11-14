@@ -12,7 +12,6 @@ import {
   startLongPress,
   updateLongPress,
 } from '../../src/logic/long-press';
-import { snapRadiusPlan } from '../../src/logic/measure';
 import { pickRect } from '../../src/logic/menu';
 import { buttonAnchors, createButtonPair, pickButton } from '../../src/logic/menu-button';
 import { PAN_MAX_RADIUS, panStep, settlePending, startPan } from '../../src/logic/miniature-pan';
@@ -122,15 +121,6 @@ describe('fixtureSnap', () => {
     set('fixtureSnap', '0.04');
     expect(snapRadiusHouse(0.05)).toBeCloseTo(0.8, 9);
     expect(snapRadiusHouse(0)).toBe(0);
-  });
-});
-
-describe('measureSnap', () => {
-  it('the radius on the plan is 0.012 / scale by default and follows the knob', () => {
-    expect(snapRadiusPlan(0.05)).toBeCloseTo(0.24, 9);
-    set('measureSnap', '0.024');
-    expect(snapRadiusPlan(0.05)).toBeCloseTo(0.48, 9);
-    expect(snapRadiusPlan(-1)).toBe(0);
   });
 });
 

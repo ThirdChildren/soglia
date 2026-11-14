@@ -3,14 +3,11 @@
     <span id="palm-menu-title" style="font-size: 2.6; font-weight: bold; color: #1a1a1a; line-height: 1.1; text-align: center;">-</span>
   </div>
   <div id="menu-tab-row" style="display: none; flex-direction: row; justify-content: center; width: 36; height: 4; gap: 0.4;">
-    <div id="menu-tab-items" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 11.4; height: 4; background-color: #e3e9f3; border-radius: 2; border-width: 0.4; border-color: #1a1a1a;">
+    <div id="menu-tab-items" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 17.8; height: 4; background-color: #e3e9f3; border-radius: 2; border-width: 0.4; border-color: #1a1a1a;">
       <span id="menu-tab-items-label" style="font-size: 2.4; font-weight: bold; color: #1a1a1a; line-height: 1.1; text-align: center;">-</span>
     </div>
-    <div id="menu-tab-mine" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 10.8; height: 4; background-color: #e3e9f3; border-radius: 2; border-width: 0.4; border-color: #1a1a1a;">
+    <div id="menu-tab-mine" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 17.8; height: 4; background-color: #e3e9f3; border-radius: 2; border-width: 0.4; border-color: #1a1a1a;">
       <span id="menu-tab-mine-label" style="font-size: 2.4; font-weight: bold; color: #1a1a1a; line-height: 1.1; text-align: center;">-</span>
-    </div>
-    <div id="menu-tab-measure" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 13; height: 4; background-color: #e3e9f3; border-radius: 2; border-width: 0.4; border-color: #1a1a1a;">
-      <span id="menu-tab-measure-label" style="font-size: 2.4; font-weight: bold; color: #1a1a1a; line-height: 1.1; text-align: center;">-</span>
     </div>
   </div>
   <div id="menu-row-1" style="display: flex; flex-direction: row; justify-content: flex-start; width: 36; margin-top: 0.4; gap: 0.4;">

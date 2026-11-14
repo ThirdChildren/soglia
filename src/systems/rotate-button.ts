@@ -10,7 +10,7 @@
 // While a menu (either mode) or the Issues or View panel is open the button is hidden and takes no pinch (F-D-2: it sat 3 cm from
 // Undo of the pinned menu); the window keeps running and the button is back when the surface closes. Log: `rotate button covered by=...`.
 //
-// Register this system BEFORE the menu, the panels, the tape measure and the grab (index.ts puts it first): its pinch listener must
+// Register this system BEFORE the menu, the panels and the grab (index.ts puts it first): its pinch listener must
 // run before theirs, or a control or the piece under the button would get the pinch meant for it (the button is drawn over the menu
 // when the menu is open). Nothing here allocates per frame.
 

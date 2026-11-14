@@ -2,7 +2,6 @@
 
 import { formatSize, formatSizeCompact, lowerName, type ReasonKind } from '../logic/furniture-label';
 import { CATEGORY_LABELS, PHRASES } from '../logic/issue-text';
-import { measureLabelText } from '../logic/measure-tool';
 import { MAX_FILE_BYTES, MAX_HOUSE_FILES, type HouseFileReject } from '../logic/house-file';
 import { formatRoomLabel } from '../logic/room-label';
 
@@ -87,7 +86,6 @@ export const strings = {
     tabs: {
       items: 'Items',
       mine: 'Mine',
-      measure: 'Measure',
     },
     /** Shown in the header when the catalog is missing; one line at 2.4 cm text. */
     catalogUnavailable: 'Catalog not loaded',
@@ -295,11 +293,6 @@ export const strings = {
     },
   },
   reason,
-  /** The tape measure (T3.14, D36): the hint while it is on, and the label of a measure ("140 cm"). */
-  measure: {
-    hint: 'Pinch two points',
-    label: (cm: number): string => measureLabelText(cm),
-  },
   /** The debug statistics panel in the headset (`ui:debug-hud`, only with `debug=1`; M6, T6.A8). One short line each. */
   debug: {
     hud: {

@@ -6,7 +6,7 @@
 //   - at a pinch start nothing is decided yet: the grip pose moves about 1 cm while the fingers close and the systems that
 //     register after this one (the grab, the viewpoint markers, the drag) take their claim in their own pinch listeners. So
 //     the decision waits the `longPressSettle` knob (0.15 s by default); by then the claims are in. A pinch that someone else owns (a menu
-//     control, a piece, a marker, the drag, the tape measure, two hands) never starts anything and leaves no trace in the log;
+//     control, a piece, a marker, the drag, two hands) never starts anything and leaves no trace in the log;
 //   - then the hold starts (`issue hold start`) if the role may create issues (only the tenant), the tool is `furnish`, the model
 //     is at table-top scale and the pinch point resolves to an anchor (`pinchToHouse` + `resolveAnchor`). The ghost `pin:draft`
 //     appears at that anchor and grows from 0 to 1 with the progress (`setPinDraftSize`, no allocation per frame). The anchor is
@@ -27,7 +27,7 @@
 // The draft lives until the form consumes it (`consumeDraft`, T4.7) or it is cancelled: `cancelDraft(reason)` (the form's Cancel,
 // the life cycle on a suspension: T4.11), a change of the role, the panel being closed.
 //
-// Register this system AFTER the tape measure and BEFORE the grab of the pieces (docs/plans/M4.md, T4.5). Nothing here allocates per frame.
+// Register this system AFTER the menu and the panels and BEFORE the grab of the pieces (docs/plans/M4.md, T4.5). Nothing here allocates per frame.
 
 import { createSystem, Vector3, type Entity, type World } from '@iwsdk/core';
 import { slog, swarn } from '../log';
@@ -108,7 +108,7 @@ export function consumeDraft(): IssueDraft | null {
   return consumeNow ? consumeNow() : null;
 }
 
-/** Registers the long pinch. Register it AFTER the tape measure and BEFORE the grab of the pieces. */
+/** Registers the long pinch. Register it AFTER the menu and the panels and BEFORE the grab of the pieces. */
 export function createIssueCreate(world: World, store: Store, house: House, rootEntity: Entity, clock: IssueClock): void {
   context = { store, house, rootEntity, clock };
   draft = null;
@@ -225,13 +225,13 @@ export class IssueCreateSystem extends createSystem({}) {
       return;
     }
     const owner = pinchClaims.ownerOf(hand);
-    // Someone else uses this pinch (a menu control, a piece, a marker, the drag, two hands, the tape measure): not ours, no trace.
-    if ((owner !== null && owner !== 'room') || pinchClaims.anyClaimed('furniture') || pinchClaims.anyClaimed('measure')) {
+    // Someone else uses this pinch (a menu control, a piece, a marker, the drag, two hands): not ours, no trace.
+    if ((owner !== null && owner !== 'room') || pinchClaims.anyClaimed('furniture')) {
       this.mode = 'off';
       return;
     }
     const state = ctx.store.get();
-    if (state.tool !== 'furnish' || isTabletopLocked()) {
+    if (isTabletopLocked()) {
       this.mode = 'off';
       return;
     }

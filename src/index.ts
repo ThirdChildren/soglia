@@ -36,7 +36,6 @@ import { installLocalHands } from './systems/local-hands';
 import { createFurnitureGrab } from './systems/furniture-grab';
 import { installHandJoints } from './systems/hand-joints';
 import { createFurnitureReasons } from './systems/furniture-reasons';
-import { createMeasure } from './systems/measure';
 import { createIssueCreate } from './systems/issue-create';
 import { createIssuePanel } from './systems/issue-panel';
 import { createViewPanel } from './systems/view-panel';
@@ -262,8 +261,8 @@ async function start(): Promise<void> {
       const sections = menuSections(catalogResult.items, merged.mine);
       createMenuItems(world, store, sections.items);
       setMenuPickDebug(params.debug);
-      // The tab `mine` appears only when its data arrived; `measure` is there with the tape measure (T3.14).
-      setMenuTabData({ mine: sections.mine, measure: true });
+      // The tab `mine` appears only when its data arrived.
+      setMenuTabData({ mine: sections.mine });
     }
     // The Menu buttons (T3.3b) come after the menu items (a control of an open menu wins a pinch) and before the grab and the drag.
     createMenuButton(world, store);
@@ -278,7 +277,7 @@ async function start(): Promise<void> {
     // The coach of the first minute (T5.15): not interactive; it reads the menu buttons and the release of a piece, so it goes after them.
     createCoach(world, store);
     // The real objects of the room (plan MR, DMR3, DMR4): outlines, the ray of the hands, the card and `Add to Mine`. After every control that
-    // is a `menu` claim, before the tape measure and the grab: in the room view it takes every pinch the controls above did not.
+    // is a `menu` claim, before the grab: in the room view it takes every pinch the controls above did not.
     if (mrEntry.mode === 'ar') {
       createRoomObjects(world, store, {
         onAdded: (piece) => {
@@ -294,9 +293,7 @@ async function start(): Promise<void> {
       // The virtual pieces at real scale (MR.4) and the ray of the hands: right after the room objects (they use its volumes and its hover).
       createRoomPieces(world, merged ? merged.items : []);
     }
-    // The tape measure claims the pinch above the grab (and below the menu): register it after the menu, before the grab (T3.14).
-    createMeasure(world, store, result.house, merged ? merged.items : [], built.entity, miniature.root);
-    // The long pinch (T4.5): after the tape measure (a point wins), before the grab (it waits for the claims of the later systems).
+    // The long pinch (T4.5): after the menu and the panels, before the grab (it waits for the claims of the later systems).
     createIssueCreate(world, store, result.house, miniature.root, issueClock);
     if (merged) {
       const visuals = new FurnitureVisuals(merged.items);

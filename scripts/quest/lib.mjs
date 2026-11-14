@@ -458,7 +458,6 @@ export const TUNING_LIMITS = Object.freeze({
   fixtureSnap: [0.01, 0.05],
   viewpointRadius: [0.01, 0.06],
   pickMargin: [0.005, 0.05],
-  measureSnap: [0.006, 0.03],
   pickDepth: [0.02, 0.1],
   settleMs: [0, 400],
   deadZone: [0.001, 0.02],

@@ -6,22 +6,20 @@
 // claims a hand when it starts to use its pinch; only one owner holds a hand at a time. When two
 // owners want the same hand the one with the higher priority wins:
 //
-//   menu > measure > furniture > viewpoint > two-hands > pan > issue > room
+//   menu > furniture > viewpoint > two-hands > pan > issue > room
 //
 // A claim on a hand that is free, or held by a lower priority owner, succeeds (the previous owner
-// is told that its claim was taken away). `measure` (T3.14, D36) is the pinch of the tape measure: with the tool
-// active a pinch inside the plan of the model puts a point and nothing else may use it (no grab, no room, no drag). A claim on a hand held by an equal or higher priority
+// is told that its claim was taken away). A claim on a hand held by an equal or higher priority
 // owner is refused. Two more rules keep a held piece safe: a hand can never start `viewpoint`,
 // `two-hands`, `pan` or `issue` while a `furniture` claim exists on any hand (the second pinch is the tap that
 // rotates the piece, not a new gesture and not a change of view: T3.12).
 
 export type ClaimHand = 'left' | 'right';
-export type ClaimOwner = 'menu' | 'measure' | 'furniture' | 'viewpoint' | 'two-hands' | 'pan' | 'issue' | 'room';
+export type ClaimOwner = 'menu' | 'furniture' | 'viewpoint' | 'two-hands' | 'pan' | 'issue' | 'room';
 
 /** Higher number = higher priority. */
 export const CLAIM_PRIORITY: Readonly<Record<ClaimOwner, number>> = {
-  menu: 8,
-  measure: 7,
+  menu: 7,
   furniture: 6,
   viewpoint: 5,
   'two-hands': 4,
@@ -61,7 +59,6 @@ export function createClaims(): Claims {
   const held: Record<ClaimHand, ClaimOwner | null> = { left: null, right: null };
   const listeners: Record<ClaimOwner, Set<RevokeListener>> = {
     menu: new Set(),
-    measure: new Set(),
     furniture: new Set(),
     viewpoint: new Set(),
     'two-hands': new Set(),

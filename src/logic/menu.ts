@@ -40,13 +40,12 @@ export function turnPage(page: number, direction: -1 | 1, count: number): number
 
 // --- Tabs (task T3.5, decision D37) --------------------------------------------------------------------------------
 
-/** The tabs of the menu, left to right: the catalog, the user's own furniture, the tape measure. (The fit check tab was removed in the UI fixes.) */
-export type MenuTabId = 'items' | 'mine' | 'measure';
-export const MENU_TABS: readonly MenuTabId[] = ['items', 'mine', 'measure'];
+/** The tabs of the menu, left to right: the catalog and the user's own furniture. (The fit check and tape measure tabs were removed in the UI fixes.) */
+export type MenuTabId = 'items' | 'mine';
+export const MENU_TABS: readonly MenuTabId[] = ['items', 'mine'];
 
 /**
- * How much each tab has to show: the number of pieces for `items` and `mine`, and 1 or 0 for `measure` (the
- * tape measure exists or not). A tab with nothing to show is NOT shown at all (no provisional text in the app).
+ * How much each tab has to show: the number of pieces. A tab with nothing to show is NOT shown at all (no provisional text in the app).
  */
 export type TabCounts = Readonly<Record<MenuTabId, number>>;
 
@@ -60,12 +59,12 @@ export function tabRowVisible(tabs: readonly MenuTabId[]): boolean {
   return tabs.length >= 2;
 }
 
-/** The pieces a tab lists (`measure` lists none: it has a tool, not pieces). */
-export type TabItems<T> = Readonly<Record<'items' | 'mine', readonly T[]>>;
+/** The pieces a tab lists. */
+export type TabItems<T> = Readonly<Record<MenuTabId, readonly T[]>>;
 
 /** What `tab` shows as pieces; the page is then `pageItems(tabPieces(...), page)`. */
 export function tabPieces<T>(content: TabItems<T>, tab: MenuTabId): readonly T[] {
-  return tab === 'measure' ? [] : content[tab];
+  return content[tab];
 }
 
 /** The tab to show when the one that was open has no data any more (the first one that has), or `items`. */
@@ -134,8 +133,8 @@ export const BAR_GAP = 0.4;
 export const BUTTON_PANEL = { width: BUTTON_WIDTH.recenter, height: BAR_HEIGHT } as const;
 /** Height of the header: the tab row or the title, centimetres. */
 export const HEADER_HEIGHT = 4;
-/** Width of each tab, centimetres (the labels are 2.4 bold: "Measure" is 10.3). */
-export const TAB_WIDTH: Readonly<Record<MenuTabId, number>> = { items: 11.4, mine: 10.8, measure: 13 };
+/** Width of each tab, centimetres: the two tabs share the row (36) with the gap of `BAR_GAP` between them. */
+export const TAB_WIDTH: Readonly<Record<MenuTabId, number>> = { items: 17.8, mine: 17.8 };
 /** Border of an item card in UIKit units (public/ui/palm-menu.uikitml). */
 export const ITEM_BORDER = 0.4;
 /** Space kept between the text of an item name and the border of its card, per side, in UIKit units. */

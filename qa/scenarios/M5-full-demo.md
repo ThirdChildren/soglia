@@ -1,5 +1,7 @@
 # S5.5 · Demo completa: i tre atti in un solo percorso
 
+> **Note 2026-11-14 (UI fixes)**: every step or criterion of this scenario about the tape measure (the `Measure` tab, `ui:measure-*`, `measure ...` log lines, the `AppState.tool` field) is REMOVED with the feature: skip it. The rest still applies.
+
 > **Note 2026-11-14 (UI fixes)**: every step or criterion of this scenario about the FitCheck (door-fit label `Fits` / `Won't fit` / `Fits when disassembled` / `No route`, `ui:fit-label`, `ui:fit-marker-*`, the `fit` menu tab, the wheelchair and stroller pieces) is REMOVED with the feature: skip it. The rest still applies.
 
 > **Changelog 2026-11-06**: scenario creato dal piano M5 (ROADMAP S5.5). Il "meno di 10 minuti" del primo ROADMAP vale per una persona sul visore: **il tempo di orologio non è un criterio PC** (ogni chiamata MCP costa 0,5–3 s). Il criterio PC è: percorso completo, zero errori, e un conteggio di pizzichi.

@@ -339,7 +339,7 @@ describe('tuning file', () => {
   });
   it('has sane limits', () => {
     for (const [name, [min, max]] of Object.entries(TUNING_LIMITS)) expect(min < max, name).toBe(true);
-    expect(Object.keys(TUNING_LIMITS)).toHaveLength(26);
+    expect(Object.keys(TUNING_LIMITS)).toHaveLength(25);
   });
 });
 

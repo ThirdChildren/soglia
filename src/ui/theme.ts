@@ -30,9 +30,6 @@ export const palette = {
   outlineInvalid: 0xe5322d,
   /** Viewpoint markers on the table-top model (T3.12): blue, away from the red/green of the piece outlines and the orange doors. */
   viewpoint: 0x2a5bd7,
-  /** The tape measure (T3.14): amber points over a dark tape, both readable on the light walls and on the dark base. */
-  measurePoint: 0xffc400,
-  measureTape: 0x1a1a1a,
   /** The sun dial (T5.4): a light ring on the dark base, a blue north tick, an amber disc. */
   sunRing: 0xd9d4c7,
   sunNorth: 0x7fd1ff,

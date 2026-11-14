@@ -143,15 +143,6 @@ describe('the fixed buttons grow in width by the factor of the text and hold the
   });
 });
 
-describe('the measure label holds "140 cm" on one line at 3.0 cm (its width and paddings grow with the text)', () => {
-  it('fits at 1.25 times the file', () => {
-    const root = styleOf(ui('measure-label'), 'measure-label-root');
-    const k = LARGE_TEXT_FACTOR;
-    const inner = num(root, 'width') * k - (num(root, 'padding-left') + num(root, 'padding-right')) * k - 2 * num(root, 'border-width');
-    for (const cm of [9, 99, 140, 999, 1250]) expect(width(strings.measure.label(cm), 3, BOLD), String(cm)).toBeLessThanOrEqual(inner);
-  });
-});
-
 describe('the layouts of the View panel', () => {
   it('the normal layout is the one the constants say', () => {
     expect(viewLayout(false)).toBe(VIEW_LAYOUT_NORMAL);

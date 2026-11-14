@@ -43,16 +43,6 @@ export default defineAssets({
     type: AssetType.UIKitML,
     priority: 'lazy',
   },
-  'measure-hint': {
-    url: `${import.meta.env.BASE_URL}ui/measure-hint.uikitml`,
-    type: AssetType.UIKitML,
-    priority: 'lazy',
-  },
-  'measure-label': {
-    url: `${import.meta.env.BASE_URL}ui/measure-label.uikitml`,
-    type: AssetType.UIKitML,
-    priority: 'lazy',
-  },
   'issue-button': {
     url: `${import.meta.env.BASE_URL}ui/issue-button.uikitml`,
     type: AssetType.UIKitML,

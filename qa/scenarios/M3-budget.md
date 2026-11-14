@@ -1,5 +1,7 @@
 # S3.9 · Budget di M3: previsione contro misura
 
+> **Note 2026-11-14 (UI fixes)**: every step or criterion of this scenario about the tape measure (the `Measure` tab, `ui:measure-*`, `measure ...` log lines, the `AppState.tool` field) is REMOVED with the feature: skip it. The rest still applies.
+
 > **Note 2026-11-14 (UI fixes)**: every step or criterion of this scenario about the FitCheck (door-fit label `Fits` / `Won't fit` / `Fits when disassembled` / `No route`, `ui:fit-label`, `ui:fit-marker-*`, the `fit` menu tab, the wheelchair and stroller pieces) is REMOVED with the feature: skip it. The rest still applies.
 
 > **Changelog 2026-11-06 (T5.RA, gate di M5)**: i 13 muri sono ora la mesh `merged:walls` e le 5 soglie la mesh `merged:thresholds` (le entità `wall:*` e `door:*` restano come ancore senza mesh): il gruppo `house` di `[soglia:stats:groups]` passa da **24 a 8** (A) e **7** (B), e ogni conteggio di questo scenario scende di **16** chiamate per vista. Le soglie e le previsioni qui sotto sono quelle storiche (blocca solo > 100); la tabella aggiornata è in `qa/scenarios/M5-budget.md`.

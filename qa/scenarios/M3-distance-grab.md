@@ -1,5 +1,7 @@
 # S3.10 · Presa e misura a distanza in scala reale (SOLO SE T3.15 È FATTO)
 
+> **Note 2026-11-14 (UI fixes)**: every step or criterion of this scenario about the tape measure (the `Measure` tab, `ui:measure-*`, `measure ...` log lines, the `AppState.tool` field) is REMOVED with the feature: skip it. The rest still applies.
+
 **Milestone**: M3 · **Tipo**: PC (emulatore IWER via MCP `iwsdk-runtime`) · **Regole di `CLAUDE.md`**: 1, 2 (da seduti, niente locomozione), 8
 Prerequisiti di implementazione: T3.12 (punti di vista), T3.14 (metro), T3.15 (raggio dalla mano). Vedi `docs/plans/M3.md`, D38 e lo spike di 20 minuti di T3.15. **Se T3.15 è tagliato** (si taglia per primo) questo scenario non si esegue: il report scrive "S3.10 non applicabile: scala reale, presa solo a portata di braccio" e la voce va in `qa/device/DEBT.md` e nel Devpost. Convenzioni comuni: `qa/scenarios/M3-persistence.md`; punti di vista: `qa/scenarios/M3-viewpoint.md`.
 

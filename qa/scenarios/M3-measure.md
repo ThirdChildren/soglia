@@ -1,5 +1,7 @@
 # S3.2 · Metro: misura la finestra dello studio
 
+> **REMOVED 2026-11-14 (UI fixes, `qa/reports/UI-FIX-2026-11-14.md`)**: the tape measure (Measure tab, `ui:measure-*`, `measure ...` log lines) no longer exists. This scenario is kept as history and is not run any more.
+
 > **Changelog 2026-11-02** (solo punto di partenza, criteri invariati; gate M3, avviso A-S3.2-1 in `qa/reports/M3-2026-10-10-B.md`): passo 10: lo zoom a 0,12 parte con le mani simmetriche a **∓0,20 m** dal centro (non ∓0,15: a 0,02–0,025 m dal marcatore `viewpoint:V1` il pizzico entrava nel punto di vista) e arriva a ∓0,60; il plastico resta in `O` (nessuno spostamento di 0,30 m) e i punti `A1'`, `A2'` si ricalcolano a scala 0,12.
 
 **Milestone**: M3 · **Tipo**: PC (emulatore IWER via MCP `iwsdk-runtime`)

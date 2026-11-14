@@ -22,7 +22,6 @@ const SAMPLE_CALLS: Record<string, () => string[]> = {
   itemSizeCompact: () => catalogItems().map((item) => strings.menu.itemSizeCompact(item.size[0], item.size[1])),
   overlapsFurniture: () => catalogItems().map((item) => strings.reason.overlapsFurniture(item.name)),
   reasonText: () => catalogItems().map((item) => strings.reasonText('overlaps-furniture', item.name)),
-  label: () => [0, 7, 58, 140, 308, 1234].map((cm) => strings.measure.label(cm)),
   context: () => [strings.issues.form.context('Walls & floors', 'Living room'), strings.issues.form.context('Appliances', 'Study')],
   pageOf: () => [strings.issues.list.pageOf(1, 3), strings.issues.list.pageOf(10, 40)],
   openList: () => [0, 4, 40, 99].map((count) => strings.issues.openList(count)),

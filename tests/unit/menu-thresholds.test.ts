@@ -46,7 +46,7 @@ describe('thresholds of menu v2 (task T3.5, D37)', () => {
   });
 
   it('keeps the farthest control (the first tab, to the side and above the frame) within 0.65 m of the head when the frame is at its maximum distance', () => {
-    const tabs = ['items', 'mine', 'measure'] as const;
+    const tabs = ['items', 'mine'] as const;
     const farthest = Math.max(
       ...tabs.map((tab) => {
         const reach = MENU_EXTENT.halfWidth - TAB_WIDTH[tab] / 200; // its centre is at most this far from the middle

@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   DRAW_GROUPS,
@@ -9,7 +8,6 @@ import {
   resetGroupCounts,
   totalGroupCalls,
 } from '../../src/logic/draw-groups';
-import { repoPath } from '../helpers/load-json';
 import { MINIATURE_ROOT_ID, TABLE_PLINTH_ID, stableId } from '../../src/logic/ids';
 
 // Names taken from a live traversal of the scene in the emulator (T3.4, `scene runtime-hierarchy`, house A with
@@ -176,7 +174,6 @@ describe('classifyGroup: every stable id the project generates (expected group w
     ['ui:menu-button-right', 'ui'],
     ['ui:menu-tab-items', 'ui'],
     ['ui:menu-tab-mine', 'ui'],
-    ['ui:menu-tab-measure', 'ui'],
     ['ui:menu-tabletop', 'ui'],
     // M4 (T4.12): the Issues buttons, the panel and its controls, and the Tabletop button are panels (`ui`), the pins are `markers`.
     ['ui:issue-button-left', 'ui'],
@@ -208,19 +205,10 @@ describe('classifyGroup: every stable id the project generates (expected group w
     ['ui:ghost-hand-left', 'ui'],
     ['ui:ghost-hand-right', 'ui'],
     ['ui:furniture-preview', 'ui'],
-    ['ui:measure-label', 'ui'],
-    ['ui:measure-hint', 'ui'],
   ];
 
   it.each(table)('%s -> %s', (name, expected) => {
     expect(classifyGroup(name)).toBe(expected);
-  });
-
-  it('the ruler geometry (points, tape) is ui until T3.14 decides to move it to markers', () => {
-    // MARKER_UI_PREFIXES says T3.14 may extend the list; when it does, these two lines must change on purpose.
-    expect(classifyGroup('ui:measure-point-1')).toBe('ui');
-    expect(classifyGroup('ui:measure-point-2')).toBe('ui');
-    expect(classifyGroup('ui:measure-tape')).toBe('ui');
   });
 
   it('ids built with stableId.furniture keep the group for multi-digit instance numbers', () => {
@@ -233,14 +221,6 @@ describe('classifyGroup: every stable id the project generates (expected group w
     expect(classifyGroup(stableId.ui('scan-outlines-d-living'))).toBe('markers');
     expect(classifyGroup(stableId.ui('reason-label'))).toBe('ui');
     expect(classifyGroup(stableId.ui('reason-bed-double'))).toBe('ui');
-  });
-});
-
-describe('classifyGroup: the tape measure (T3.14)', () => {
-  it('its instanced mesh is a marker; its label and its hint are panels', () => {
-    expect(classifyGroup('ui:measure-instances')).toBe('markers');
-    expect(classifyGroup('ui:measure-label')).toBe('ui');
-    expect(classifyGroup('ui:measure-hint')).toBe('ui');
   });
 });
 
@@ -709,30 +689,6 @@ describe('regression: object names read from the emulator', () => {
   it('the table has no duplicate names', () => {
     const names = emulatorNames.map(([name]) => name);
     expect(new Set(names).size).toBe(names.length);
-  });
-});
-
-describe('classifyGroup: the real names of the tape measure in the source', () => {
-  const visuals = readFileSync(repoPath('src', 'ui', 'measure-visuals.ts'), 'utf8');
-
-  it('the instanced mesh the visuals really create (MESH_NAME) is a marker', () => {
-    const match = /const MESH_NAME = '([^']+)'/.exec(visuals);
-    expect(match).not.toBeNull();
-    expect(classifyGroup(match?.[1])).toBe('markers');
-  });
-
-  it('the anchors (empty objects with no draw call) and the panels stay in ui, never in markers by accident', () => {
-    for (const name of ['ui:measure-point-1', 'ui:measure-point-2', 'ui:measure-tape', 'ui:measure-label', 'ui:measure-hint']) {
-      expect(classifyGroup(name), name).toBe('ui');
-    }
-  });
-
-  it('only the exact mesh name is a marker: look-alikes with another ending are checked on purpose', () => {
-    expect(classifyGroup('ui:measure-instances')).toBe('markers');
-    expect(classifyGroup('ui:measure-instance')).toBe('ui');
-    expect(classifyGroup('ui:measure')).toBe('ui');
-    expect(classifyGroup('measure-instances')).toBe('other');
-    expect(classifyGroup('furniture:measure-instances#1')).toBe('furniture');
   });
 });
 

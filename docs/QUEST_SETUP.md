@@ -468,9 +468,8 @@ filtrata su `[soglia`, URL con `debug=1`.
 6. **Porta che blocca.** Metti un mobile davanti a una porta: deve diventare non valido con il
    motivo "Blocks the door".
 7. **Mobili propri.** Scheda "Mine": porta il divano di esempio verso il soggiorno della casa A.
-   Atteso, dagli scenari: "Won't fit: the door is 80 cm wide, the sofa's shortest side is 85 cm".
-8. **Metro.** Scheda "Measure": pizzica due punti sulla finestra dello studio. Atteso circa 140 cm
-   (errore ammesso ≤ 2 cm, voce M3 della checklist).
+   (Il messaggio del FitCheck è stato rimosso il 2026-11-14: si controlla solo che il pezzo si posi.)
+8. **Metro.** ~~Scheda "Measure"~~ **Rimosso il 2026-11-14**: il metro non esiste più, passo da saltare.
 9. **Punto di vista.** Pizzica un pilastro blu (punto di vista V1): dissolvenza e stanza a scala
    reale (altezza occhi 1,2 m). Torna al plastico con il pulsante "Tabletop". Nessuna nausea? La
    dissolvenza dura troppo o troppo poco? (misure in `DEBT.md`, M3 e M5).

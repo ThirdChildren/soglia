@@ -21,7 +21,6 @@ import {
   PINNED_DROP,
 } from '../../src/logic/menu-thresholds';
 import { PICK_DEPTH } from '../../src/logic/menu';
-import { SNAP_WORLD_RADIUS } from '../../src/logic/measure';
 import { PICK_MARGIN_WORLD } from '../../src/logic/furniture-pick';
 import { GESTURE_SETTLE_MS, TRANSLATE_DEAD_ZONE } from '../../src/logic/miniature-pan';
 import { PIN_PICK_WORLD_RADIUS } from '../../src/logic/pin-layout';
@@ -41,7 +40,6 @@ const M5_VALUES: Record<Exclude<TuningName, 'foveation'>, number> = {
   fixtureSnap: 0.02,
   viewpointRadius: 0.025,
   pickMargin: 0.015,
-  measureSnap: 0.012,
   pickDepth: 0.05,
   settleMs: 150,
   deadZone: 0.005,
@@ -70,7 +68,6 @@ const CONSTANTS: Record<string, number> = {
   fixtureSnap: FIXTURE_SNAP_WORLD_RADIUS,
   viewpointRadius: VIEWPOINT_PICK_RADIUS,
   pickMargin: PICK_MARGIN_WORLD,
-  measureSnap: SNAP_WORLD_RADIUS,
   pickDepth: PICK_DEPTH,
   settleMs: GESTURE_SETTLE_MS,
   deadZone: DEAD_ZONE,
@@ -114,6 +111,6 @@ describe('tuning defaults against the original constants', () => {
     const covered = new Set([...Object.keys(M5_VALUES), 'foveation']);
     expect([...TUNING_NAMES].filter((n) => !covered.has(n))).toEqual([]);
     expect(Object.keys(CONSTANTS).every((n) => (TUNING_NAMES as readonly string[]).includes(n))).toBe(true);
-    expect(TUNING_TABLE.length).toBe(26);
+    expect(TUNING_TABLE.length).toBe(25);
   });
 });

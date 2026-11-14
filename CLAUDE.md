@@ -56,8 +56,7 @@ Vengono dal regolamento ufficiale e dal design. Un task che ne viola una non è 
 7. **Onestà.** Dati simulati (es. mappa dell'interesse) etichettati **"Sample data"** nell'app.
 8. **Campo visivo.** UI essenziale vicino al centro della vista, pannelli a 0,5–0,8 m, niente
    elementi critici ai bordi: deve funzionare anche con il campo visivo più stretto dei Meta VR Glasses.
-9. **Accessibilità.** Tutto usabile anche con una mano sola (menu del palmo sulla mano destra per
-   impostazione predefinita, spostabile sulla sinistra nelle impostazioni di accessibilità),
+9. **Accessibilità.** Tutto usabile anche con una mano sola (menu del palmo su entrambe le mani),
    tema ad alto contrasto, testo grande.
 10. **Nucleo originale.** Nessun servizio esterno al centro dell'esperienza; la demo funziona
     senza backend.

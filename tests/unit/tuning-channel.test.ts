@@ -100,7 +100,7 @@ describe('with debug=1: URL and params file', () => {
   it('writes the table line first and no set line when nothing is asked', () => {
     const host = fakeHost({ dev: false });
     startTuning(host, { debug: true, search: '?debug=1', devFileText: null });
-    expect(host.logs).toEqual(['tuning table count=26 debug=true']);
+    expect(host.logs).toEqual(['tuning table count=25 debug=true']);
     expect(host.warns).toEqual([]);
   });
 
@@ -108,7 +108,7 @@ describe('with debug=1: URL and params file', () => {
     const host = fakeHost({ dev: false });
     startTuning(host, { debug: true, search: 'debug=1&t_longPress=1.1', devFileText: 'debug=1&t_pinRadius=0.03' });
     expect(host.logs).toEqual([
-      'tuning table count=26 debug=true',
+      'tuning table count=25 debug=true',
       'tuning set pinRadius=0.03 default=0.02 source=file',
       'tuning set longPress=1.1 default=0.8 source=url',
     ]);
@@ -222,7 +222,7 @@ describe('with debug=1: the live file', () => {
     await flush();
     host.tick();
     await flush();
-    expect(host.logs).toEqual(['tuning table count=26 debug=true']);
+    expect(host.logs).toEqual(['tuning table count=25 debug=true']);
   });
 
   it('something that is not a query string is said once and changes nothing', async () => {

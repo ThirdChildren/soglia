@@ -29,10 +29,9 @@ const HOUSE_IDS: ReadonlySet<string> = new Set(['table:plinth']);
 /**
  * `ui:*` ids that are scene markers, not panels. Decision (T3.4): the viewpoint markers and the pins sit in the house
  * and R-B instances them together, so they are counted with `markers`. (The FitCheck door markers of T3.9 were removed in the UI fixes.)
- * The tape measure (T3.14, D36) draws its two points and its tape as ONE instanced mesh, `ui:measure-instances`, so it
- * is a marker too; its label (`ui:measure-label`) and its hint (`ui:measure-hint`) are panels and stay in `ui`.
+ * The outlines of the real objects of the room view (`ui:scan-outlines`) are markers too.
  */
-const MARKER_UI_PREFIXES: readonly string[] = ['ui:measure-instances', 'ui:scan-outlines'];
+const MARKER_UI_PREFIXES: readonly string[] = ['ui:scan-outlines'];
 
 /*
  * M4 (T4.12): the pins of the issues are ONE instanced mesh named `pin:instances` (src/ui/pin-markers.ts) and so `markers`, like every

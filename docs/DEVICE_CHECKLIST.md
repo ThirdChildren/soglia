@@ -85,7 +85,7 @@ Guida passo passo per l'utente (Fedora, adb, certificato, debug remoto, Meta VR 
 - [ ] Dissolvenza tra plastico e stanza senza fastidio; altezza occhi corretta.
 - [ ] ➖ Presa a distanza nella stanza a grandezza reale: **tagliata** (T3.15). In scala reale si prende solo a
       portata di braccio: annotare quanto è scomodo.
-- [ ] Metro: errore ≤ 2 cm su misure note del plastico.
+- ~~Metro: errore ≤ 2 cm su misure note del plastico.~~ **Rimosso il 2026-11-14** (il metro non esiste più).
 - ~~Messaggio del FitCheck leggibile e chiaro.~~ **Rimosso il 2026-11-14** (il FitCheck non esiste più).
 - [ ] Giunti delle mani (`XRHand`, `fillPoses`) disponibili e punto di pizzico preciso (`[soglia:hands]`).
 

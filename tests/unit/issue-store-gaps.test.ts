@@ -293,7 +293,7 @@ describe('a state saved by M3, written out by hand (no role-independent new fiel
     expect(state.nextInstance).toEqual({ armchair: 2 });
     expect(state.view).toEqual({ kind: 'viewpoint', id: 'V1' });
     expect(state.role).toBe('visitor');
-    expect(state.tool).toBe('furnish');
+    expect('tool' in state).toBe(false);
   });
 
   it('restores into a session, keeps the furniture, and still takes the seed once afterwards', () => {

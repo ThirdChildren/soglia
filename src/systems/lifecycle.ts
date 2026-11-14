@@ -9,7 +9,7 @@
 // Suspending runs in this order (D30; the room view of the mixed reality mode adds its piece in the hand to step 2 and its cards to step 4): (1) save at once; (1b) drop the draft of a new issue and close the Issues panel (T4.11); (2) stop a fade between views (the scene is then unchanged or already
 // complete: the change happens in one call, T3.12) and cancel the piece in the hand (a menu piece goes back
 // to the catalog, a model piece back to the pose it was grabbed in: no store change); (3) end the two-hand gesture
-// and the drag with their current values (the tape measure is turned off with the piece in the hand: no points are kept); (4) close the menu and clear its detectors; (5) clear the pinch flags and
+// and the drag with their current values; (4) close the menu and clear its detectors; (5) clear the pinch flags and
 // claims. Step 2 must come before step 5: the pinch-end listener of the grab would place the piece.
 // Resuming opens nothing and does not place the model again: the menu needs the palm up again.
 
@@ -28,7 +28,6 @@ import {
 import type { SaveReason } from '../logic/persistence';
 import { cancelHeldFurniture } from './furniture-grab';
 import { cancelHeldRoomPiece, closeRoomCards } from './room-pieces';
-import { cancelMeasure } from './measure';
 import { endMiniatureGesture } from './miniature-gesture';
 import { endMiniaturePan } from './miniature-pan';
 import { cancelDraft } from './issue-create';
@@ -63,7 +62,6 @@ export function attachLifecycle(world: World, persistence: Persistence): Lifecyc
     cancelHeldFurniture('suspend'); // (2) before the pinch flags go down
     cancelHeldRoomPiece('suspend'); // (2) a virtual piece of the room view too (mixed reality mode): a new one goes, a taken one goes back
     closeRoomCards('suspend'); // (4) the cards of the room view (a real object, a virtual piece) close like the other panels
-    cancelMeasure(); // (2) the tape measure is turned off: `measure end`, no points left (T3.14, D36)
     endMiniatureGesture(); // (3) `miniature gesture end` with the current values
     endMiniaturePan(); // (3) `pan end`
     suspendPalmMenu(); // (4)
