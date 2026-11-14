@@ -17,7 +17,7 @@
 //
 // Nothing here allocates per frame: the rays, the poses and the hits are preallocated.
 
-import { XRMesh, createSystem, Quaternion, Vector3, type Entity, type World } from '@iwsdk/core';
+import { XRMesh, XRPlane, createSystem, Quaternion, Vector3, type Entity, type World } from '@iwsdk/core';
 import { slog } from '../log';
 import { scaleExtent } from '../logic/menu';
 import { pinnedConeAngleDeg } from '../logic/menu-anchor';
@@ -25,6 +25,7 @@ import {
   addStatus,
   classifyVolume,
   createScanVolume,
+  furnitureLabel,
   ownPieceFromVolume,
   pickVolume,
   type ScanVolume,
@@ -33,7 +34,14 @@ import {
   type VolumeInfo,
 } from '../logic/room-scan';
 import type { RoomObstacle } from '../logic/room-pieces';
-import { volumeCenter } from '../logic/room-scan-log';
+import { volumeCenter, polygonExtent, volumeSize } from '../logic/room-scan-log';
+import {
+  createPlaneCandidate,
+  createVolumeBox,
+  matchPlaneLabel,
+  type PlaneCandidate,
+  type VolumeBox,
+} from '../logic/room-plane-labels';
 import { CARD_EXTENT, CARD_MEASURES_MAX_WIDTH, CARD_MEASURES_SIZES, pickCardControl, type CardControl } from '../logic/room-view';
 import { fitSizedLine } from '../logic/text-fit';
 import { addScanned, type Store } from '../logic/state';
@@ -63,6 +71,8 @@ interface Entry {
   entity: Entity;
   info: VolumeInfo;
   volume: ScanVolume;
+  /** True when the label came from a plane of the scan (the volume has none of its own). */
+  fromPlane: boolean;
   /** Slot of its outline. */
   slot: number;
   state: OutlineState;
@@ -134,6 +144,7 @@ export function closeScanCard(via: string): void {
 
 export class RoomObjectsSystem extends createSystem({
   meshes: { required: [XRMesh] },
+  planes: { required: [XRPlane] },
 }) {
   private readonly entries: Entry[] = [];
   /** The volumes of `entries`, in the same order (what `pickVolume` takes). */
@@ -156,6 +167,13 @@ export class RoomObjectsSystem extends createSystem({
   private readonly center: [number, number, number] = [0, 0, 0];
   private readonly hover: Record<Hand, Entry | null> = { left: null, right: null };
   private selected: Entry | null = null;
+  /** The horizontal furniture planes of the scan (a pool that grows, never shrinks) and how many of it are in use. */
+  private readonly planePool: PlaneCandidate[] = [];
+  private planeCount = 0;
+  private readonly box: VolumeBox = createVolumeBox();
+  private readonly planePoint = new Vector3();
+  /** A plane came or went: the volumes without a label of their own are looked at again. */
+  private planesDirty = false;
   private lastCount = -1;
   private countChangedAt = 0;
   private time = 0;
@@ -191,6 +209,13 @@ export class RoomObjectsSystem extends createSystem({
     for (const entity of this.queries.meshes.entities) this.onVolume(entity);
     this.queries.meshes.subscribe('qualify', (entity) => this.onVolume(entity));
     this.queries.meshes.subscribe('disqualify', (entity) => this.onVolumeGone(entity));
+    // The labels of the headset are on the planes, which may arrive after the volumes (and the lists change): look again, once per frame at most.
+    this.queries.planes.subscribe('qualify', () => {
+      this.planesDirty = true;
+    });
+    this.queries.planes.subscribe('disqualify', () => {
+      this.planesDirty = true;
+    });
     this.cleanupFuncs.push(() => {
       this.closeCard('teardown');
       context?.outlines.dispose();
@@ -202,6 +227,10 @@ export class RoomObjectsSystem extends createSystem({
     const ctx = context;
     if (!ctx) return;
     this.time = time;
+    if (this.planesDirty) {
+      this.planesDirty = false;
+      this.reevaluate();
+    }
     ctx.card.update();
     this.logCount();
     const active = isRoomView() && this.world.renderer.xr.isPresenting;
@@ -229,21 +258,77 @@ export class RoomObjectsSystem extends createSystem({
     this.rotation[1] = this.quaternion.y;
     this.rotation[2] = this.quaternion.z;
     this.rotation[3] = this.quaternion.w;
-    const info = classifyVolume(
-      entity.getValue(XRMesh, 'semanticLabel') ?? '',
-      entity.getValue(XRMesh, 'isBounded3D') ?? false,
-      entity.getVectorView(XRMesh, 'dimensions'),
-      this.rotation,
-    );
+    const bounded = entity.getValue(XRMesh, 'isBounded3D') ?? false;
+    const own = entity.getValue(XRMesh, 'semanticLabel') ?? '';
+    const dimensions = entity.getVectorView(XRMesh, 'dimensions');
+    let info = classifyVolume(own, bounded, dimensions, this.rotation);
+    let fromPlane = false;
+    // No furniture label of its own (the headset leaves most empty): the label of the plane on its top face, if any. An own label wins.
+    if (!info && bounded && !furnitureLabel(own)) {
+      const label = this.planeLabelFor(entity, object, dimensions);
+      if (label) {
+        info = classifyVolume(label, bounded, dimensions, this.rotation);
+        fromPlane = info !== null;
+        if (info) slog(`mr object label from plane label=${info.key} size=${info.cm.join('x')}`);
+      }
+    }
     if (!info) return;
     const slot = this.freeSlots.pop();
     if (slot === undefined) return;
-    const entry: Entry = { entity, info, volume: createScanVolume(), slot, state: 'idle' };
+    const entry: Entry = { entity, info, volume: createScanVolume(), fromPlane, slot, state: 'idle' };
     this.entries.push(entry);
     this.volumes.push(entry.volume);
     this.obstacles.push({ volume: entry.volume, name: info.name });
     this.writePose(entry, true);
     ctx.outlines.setVisible(isRoomView());
+  }
+
+  /** Looks again at every volume that is not outlined yet (a plane arrived or went). Only on events, not per frame. */
+  private reevaluate(): void {
+    for (const entity of this.queries.meshes.entities) this.onVolume(entity);
+  }
+
+  /** The furniture label of the plane that lies on the top face of this volume, or null. */
+  private planeLabelFor(entity: Entity, object: { getWorldPosition(target: Vector3): Vector3 }, dimensions: ArrayLike<number>): string | null {
+    this.gatherPlanes();
+    if (this.planeCount === 0) return null;
+    object.getWorldPosition(this.point);
+    this.position[0] = this.point.x;
+    this.position[1] = this.point.y;
+    this.position[2] = this.point.z;
+    volumeCenter(this.position, this.rotation, entity.getVectorView(XRMesh, 'min'), entity.getVectorView(XRMesh, 'max'), this.center);
+    const size = volumeSize(dimensions, this.rotation);
+    const box = this.box;
+    box.width = size.width;
+    box.depth = size.depth;
+    box.height = size.height;
+    box.x = this.center[0];
+    box.y = this.center[1];
+    box.z = this.center[2];
+    return matchPlaneLabel(box, this.planePool, this.planeCount);
+  }
+
+  /** Reads the horizontal planes with a furniture label into the pool (world origin and the two sides of the polygon). */
+  private gatherPlanes(): void {
+    this.planeCount = 0;
+    for (const entity of this.queries.planes.entities) {
+      const plane = entity.getValue(XRPlane, '_plane') as
+        | { readonly semanticLabel?: string; readonly orientation?: string; readonly polygon?: ArrayLike<{ readonly x: number; readonly z: number }> }
+        | undefined;
+      const object = entity.object3D;
+      if (!plane || !object || plane.orientation !== 'horizontal' || !plane.polygon || !furnitureLabel(plane.semanticLabel)) continue;
+      const extent = polygonExtent(plane.polygon);
+      object.getWorldPosition(this.planePoint);
+      if (this.planeCount === this.planePool.length) this.planePool.push(createPlaneCandidate());
+      const candidate = this.planePool[this.planeCount];
+      this.planeCount += 1;
+      candidate.label = plane.semanticLabel ?? '';
+      candidate.sizeX = extent.x;
+      candidate.sizeZ = extent.z;
+      candidate.x = this.planePoint.x;
+      candidate.y = this.planePoint.y;
+      candidate.z = this.planePoint.z;
+    }
   }
 
   private onVolumeGone(entity: Entity): void {
@@ -351,7 +436,12 @@ export class RoomObjectsSystem extends createSystem({
     }
     if (this.countChangedAt >= 0 && this.time - this.countChangedAt >= 1) {
       this.countChangedAt = -1;
-      slog(`mr objects outlined=${count}`);
+      // One last look for the volumes whose plane label was not readable when they arrived; a change restarts the count.
+      this.reevaluate();
+      if (this.entries.length !== count) return;
+      let fromPlane = 0;
+      for (const entry of this.entries) if (entry.fromPlane) fromPlane += 1;
+      slog(`mr objects outlined=${count} (fromPlane=${fromPlane})`);
     }
   }
 
