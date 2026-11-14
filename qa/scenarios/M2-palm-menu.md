@@ -1,5 +1,7 @@
 # S2.1 · Menu del palmo
 
+> **Note 2026-11-14 (UI fixes)**: every step or criterion of this scenario about the FitCheck (door-fit label `Fits` / `Won't fit` / `Fits when disassembled` / `No route`, `ui:fit-label`, `ui:fit-marker-*`, the `fit` menu tab, the wheelchair and stroller pieces) is REMOVED with the feature: skip it. The rest still applies.
+
 **Milestone**: M2 · **Tipo**: PC (emulatore IWER via MCP `iwsdk-runtime`)
 Prerequisiti di implementazione: T2.3, T2.10a/b, T2.11, T2.12 (barra con icone e `ui:menu-recenter`), T2.16 (suggerimento, per la verifica 11), T2.17b (azione del Recenter, provata in S2.9). Vedi `docs/plans/M2.md`, decisioni D18, D25, D28.
 

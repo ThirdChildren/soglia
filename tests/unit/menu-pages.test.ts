@@ -41,7 +41,7 @@ const CASES: readonly { count: number; pages: number; sizes: number[] }[] = [
   { count: 40, pages: 7, sizes: [6, 6, 6, 6, 6, 6, 4] },
 ];
 
-const PAGE_TABS: readonly ('items' | 'mine' | 'fit')[] = ['items', 'mine', 'fit'];
+const PAGE_TABS: readonly ('items' | 'mine')[] = ['items', 'mine'];
 
 describe('the page of a 2 x 3 grid holds six pieces', () => {
   it('has six slots in the grid and six pieces per page', () => {
@@ -54,7 +54,7 @@ describe('the page of a 2 x 3 grid holds six pieces', () => {
 describe.each(PAGE_TABS)('paging of the "%s" tab', (tab) => {
   for (const { count, pages, sizes } of CASES) {
     describe(`${count} pieces`, () => {
-      const content = { items: make('i', count), mine: make('m', count), fit: make('f', count) };
+      const content = { items: make('i', count), mine: make('m', count) };
       const list = content[tab];
 
       it(`has ${pages} page(s)`, () => {
@@ -83,7 +83,7 @@ describe.each(PAGE_TABS)('paging of the "%s" tab', (tab) => {
       });
 
       it('shows pieces of its own tab only', () => {
-        const prefix = { items: 'i', mine: 'm', fit: 'f' }[tab];
+        const prefix = { items: 'i', mine: 'm' }[tab];
         for (let page = 0; page < pages; page += 1) {
           for (const id of pageItems(tabPieces(content, tab), page)) expect(id.startsWith(prefix)).toBe(true);
         }
@@ -106,20 +106,18 @@ describe.each(PAGE_TABS)('paging of the "%s" tab', (tab) => {
 });
 
 describe('the pieces of the tabs of the real data', () => {
-  it('has 14 furniture items in 3 pages (6, 6, 2), 3 of my own in 1 page and 2 for the fit check in 1 page', () => {
+  it('has 14 furniture items in 3 pages (6, 6, 2) and 3 of my own in 1 page; the 2 mobility items are not offered', () => {
     expect(furniture).toHaveLength(14);
     expect(mine).toHaveLength(3);
     expect(mobility).toHaveLength(2);
-    const content = { items: furniture, mine, fit: mobility };
+    const content = { items: furniture, mine };
     expect(pageCount(tabPieces(content, 'items').length)).toBe(3);
     expect(pageCount(tabPieces(content, 'mine').length)).toBe(1);
-    expect(pageCount(tabPieces(content, 'fit').length)).toBe(1);
     expect([0, 1, 2].map((page) => pageItems(furniture, page).length)).toEqual([6, 6, 2]);
   });
 
-  it('lists the pieces of "my furniture" and of the fit check in the order of their files', () => {
+  it('lists the pieces of "my furniture" in the order of their file', () => {
     expect(ids(pageItems(mine, 0))).toEqual(['my-sofa', 'my-desk', 'my-bed']);
-    expect(ids(pageItems(mobility, 0))).toEqual(['wheelchair', 'stroller']);
   });
 
   it('keeps the wheelchair and the stroller out of the catalog tab', () => {
@@ -226,7 +224,7 @@ describe('what paging does to its input', () => {
   });
 
   it('gives no piece for the tape measure tab, which has a tool and no pieces', () => {
-    const content = { items: make('i', 14), mine: make('m', 3), fit: make('f', 2) };
+    const content = { items: make('i', 14), mine: make('m', 3) };
     expect(tabPieces(content, 'measure')).toEqual([]);
     expect(pageItems(tabPieces(content, 'measure'), 0)).toEqual([]);
     expect(pageCount(tabPieces(content, 'measure').length)).toBe(1);
@@ -274,18 +272,15 @@ describe('the "menu page" log line', () => {
     }
   });
 
-  it('names the tab for "my furniture" and for the fit check, with the ids of the real data', () => {
+  it('names the tab for "my furniture", with the ids of the real data', () => {
     expect(formatPageLine(0, mine.length, ids(pageItems(mine, 0)), 'mine')).toBe(
       'menu page 1/1 tab=mine items=my-sofa,my-desk,my-bed',
-    );
-    expect(formatPageLine(0, mobility.length, ids(pageItems(mobility, 0)), 'fit')).toBe(
-      'menu page 1/1 tab=fit items=wheelchair,stroller',
     );
   });
 
   it('puts the tab before the items and counts the pages of that tab', () => {
     expect(formatPageLine(1, 14, ['a', 'b'], 'mine')).toBe('menu page 2/3 tab=mine items=a,b');
-    expect(formatPageLine(2, 40, ['a', 'b'], 'fit')).toBe('menu page 3/7 tab=fit items=a,b');
+    expect(formatPageLine(2, 40, ['a', 'b'], 'mine')).toBe('menu page 3/7 tab=mine items=a,b');
     expect(formatPageLine(0, 0, [], 'mine')).toBe('menu page 1/1 tab=mine items=');
     expect(formatPageLine(0, 0, [], 'measure')).toBe('menu page 1/1 tab=measure items=');
   });
@@ -318,10 +313,9 @@ describe('the "menu page" log line', () => {
 });
 
 describe('the "menu tab" log line', () => {
-  it('names the tab: menu tab items, mine, fit and measure', () => {
+  it('names the tab: menu tab items, mine and measure', () => {
     expect(formatTabLine('items')).toBe('menu tab items');
     expect(formatTabLine('mine')).toBe('menu tab mine');
-    expect(formatTabLine('fit')).toBe('menu tab fit');
     expect(formatTabLine('measure')).toBe('menu tab measure');
   });
 

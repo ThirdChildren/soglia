@@ -1,9 +1,9 @@
 // Content of the palm menu (tasks T2.12 and T3.5, decisions D18 and D37): while `ui:palm-menu` is open, one light
 // anchor entity per item of the current page of the current tab (`ui:menu-item-<catalogId>`, six per page, a 2 x 3
-// grid), one per tab when there are two or more tabs with data (`ui:menu-tab-<id>`: `items`, `mine`, `fit`,
+// grid), one per tab when there are two or more tabs with data (`ui:menu-tab-<id>`: `items`, `mine`,
 // `measure`) and a bar of four buttons (`ui:menu-undo`, `ui:menu-page-prev`, `ui:menu-page-next`,
 // `ui:menu-recenter`; `ui:menu-tabletop` takes the place of the last one at real scale, T3.12). A tab without data
-// is not shown (no provisional text): `setMenuTabData` is how T3.8 (`mine`, `fit`) and T3.14 (`measure`) turn
+// is not shown (no provisional text): `setMenuTabData` is how T3.8 (`mine`) and T3.14 (`measure`) turn
 // theirs on. The page and the tab always start at `items`, page 1, when the menu opens. The menu is drawn as ONE panel
 // (src/ui/palm-menu.ts) whose item cards are rewritten in place when the page changes; the anchors have no
 // rendering and sit where each card or button is drawn, in the plane of the menu (the layout is in
@@ -80,8 +80,6 @@ export interface MenuTabData {
   items: readonly CatalogItem[];
   /** The user's own furniture (`mine`, T3.8). */
   mine: readonly CatalogItem[];
-  /** The pieces for the fit check: wheelchair and stroller (`fit`, T3.8/T3.9). */
-  fit: readonly CatalogItem[];
   /** The tape measure exists (`measure`, T3.14). */
   measure: boolean;
 }
@@ -128,12 +126,12 @@ export function releaseMenuHand(hand: Hand): void {
 
 /** Registers the menu content system. */
 export function createMenuItems(world: World, store: Store, items: readonly CatalogItem[]): void {
-  context = { store, data: { items, mine: [], fit: [], measure: false }, version: 0 };
+  context = { store, data: { items, mine: [], measure: false }, version: 0 };
   world.registerSystem(MenuItemsSystem);
 }
 
 /**
- * Gives the tabs their data (T3.8 for `mine` and `fit`, T3.14 for `measure`).
+ * Gives the tabs their data (T3.8 for `mine`, T3.14 for `measure`).
  * Only the fields passed change. A tab with an empty list (or `measure: false`) is not shown. An open menu updates.
  */
 export function setMenuTabData(data: Partial<MenuTabData>): void {
@@ -252,9 +250,9 @@ export class MenuItemsSystem extends createSystem({}) {
 
   /** The tabs that have something to show. */
   private visibleTabs(ctx: MenuItemsContext): MenuTabId[] {
-    const { items, mine, fit, measure } = ctx.data;
+    const { items, mine, measure } = ctx.data;
     // The tape measure works on the table-top model only (T3.14): at real scale its tab is not shown.
-    return menuTabs({ items: items.length, mine: mine.length, fit: fit.length, measure: measure && !isRealScale() ? 1 : 0 });
+    return menuTabs({ items: items.length, mine: mine.length, measure: measure && !isRealScale() ? 1 : 0 });
   }
 
   /** The bar of four buttons; the fourth is "Recenter" on the table-top model and "Tabletop" at real scale (T3.12). */

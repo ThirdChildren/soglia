@@ -1,5 +1,7 @@
 # S-MR · Realtà mista: la mia stanza
 
+> **Note 2026-11-14 (UI fixes)**: every step or criterion of this scenario about the FitCheck (door-fit label `Fits` / `Won't fit` / `Fits when disassembled` / `No route`, `ui:fit-label`, `ui:fit-marker-*`, the `fit` menu tab, the wheelchair and stroller pieces) is REMOVED with the feature: skip it. The rest still applies.
+
 > **Changelog 2026-11-12 (dopo le correzioni della revisione)**: il pulsante `My room`/`Model` ha accanto `Menu` (`ui:room-menu-button`) e la coppia sta 0,215 m sopra gli occhi (`mr button shown distance=0.59 maxAngleDeg=25.5`); schede e coppia restano nel cono di 30° anche con la testa inclinata; le misure dei mobili veri sono "About …"; un pezzo virtuale vince sul mobile vero solo se è davanti o dentro. Aggiunto il percorso a una mano in S-MR.3.
 
 > **Changelog 2026-11-12**: scenario creato per il gate PC della funzione MR (`docs/plans/MR.md`, MR.1–MR.5). Coordinate della stanza sintetica `office_large` dell'emulatore (piano `floor` a y = 0; divano vero centro (1,03; 0,42; −0,65), lungo z da −1,5 a −0,2, x da 0,62 a 1,44; scaffale alto (1,10; 0,73; 0,40)): vanno rilette dai log `room mesh …` all'esecuzione.

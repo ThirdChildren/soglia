@@ -375,12 +375,12 @@ describe('mergeCatalog and menuSections (T3.8)', () => {
     expect(merged.mine).toEqual([]);
   });
 
-  it('splits the menu: items 14, mine 3, fit 2 (the mobility items of the catalog)', () => {
+  it('splits the menu: items 14, mine 3 (the mobility items of the catalog are not offered)', () => {
     const sections = menuSections(items(), mine());
     expect(sections.items).toHaveLength(14);
     expect(sections.items.every((i) => i.kind === 'furniture' && i.owner === undefined)).toBe(true);
     expect(sections.mine.map((i) => i.id)).toEqual(['my-sofa', 'my-desk', 'my-bed']);
-    expect(sections.fit.map((i) => i.id)).toEqual(['wheelchair', 'stroller']);
+    expect(Object.keys(sections).sort()).toEqual(['items', 'mine']);
   });
 
   it('shows no mine section without own pieces', () => {

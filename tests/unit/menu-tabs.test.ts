@@ -36,26 +36,24 @@ import { readText, repoPath } from '../helpers/load-json';
 // hand (a table of the 16 combinations, the positions measured from the layout in centimetres) so a change of the
 // logic cannot change its own expectation.
 
-/** Every combination of "this tab has data" in the order items, mine, fit, measure: 16 rows. */
-const COMBOS: { counts: TabCounts; expected: MenuTabId[] }[] = Array.from({ length: 16 }, (_, mask) => {
+/** Every combination of "this tab has data" in the order items, mine, measure: 8 rows (the fit tab was removed in the UI fixes). */
+const COMBOS: { counts: TabCounts; expected: MenuTabId[] }[] = Array.from({ length: 8 }, (_, mask) => {
   const items = (mask & 1) !== 0;
   const mineData = (mask & 2) !== 0;
-  const fit = (mask & 4) !== 0;
-  const measure = (mask & 8) !== 0;
+  const measure = (mask & 4) !== 0;
   const expected: MenuTabId[] = [];
   if (items) expected.push('items');
   if (mineData) expected.push('mine');
-  if (fit) expected.push('fit');
   if (measure) expected.push('measure');
   return {
-    counts: { items: items ? 14 : 0, mine: mineData ? 3 : 0, fit: fit ? 2 : 0, measure: measure ? 1 : 0 },
+    counts: { items: items ? 14 : 0, mine: mineData ? 3 : 0, measure: measure ? 1 : 0 },
     expected,
   };
 });
 
-describe('menuTabs: the tabs with data, from the 16 combinations', () => {
-  it('has the four tabs in the fixed order', () => {
-    expect(MENU_TABS).toEqual(['items', 'mine', 'fit', 'measure']);
+describe('menuTabs: the tabs with data, from the 8 combinations', () => {
+  it('has the tabs in the fixed order', () => {
+    expect(MENU_TABS).toEqual(['items', 'mine', 'measure']);
   });
 
   it.each(COMBOS.map((combo) => [combo.expected.join('+') || 'nothing', combo] as const))(
@@ -65,43 +63,43 @@ describe('menuTabs: the tabs with data, from the 16 combinations', () => {
     },
   );
 
-  it('covers all 16 combinations and each is different', () => {
-    expect(COMBOS).toHaveLength(16);
-    expect(new Set(COMBOS.map((combo) => combo.expected.join('+'))).size).toBe(16);
+  it('covers all 8 combinations and each is different', () => {
+    expect(COMBOS).toHaveLength(8);
+    expect(new Set(COMBOS.map((combo) => combo.expected.join('+'))).size).toBe(8);
   });
 
   it('keeps the catalog tab always present when the catalog loaded: items alone is the only case without a tab row', () => {
     const withItems = COMBOS.filter((combo) => combo.expected.includes('items'));
-    expect(withItems).toHaveLength(8);
+    expect(withItems).toHaveLength(4);
     const noRow = withItems.filter((combo) => !tabRowVisible(menuTabs(combo.counts)));
     expect(noRow.map((combo) => combo.expected)).toEqual([['items']]);
   });
 
   it('shows no tab at all when there is nothing, not even the catalog tab (the header is the title)', () => {
-    expect(menuTabs({ items: 0, mine: 0, fit: 0, measure: 0 })).toEqual([]);
+    expect(menuTabs({ items: 0, mine: 0, measure: 0 })).toEqual([]);
   });
 
   it('hides a tab whose count is zero, negative or not a number, and shows one with any positive count', () => {
-    expect(menuTabs({ items: 14, mine: NaN, fit: -1, measure: 0 })).toEqual(['items']);
-    expect(menuTabs({ items: 1, mine: 1, fit: 1, measure: 1 })).toEqual(['items', 'mine', 'fit', 'measure']);
-    expect(menuTabs({ items: 40, mine: 40, fit: 40, measure: 5 })).toEqual(['items', 'mine', 'fit', 'measure']);
+    expect(menuTabs({ items: 14, mine: NaN, measure: -1 })).toEqual(['items']);
+    expect(menuTabs({ items: 1, mine: 1, measure: 1 })).toEqual(['items', 'mine', 'measure']);
+    expect(menuTabs({ items: 40, mine: 40, measure: 5 })).toEqual(['items', 'mine', 'measure']);
   });
 
   it('does not depend on the order of the keys of the counts', () => {
-    const shuffled = { measure: 1, fit: 2, mine: 3, items: 14 } as TabCounts;
-    expect(menuTabs(shuffled)).toEqual(['items', 'mine', 'fit', 'measure']);
+    const shuffled = { measure: 1, mine: 3, items: 14 } as TabCounts;
+    expect(menuTabs(shuffled)).toEqual(['items', 'mine', 'measure']);
   });
 
   it('hands back a new array every time: changing it cannot change the list of tabs', () => {
-    const first = menuTabs({ items: 14, mine: 3, fit: 2, measure: 1 });
+    const first = menuTabs({ items: 14, mine: 3, measure: 1 });
     first.pop();
     first.reverse();
-    expect(menuTabs({ items: 14, mine: 3, fit: 2, measure: 1 })).toEqual(['items', 'mine', 'fit', 'measure']);
-    expect(MENU_TABS).toEqual(['items', 'mine', 'fit', 'measure']);
+    expect(menuTabs({ items: 14, mine: 3, measure: 1 })).toEqual(['items', 'mine', 'measure']);
+    expect(MENU_TABS).toEqual(['items', 'mine', 'measure']);
   });
 
   it('shows the data that exists today: only the catalog, so only the title and no tab row', () => {
-    const today = menuTabs({ items: 14, mine: 0, fit: 0, measure: 0 });
+    const today = menuTabs({ items: 14, mine: 0, measure: 0 });
     expect(today).toEqual(['items']);
     expect(tabRowVisible(today)).toBe(false);
   });
@@ -110,11 +108,11 @@ describe('menuTabs: the tabs with data, from the 16 combinations', () => {
 describe('tabRowVisible: the tab row needs a choice', () => {
   it('is shown with two tabs or more and hidden with fewer, for every combination', () => {
     const rows = COMBOS.map((combo) => tabRowVisible(combo.expected));
-    // Written by hand: the number of tabs of each combination is 0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4.
-    const tabsOf = [0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4];
+    // Written by hand: the number of tabs of each combination is 0, 1, 1, 2, 1, 2, 2, 3.
+    const tabsOf = [0, 1, 1, 2, 1, 2, 2, 3];
     expect(COMBOS.map((combo) => combo.expected.length)).toEqual(tabsOf);
     expect(rows).toEqual(tabsOf.map((n) => n >= 2));
-    expect(rows.filter(Boolean)).toHaveLength(11);
+    expect(rows.filter(Boolean)).toHaveLength(4);
   });
 
   it('is hidden for no tab and for one tab, whichever it is', () => {
@@ -122,7 +120,7 @@ describe('tabRowVisible: the tab row needs a choice', () => {
     for (const tab of MENU_TABS) expect(tabRowVisible([tab])).toBe(false);
   });
 
-  it('is shown for every pair of tabs and for all four', () => {
+  it('is shown for every pair of tabs and for all three', () => {
     for (let i = 0; i < MENU_TABS.length; i += 1) {
       for (let j = i + 1; j < MENU_TABS.length; j += 1) expect(tabRowVisible([MENU_TABS[i], MENU_TABS[j]])).toBe(true);
     }
@@ -147,32 +145,31 @@ describe('validTab: the tab to show when the open one is gone', () => {
   });
 
   it('gives the first tab that exists, in the order of the list it is given', () => {
-    expect(validTab('measure', ['mine', 'fit'])).toBe('mine');
-    expect(validTab('items', ['fit', 'measure'])).toBe('fit');
-    expect(validTab('fit', ['measure'])).toBe('measure');
+    expect(validTab('measure', ['mine', 'items'])).toBe('mine');
+    expect(validTab('items', ['mine', 'measure'])).toBe('mine');
+    expect(validTab('mine', ['measure'])).toBe('measure');
   });
 
   it('survives values that are not tabs: the first tab that exists, or the catalog tab', () => {
     for (const bad of ['', 'bogus', 'ITEMS', 'items ', 'tab=mine', undefined, null, 3] as unknown[]) {
-      expect(validTab(bad as MenuTabId, ['mine', 'fit'])).toBe('mine');
+      expect(validTab(bad as MenuTabId, ['mine', 'measure'])).toBe('mine');
       expect(validTab(bad as MenuTabId, [])).toBe('items');
-      expect(validTab(bad as MenuTabId, ['items', 'fit', 'measure'])).toBe('items');
+      expect(validTab(bad as MenuTabId, ['items', 'mine', 'measure'])).toBe('items');
     }
   });
 });
 
 describe('tabPieces', () => {
-  const content = { items: ['a', 'b'], mine: ['x'], fit: ['w', 's'] } as const;
+  const content = { items: ['a', 'b'], mine: ['x'] } as const;
 
   it('gives the list of each tab and none for the tape measure', () => {
     expect(tabPieces(content, 'items')).toBe(content.items);
     expect(tabPieces(content, 'mine')).toBe(content.mine);
-    expect(tabPieces(content, 'fit')).toBe(content.fit);
     expect(tabPieces(content, 'measure')).toHaveLength(0);
   });
 
   it('works with empty lists', () => {
-    const empty = { items: [], mine: [], fit: [] };
+    const empty = { items: [], mine: [] };
     for (const tab of MENU_TABS) expect(tabPieces(empty, tab)).toEqual([]);
   });
 });
@@ -259,10 +256,10 @@ describe('the pick rectangles of the tabs', () => {
     }
   });
 
-  it('has all four tabs fill the width of the menu exactly', () => {
+  it('has all three tabs fill the width of the menu exactly', () => {
     const slots = tabSlots([...MENU_TABS]);
     expect(slots[0].dx - slots[0].halfWidth).toBeCloseTo(-MENU_EXTENT.halfWidth, 9);
-    expect(slots[3].dx + slots[3].halfWidth).toBeCloseTo(MENU_EXTENT.halfWidth, 9);
+    expect(slots[2].dx + slots[2].halfWidth).toBeCloseTo(MENU_EXTENT.halfWidth, 9);
   });
 
   it('has only finite numbers', () => {
@@ -350,7 +347,6 @@ describe('the bar: Recenter on the tabletop model, Tabletop at real scale', () =
     expect(MENU_TABS.map((tab) => stableId.ui(`menu-tab-${tab}`))).toEqual([
       'ui:menu-tab-items',
       'ui:menu-tab-mine',
-      'ui:menu-tab-fit',
       'ui:menu-tab-measure',
     ]);
     for (const tab of MENU_TABS) expect(isValidStableId(stableId.ui(`menu-tab-${tab}`))).toBe(true);

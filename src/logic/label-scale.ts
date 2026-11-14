@@ -1,4 +1,4 @@
-// The size of the labels at large text (task T5.13, decision D58): the room label, the FitCheck label, the reason labels and the
+// The size of the labels at large text (task T5.13, decision D58): the room label, the reason labels and the
 // hints are made 1.25 times bigger as a whole (their text is 3.0 cm, with the same layout and the same line breaks), so the rectangle
 // that the placement keeps inside the 30 degree cone and clear of other panels is 1.25 times bigger too. This module holds the one
 // number (set by src/systems/access.ts when the preference changes) and the four rectangles, normal and scaled, made once so that

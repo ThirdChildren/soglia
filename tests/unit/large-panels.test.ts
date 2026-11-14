@@ -25,7 +25,6 @@ import {
 import { menuAnchor, type Vec3Like } from '../../src/logic/palm';
 import { fitPanelToCone, panelConeAngleDeg, type ConeFit } from '../../src/logic/view-fit';
 import { LARGE_LABEL_MIN_DISTANCE, getLabelScale, labelFit, labelMinDistance, setLabelScale } from '../../src/logic/label-scale';
-import { FIT_LABEL_EXTENT, fitLabelExtent, labelsOverlap, placeFitLabel } from '../../src/logic/fit-label';
 import { REASON_LABEL_EXTENT, reasonLabelExtent } from '../../src/logic/furniture-label';
 import { HINT_EXTENT, hintExtent } from '../../src/logic/hint';
 import { ROOM_LABEL_EXTENT, ROOM_LABEL_FIT, placeRoomLabel, roomLabelExtent } from '../../src/logic/room-label';
@@ -116,7 +115,7 @@ describe('the menu at large text', () => {
 
   it('keeps the six cards of a page and the four buttons of the bar: nothing is cut for large text', () => {
     // The panel is the same one, bigger: every control of the normal layout is still there at the same relative place.
-    expect(tabSlots(['items', 'mine', 'fit', 'measure'])).toHaveLength(4);
+    expect(tabSlots(['items', 'mine', 'measure'])).toHaveLength(3);
   });
 });
 
@@ -206,25 +205,13 @@ describe('the labels at large text (T5.13)', () => {
     expect(LARGE_LABEL_MIN_DISTANCE).toBeLessThan(ROOM_LABEL_FIT.maxDistance);
   });
 
-  it('the FitCheck label fits the cone at large text even with the gaze down (the normal one does at 30.0)', () => {
-    setLabelScale(LARGE_TEXT_FACTOR);
-    const head = { x: 0, y: 1.6, z: 0 };
-    for (const pitch of [0, -0.2, -0.4]) {
-      const forward = { x: 0, y: pitch, z: -0.98 };
-      const out = { x: 0, y: 0, z: 0 };
-      placeFitLabel(null, { x: 0.1, y: 1.4, z: -0.5 }, head, forward, out);
-      expect(panelConeAngleDeg(out, head, forward, fitLabelExtent(), true), `pitch ${pitch}`).toBeLessThanOrEqual(VIEW_CONE_HALF_ANGLE_DEG + 0.05);
-    }
-  });
-
   it('use the normal rectangles until the scale is set, and 1.25 times bigger ones after, the same objects every time', () => {
     expect(getLabelScale()).toBe(1);
     expect(roomLabelExtent()).toBe(ROOM_LABEL_EXTENT);
-    expect(fitLabelExtent()).toBe(FIT_LABEL_EXTENT);
     expect(reasonLabelExtent()).toBe(REASON_LABEL_EXTENT);
     expect(hintExtent()).toBe(HINT_EXTENT);
     setLabelScale(LARGE_TEXT_FACTOR);
-    for (const [now, normal] of [[roomLabelExtent(), ROOM_LABEL_EXTENT], [fitLabelExtent(), FIT_LABEL_EXTENT], [reasonLabelExtent(), REASON_LABEL_EXTENT], [hintExtent(), HINT_EXTENT]] as const) {
+    for (const [now, normal] of [[roomLabelExtent(), ROOM_LABEL_EXTENT], [reasonLabelExtent(), REASON_LABEL_EXTENT], [hintExtent(), HINT_EXTENT]] as const) {
       expect(now.halfWidth).toBeCloseTo(normal.halfWidth * 1.25, 12);
       expect(now.top).toBeCloseTo(normal.top * 1.25, 12);
       expect(now.bottom).toBeCloseTo(normal.bottom * 1.25, 12);
@@ -251,19 +238,4 @@ describe('the labels at large text (T5.13)', () => {
     }
   });
 
-  it('keep the FitCheck label inside the cone with the bigger rectangle, and the overlap test uses it', () => {
-    const head = { x: 0, y: 1.6, z: 0 };
-    const forward = { x: 0, y: -0.2, z: -0.98 };
-    const out = { x: 0, y: 0, z: 0 };
-    setLabelScale(LARGE_TEXT_FACTOR);
-    placeFitLabel(null, { x: 0.1, y: 1.4, z: -0.5 }, head, forward, out);
-    expect(panelConeAngleDeg(out, head, forward, fitLabelExtent(), true)).toBeLessThanOrEqual(VIEW_CONE_HALF_ANGLE_DEG + 0.05);
-    // A rectangle 0.30 m to the side overlaps a label of half width 0.275 (large) but not one of half width 0.22 (normal).
-    const other = { x: out.x + 0.2, y: out.y, z: out.z, halfWidth: 0.05, halfHeight: 0.02 };
-    const headOnAxis = { x: out.x, y: out.y, z: out.z + 0.5 };
-    setLabelScale(1);
-    expect(labelsOverlap(out, headOnAxis, { ...other, x: out.x + 0.28 })).toBe(false);
-    setLabelScale(LARGE_TEXT_FACTOR);
-    expect(labelsOverlap(out, headOnAxis, { ...other, x: out.x + 0.28 })).toBe(true);
-  });
 });

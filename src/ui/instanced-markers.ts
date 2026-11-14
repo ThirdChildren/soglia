@@ -1,8 +1,8 @@
-// Many small coloured blocks in ONE draw call (reduction R-B of D33 in docs/plans/M3.md). Built for the FitCheck door
-// markers (task T3.9) and meant to be reused by the viewpoint markers (T3.12) and the ruler points (T3.14): one
+// Many small coloured blocks in ONE draw call (reduction R-B of D33 in docs/plans/M3.md). Built for the door
+// markers of the removed FitCheck (task T3.9) and used by the viewpoint markers (T3.12), the ruler points (T3.14) and the pins: one
 // `InstancedMesh` of a shared unit box, one unlit material, a colour per instance (`instanceColor`).
 //
-//   const markers = createInstancedMarkers({ capacity: 4, name: 'ui:fit-marker-instances' });
+//   const markers = createInstancedMarkers({ capacity: 4, name: 'ui:scan-outlines-instances' });
 //   parent.add(markers.mesh);
 //   markers.set(0, { x, y, z, yawRad, sx, sy, sz }, 0xe5322d);   // position, rotation about +y, size in metres
 //   markers.hide(0);

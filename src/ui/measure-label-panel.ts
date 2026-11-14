@@ -13,7 +13,7 @@ import { disposePanelEntity } from './panel-lifecycle';
 const PANEL_ASSET = 'measure-label';
 const TEXT_ELEMENT = 'measure-label-text';
 const ROOT_ELEMENT = 'measure-label-root';
-/** Above the FitCheck label (1003): the measure is what the user is looking at while the tape is on. */
+/** Above the other labels (1003): the measure is what the user is looking at while the tape is on. */
 export const MEASURE_LABEL_RENDER_ORDER = 1004;
 
 interface UiDocument {

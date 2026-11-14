@@ -1,5 +1,7 @@
 # S4.10 · Budget di M4: previsione contro misura (segnaposto, pulsanti "Issues", pannello, "Tabletop")
 
+> **Note 2026-11-14 (UI fixes)**: every step or criterion of this scenario about the FitCheck (door-fit label `Fits` / `Won't fit` / `Fits when disassembled` / `No route`, `ui:fit-label`, `ui:fit-marker-*`, the `fit` menu tab, the wheelchair and stroller pieces) is REMOVED with the feature: skip it. The rest still applies.
+
 > **Changelog 2026-11-02**: scenario creato dal piano M4 (D33 aggiornata, D46, D47); estende `qa/scenarios/M3-budget.md` (K1–K8) con K9–K12. Il caso peggiore di M3 misurato è K4 = 71 per vista.
 
 > **Changelog 2026-11-06 (T5.RA, gate di M5)**: il gruppo `house` passa da **24 a 8** (A) e **7** (B) (mesh `merged:walls` e `merged:thresholds`; entità `wall:*` e `door:*` ancore senza mesh) e ogni conteggio sotto scende di **16** per vista; verifica 4 (`house` 24 ± 2) → **8 ± 1**. Le previsioni sono storiche (blocca solo > 100); i valori attuali sono in `qa/scenarios/M5-budget.md`.

@@ -86,7 +86,7 @@ Guida passo passo per l'utente (Fedora, adb, certificato, debug remoto, Meta VR 
 - [ ] ➖ Presa a distanza nella stanza a grandezza reale: **tagliata** (T3.15). In scala reale si prende solo a
       portata di braccio: annotare quanto è scomodo.
 - [ ] Metro: errore ≤ 2 cm su misure note del plastico.
-- [ ] Messaggio del FitCheck leggibile e chiaro.
+- ~~Messaggio del FitCheck leggibile e chiaro.~~ **Rimosso il 2026-11-14** (il FitCheck non esiste più).
 - [ ] Giunti delle mani (`XRHand`, `fillPoses`) disponibili e punto di pizzico preciso (`[soglia:hands]`).
 
 ## M4 · Segnalazioni
@@ -112,7 +112,7 @@ Guida passo passo per l'utente (Fedora, adb, certificato, debug remoto, Meta VR 
 - [ ] **Realtà mista `?mr=1`** (ripresa il 2026-11-11, piano `docs/plans/MR.md`; prima D74 la tagliava). Con lo
       Space Setup fatto, in **una stanza** (decisione dell'utente del 2026-11-14: la seconda stanza non serve): la sessione parte con passthrough; `My room` mostra i contorni dei
       mobili veri con il nome giusto; il raggio della mano li sceglie da seduti; misure entro ±5 cm da un mobile misurato
-      col metro; `Add to Mine` poi FitCheck sull'appartamento; un divano virtuale a 1:1 sul pavimento resta fermo quando
+      col metro; `Add to Mine` (il FitCheck è stato rimosso il 2026-11-14); un divano virtuale a 1:1 sul pavimento resta fermo quando
       ci si gira e diventa rosso sopra un mobile vero; percorso a una mano (`Model`/`Menu`); fps letti sul visore (nessun tetto di 12 pezzi da provare, decisione del 2026-11-14);
       senza `?mr=1` l'app è quella di `main`. Se una prova fallisce, il ramo non si unisce.
 

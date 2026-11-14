@@ -35,7 +35,6 @@ import { installLocalControllers } from './systems/local-controllers';
 import { installLocalHands } from './systems/local-hands';
 import { createFurnitureGrab } from './systems/furniture-grab';
 import { installHandJoints } from './systems/hand-joints';
-import { createFitCheck } from './systems/fit-check';
 import { createFurnitureReasons } from './systems/furniture-reasons';
 import { createMeasure } from './systems/measure';
 import { createIssueCreate } from './systems/issue-create';
@@ -263,8 +262,8 @@ async function start(): Promise<void> {
       const sections = menuSections(catalogResult.items, merged.mine);
       createMenuItems(world, store, sections.items);
       setMenuPickDebug(params.debug);
-      // The tabs `mine` and `fit` appear only when their data arrived; `measure` is there with the tape measure (T3.14).
-      setMenuTabData({ mine: sections.mine, fit: sections.fit, measure: true });
+      // The tab `mine` appears only when its data arrived; `measure` is there with the tape measure (T3.14).
+      setMenuTabData({ mine: sections.mine, measure: true });
     }
     // The Menu buttons (T3.3b) come after the menu items (a control of an open menu wins a pinch) and before the grab and the drag.
     createMenuButton(world, store);
@@ -306,8 +305,6 @@ async function start(): Promise<void> {
       createFurniture(world, store, result.house, merged.items, visuals, built.entity);
       createFurnitureReasons(world, merged.items);
       createFurnitureGrab(world, store, result.house, merged.items, visuals, built.entity, miniature.root);
-      // After the grab and the reason labels: it follows the piece in the hand and keeps its label off theirs (T3.9).
-      createFitCheck(world, store, result.house, merged.items, built.entity);
       if (params.furnish !== 'none') {
         applyFurnish(store, result.house, merged.items, params.furnish);
       }

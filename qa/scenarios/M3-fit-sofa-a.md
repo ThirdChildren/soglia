@@ -1,5 +1,7 @@
 # S3.3 · Il divano "My sofa" non passa da `d-living` (casa A)
 
+> **REMOVED 2026-11-14 (UI fixes, `qa/reports/UI-FIX-2026-11-14.md`)**: the FitCheck (door-fit label, door markers, `fit` menu tab and the `fit ...` log lines) no longer exists. This scenario is kept as history and is not run any more.
+
 > **Changelog 2026-11-02** (solo punti di partenza, criteri invariati; gate M3, avviso A-S3.3-2 in `qa/reports/M3-2026-10-10-B.md`): `P_HALL` passa da `W(7,0; 5,4)` a `W(8,0; 5,15)` = (0,125; 1,39; −0,3725), mano a (0,163; 1,393; −0,4095): un divano di 2,3 m in un corridoio profondo 1,6 m si aggancia alla parete nord (centro z ≈ 5,135, x da 6,85 a 9,15, 0,05 m dalle zone libere di `d-bedroom` e `d-study`) e non tocca la zona di `d-entrance`, quindi la posa è valida e non compaiono le etichette `Overlaps a wall`/`Blocks the door` accanto a quella del FitCheck; passo 6: il transito dal soggiorno è dichiarato.
 
 **Milestone**: M3 · **Tipo**: PC (emulatore IWER via MCP `iwsdk-runtime`) · **Regola di `CLAUDE.md`**: 7 (onestà: controllo semplificato dichiarato), 8, 9

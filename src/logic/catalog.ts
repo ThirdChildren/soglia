@@ -232,18 +232,15 @@ export interface MenuSections {
   items: CatalogItem[];
   /** The user's own pieces (tab `mine`). */
   mine: CatalogItem[];
-  /** The `mobility` items of the catalog (tab `fit`). */
-  fit: CatalogItem[];
 }
 
 /**
- * Splits what was loaded into the sections of the menu: `items` are the `furniture` items of the catalog, `fit` its
- * `mobility` items, `mine` the user's own pieces (all of them, whatever their kind). File order is kept everywhere.
+ * Splits what was loaded into the sections of the menu: `items` are the `furniture` items of the catalog (its
+ * `mobility` items are not offered any more), `mine` the user's own pieces (all of them, whatever their kind). File order is kept everywhere.
  */
 export function menuSections(catalog: readonly CatalogItem[], mine: readonly CatalogItem[]): MenuSections {
   return {
     items: furnitureItems(catalog),
     mine: [...mine],
-    fit: catalog.filter((item) => item.kind === 'mobility'),
   };
 }

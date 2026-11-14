@@ -163,12 +163,12 @@ describe('panel sizes', () => {
 });
 
 describe('tabs (D37)', () => {
-  const none = { items: 0, mine: 0, fit: 0, measure: 0 };
+  const none = { items: 0, mine: 0, measure: 0 };
 
   it('shows only the tabs that have data, in the fixed order', () => {
     expect(menuTabs({ ...none, items: 14 })).toEqual(['items']);
-    expect(menuTabs({ items: 14, mine: 3, fit: 2, measure: 1 })).toEqual(['items', 'mine', 'fit', 'measure']);
-    expect(menuTabs({ items: 14, mine: 0, fit: 2, measure: 0 })).toEqual(['items', 'fit']);
+    expect(menuTabs({ items: 14, mine: 3, measure: 1 })).toEqual(['items', 'mine', 'measure']);
+    expect(menuTabs({ items: 14, mine: 0, measure: 1 })).toEqual(['items', 'measure']);
     expect(menuTabs({ ...none, mine: 3, measure: 1 })).toEqual(['mine', 'measure']);
     expect(menuTabs(none)).toEqual([]);
   });
@@ -180,45 +180,40 @@ describe('tabs (D37)', () => {
   });
 
   it('falls back to the first tab that exists when the open one loses its data', () => {
-    expect(validTab('mine', ['items', 'fit'])).toBe('items');
-    expect(validTab('fit', ['items', 'fit'])).toBe('fit');
+    expect(validTab('mine', ['items', 'measure'])).toBe('items');
+    expect(validTab('measure', ['items', 'measure'])).toBe('measure');
     expect(validTab('items', [])).toBe('items');
-    expect(validTab('items', ['mine', 'fit'])).toBe('mine');
+    expect(validTab('items', ['mine', 'measure'])).toBe('mine');
   });
 
   it('lists the pieces of each tab and none for the tape measure', () => {
-    const content = { items: ['a', 'b'], mine: ['x'], fit: ['w', 's'] };
+    const content = { items: ['a', 'b'], mine: ['x'] };
     expect(tabPieces(content, 'items')).toEqual(['a', 'b']);
     expect(tabPieces(content, 'mine')).toEqual(['x']);
-    expect(tabPieces(content, 'fit')).toEqual(['w', 's']);
     expect(tabPieces(content, 'measure')).toEqual([]);
   });
 
-  it('pages each tab on its own: 14 pieces are 3 pages, 3 and 2 pieces are one page', () => {
+  it('pages each tab on its own: 14 pieces are 3 pages, 3 pieces are one page', () => {
     const mine = ['my-sofa', 'my-desk', 'my-bed'];
-    const fit = ['wheelchair', 'stroller'];
     expect(pageCount(catalog.length)).toBe(3);
     expect(pageCount(mine.length)).toBe(1);
-    expect(pageCount(fit.length)).toBe(1);
     expect(pageItems(mine, 0)).toEqual(mine);
     expect(pageItems(mine, 5)).toEqual(mine);
-    expect(pageItems(fit, 0)).toEqual(fit);
     expect(pageItems([] as string[], 0)).toEqual([]);
   });
 
   it('writes the log lines: the line of M2 for items, the tab named for the others', () => {
     expect(formatPageLine(1, 14, ['coffee-table', 'desk'], 'items')).toBe('menu page 2/3 items=coffee-table,desk');
     expect(formatPageLine(0, 3, ['my-sofa', 'my-desk', 'my-bed'], 'mine')).toBe('menu page 1/1 tab=mine items=my-sofa,my-desk,my-bed');
-    expect(formatPageLine(0, 2, ['wheelchair', 'stroller'], 'fit')).toBe('menu page 1/1 tab=fit items=wheelchair,stroller');
     expect(formatTabLine('measure')).toBe('menu tab measure');
     for (const tab of MENU_TABS) expect(formatTabLine(tab)).toBe(`menu tab ${tab}`);
   });
 
-  it('places the four tabs side by side, centred, each as wide as its label needs', () => {
-    const slots = tabSlots(['items', 'mine', 'fit', 'measure']);
-    expect(slots.map((s) => s.tab)).toEqual(['items', 'mine', 'fit', 'measure']);
+  it('places the three tabs side by side across the whole menu', () => {
+    const slots = tabSlots(['items', 'mine', 'measure']);
+    expect(slots.map((s) => s.tab)).toEqual(['items', 'mine', 'measure']);
     expect(slots[0].dx - slots[0].halfWidth).toBeCloseTo(-MENU_EXTENT.halfWidth, 9);
-    expect(slots[3].dx + slots[3].halfWidth).toBeCloseTo(MENU_EXTENT.halfWidth, 9);
+    expect(slots[2].dx + slots[2].halfWidth).toBeCloseTo(MENU_EXTENT.halfWidth, 9);
     for (let i = 0; i + 1 < slots.length; i += 1) {
       expect(slots[i + 1].dx - slots[i + 1].halfWidth - (slots[i].dx + slots[i].halfWidth)).toBeCloseTo(BAR_GAP / 100, 9);
     }
@@ -229,7 +224,7 @@ describe('tabs (D37)', () => {
   });
 
   it('centres two or three tabs on the menu', () => {
-    for (const visible of [['items', 'fit'], ['items', 'mine', 'measure'], ['mine', 'fit']] as MenuTabId[][]) {
+    for (const visible of [['items', 'measure'], ['items', 'mine', 'measure'], ['mine', 'measure']] as MenuTabId[][]) {
       const slots = tabSlots(visible);
       const left = slots[0].dx - slots[0].halfWidth;
       const right = slots[slots.length - 1].dx + slots[slots.length - 1].halfWidth;

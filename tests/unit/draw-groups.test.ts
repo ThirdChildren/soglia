@@ -45,16 +45,16 @@ describe('classifyGroup: real object names', () => {
     expect(classifyGroup('ui:menu-item-sofa-3seat')).toBe('ui');
   });
 
-  it('viewpoints, pins and the FitCheck markers are markers (not ui)', () => {
+  it('viewpoints, pins and the scan outline markers are markers (not ui)', () => {
     expect(classifyGroup('viewpoint:V1')).toBe('markers');
     expect(classifyGroup('pin:issue-014')).toBe('markers');
     // The instanced mesh of the pins (T4.4) and the draft ghost.
     expect(classifyGroup('pin:instances')).toBe('markers');
     expect(classifyGroup('pin:draft')).toBe('markers');
-    expect(classifyGroup('ui:fit-marker-1')).toBe('markers');
-    expect(classifyGroup('ui:fit-marker-door-d-bedroom')).toBe('markers');
-    // The label of the FitCheck is a panel, not a marker.
-    expect(classifyGroup('ui:fit-label')).toBe('ui');
+    expect(classifyGroup('ui:scan-outlines-1')).toBe('markers');
+    expect(classifyGroup('ui:scan-outlines-door-d-bedroom')).toBe('markers');
+    // The label of a reason is a panel, not a marker.
+    expect(classifyGroup('ui:reason-label')).toBe('ui');
   });
 
   it('every id built by stableId lands in the expected group', () => {
@@ -167,16 +167,15 @@ describe('classifyGroup: every stable id the project generates (expected group w
     ['viewpoint:V1', 'markers'],
     ['viewpoint:V2', 'markers'],
     ['viewpoint:V12', 'markers'],
-    ['ui:fit-marker-d-living', 'markers'],
-    ['ui:fit-marker-d-bedroom', 'markers'],
-    ['ui:fit-marker-d-bathroom', 'markers'],
+    ['ui:scan-outlines-d-living', 'markers'],
+    ['ui:scan-outlines-d-bedroom', 'markers'],
+    ['ui:scan-outlines-d-bathroom', 'markers'],
     // Panels and other ui entities.
     ['ui:palm-menu', 'ui'],
     ['ui:menu-button-left', 'ui'],
     ['ui:menu-button-right', 'ui'],
     ['ui:menu-tab-items', 'ui'],
     ['ui:menu-tab-mine', 'ui'],
-    ['ui:menu-tab-fit', 'ui'],
     ['ui:menu-tab-measure', 'ui'],
     ['ui:menu-tabletop', 'ui'],
     // M4 (T4.12): the Issues buttons, the panel and its controls, and the Tabletop button are panels (`ui`), the pins are `markers`.
@@ -203,7 +202,7 @@ describe('classifyGroup: every stable id the project generates (expected group w
     ['ui:reason-sofa-3seat#12', 'ui'],
     ['ui:room-label', 'ui'],
     ['ui:fade-overlay', 'ui'],
-    ['ui:fit-label', 'ui'],
+    ['ui:reason-label', 'ui'],
     ['ui:error-panel', 'ui'],
     ['ui:glyph-test', 'ui'],
     ['ui:ghost-hand-left', 'ui'],
@@ -231,8 +230,8 @@ describe('classifyGroup: every stable id the project generates (expected group w
   });
 
   it('ids built with stableId.ui for marker-like names follow the same rule as the literals', () => {
-    expect(classifyGroup(stableId.ui('fit-marker-d-living'))).toBe('markers');
-    expect(classifyGroup(stableId.ui('fit-label'))).toBe('ui');
+    expect(classifyGroup(stableId.ui('scan-outlines-d-living'))).toBe('markers');
+    expect(classifyGroup(stableId.ui('reason-label'))).toBe('ui');
     expect(classifyGroup(stableId.ui('reason-bed-double'))).toBe('ui');
   });
 });
@@ -246,34 +245,34 @@ describe('classifyGroup: the tape measure (T3.14)', () => {
 });
 
 describe('classifyGroup: precedence of the marker prefix over the generic ui kind', () => {
-  it('ui:fit-marker-<door> is a marker although it also starts with ui:', () => {
-    expect(classifyGroup('ui:fit-marker-d-living')).toBe('markers');
+  it('ui:scan-outlines-<door> is a marker although it also starts with ui:', () => {
+    expect(classifyGroup('ui:scan-outlines-d-living')).toBe('markers');
   });
 
-  it('the bare prefix ui:fit-marker- is already a marker', () => {
-    expect(classifyGroup('ui:fit-marker-')).toBe('markers');
+  it('the bare prefix ui:scan-outlines- is already a marker', () => {
+    expect(classifyGroup('ui:scan-outlines-')).toBe('markers');
   });
 
   it('close-but-different ui names stay ui', () => {
-    expect(classifyGroup('ui:fit-marker')).toBe('ui');
-    expect(classifyGroup('ui:fit-markerx')).toBe('ui');
-    expect(classifyGroup('ui:fit-label')).toBe('ui');
-    expect(classifyGroup('ui:fit')).toBe('ui');
-    expect(classifyGroup('ui:menu-fit-marker-1')).toBe('ui');
+    expect(classifyGroup('ui:scan-outline')).toBe('ui');
+    expect(classifyGroup('ui:scan-outlinex')).toBe('ui');
+    expect(classifyGroup('ui:reason-label')).toBe('ui');
+    expect(classifyGroup('ui:scan')).toBe('ui');
+    expect(classifyGroup('ui:menu-scan-outlines-1')).toBe('ui');
     expect(classifyGroup('ui:Fit-marker-1')).toBe('ui');
-    expect(classifyGroup('ui: fit-marker-1')).toBe('ui');
+    expect(classifyGroup('ui: scan-outlines-1')).toBe('ui');
     expect(classifyGroup('ui:')).toBe('ui');
   });
 
   it('the marker prefix only applies to the ui kind', () => {
-    expect(classifyGroup('wall:fit-marker-1')).toBe('house');
-    expect(classifyGroup('furniture:fit-marker-1#1')).toBe('furniture');
-    expect(classifyGroup('fit-marker-1')).toBe('other');
-    expect(classifyGroup('uifit-marker-1')).toBe('other');
+    expect(classifyGroup('wall:scan-outlines-1')).toBe('house');
+    expect(classifyGroup('furniture:scan-outlines-1#1')).toBe('furniture');
+    expect(classifyGroup('scan-outlines-1')).toBe('other');
+    expect(classifyGroup('uiscan-outlines-1')).toBe('other');
   });
 
   it('a long marker name is still a marker', () => {
-    expect(classifyGroup(`ui:fit-marker-${'d'.repeat(5000)}`)).toBe('markers');
+    expect(classifyGroup(`ui:scan-outlines-${'d'.repeat(5000)}`)).toBe('markers');
   });
 });
 
@@ -429,7 +428,7 @@ describe('classifyGroup: robustness', () => {
   });
 
   it('is deterministic: the same name always gives the same group', () => {
-    for (const name of ['wall:w-north', 'ui:fit-marker-1', 'LevelRoot', '']) {
+    for (const name of ['wall:w-north', 'ui:scan-outlines-1', 'LevelRoot', '']) {
       expect(classifyGroup(name)).toBe(classifyGroup(name));
     }
   });
@@ -452,8 +451,8 @@ describe('classifyGroup: invariants over the whole name corpus', () => {
     'Wall:w',
     'table:plinth',
     'table:x',
-    'ui:fit-marker-',
-    'ui:fit-marker',
+    'ui:scan-outlines-',
+    'ui:scan-outline',
     'ui:palm-menu',
     'house:apartment-a',
     'room:living',
@@ -466,8 +465,8 @@ describe('classifyGroup: invariants over the whole name corpus', () => {
     'sun:dial',
     'light:patches',
     'pin:issue-014',
-    'ui:fit-marker-d-living',
-    'ui:fit-label',
+    'ui:scan-outlines-d-living',
+    'ui:reason-label',
     'ui:ghost-hand-left',
     'ui:furniture-preview',
   ];
@@ -697,8 +696,8 @@ describe('regression: object names read from the emulator', () => {
     ['ui:ghost-hand-right', 'ui'],
     ['ui:furniture-preview', 'ui'],
     ['ui:reason-bed-double#1', 'ui'],
-    ['ui:fit-label', 'ui'],
-    ['ui:fit-marker-d-living', 'markers'],
+    ['ui:reason-label', 'ui'],
+    ['ui:scan-outlines-d-living', 'markers'],
     ['viewpoint:V1', 'markers'],
     ['pin:issue-014', 'markers'],
   ];

@@ -38,11 +38,6 @@ export default defineAssets({
     type: AssetType.UIKitML,
     priority: 'lazy',
   },
-  'fit-label': {
-    url: `${import.meta.env.BASE_URL}ui/fit-label.uikitml`,
-    type: AssetType.UIKitML,
-    priority: 'lazy',
-  },
   'glyph-test': {
     url: `${import.meta.env.BASE_URL}ui/glyph-test.uikitml`,
     type: AssetType.UIKitML,

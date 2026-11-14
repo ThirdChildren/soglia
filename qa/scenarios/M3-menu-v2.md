@@ -1,5 +1,7 @@
 # S3.8 · Menu v2: testi ≥ 2,4 cm, schede, cono di 30° e etichetta della stanza nel cono
 
+> **Note 2026-11-14 (UI fixes)**: every step or criterion of this scenario about the FitCheck (door-fit label `Fits` / `Won't fit` / `Fits when disassembled` / `No route`, `ui:fit-label`, `ui:fit-marker-*`, the `fit` menu tab, the wheelchair and stroller pieces) is REMOVED with the feature: skip it. The rest still applies.
+
 **Milestone**: M3 · **Tipo**: PC (emulatore IWER via MCP `iwsdk-runtime`) · **Regole di `CLAUDE.md`**: 8 (campo visivo, distanze, niente elementi critici ai bordi), 9 (testo grande)
 Prerequisiti di implementazione: T3.5 (menu v2), T3.6 (etichetta della stanza nel cono), T3.8 (schede `mine` e `fit` con i dati). Vedi `docs/plans/M3.md`, D37; chiude gli avvisi W2 (testi sotto 2,4 cm) e A4 (etichetta senza controllo del cono) di `qa/reports/M2-2026-10-06-rerun3.md`. Convenzioni comuni (pose, `D_GRIP`, `Q_UP`, regola di gate): `qa/scenarios/M3-persistence.md`.
 

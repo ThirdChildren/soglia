@@ -29,7 +29,9 @@ Gli schemi in `schemas/` sono la fonte di verità; `logic-tester` li usa nei tes
 Categorie (`category`): `plumbing`, `electrical`, `appliances`, `furniture`, `floors_walls`,
 `windows_doors`, `other`.
 
-## Regola di passaggio (FitCheck)
+## Regola di passaggio (FitCheck) — RIMOSSA il 2026-11-14
+
+> **Rimossa** (correzioni dell'interfaccia, `qa/reports/UI-FIX-2026-11-14.md`): l'app non mostra più nessun messaggio sul passaggio dalle porte (`Fits` / `Won't fit` / `Fits when disassembled` / `No route`), né i marcatori sulle porte, né la scheda `Fit` del menu. `src/logic/door-graph.ts` e `src/logic/fit-check.ts` non esistono più. Il testo qui sotto resta come storia; i campi `kind: "mobility"` e `disassemblable` restano nel formato dei dati (schemi invariati) ma l'app non li usa.
 
 Semplificata e dichiarata come tale nell'app (seconda riga fissa dell'etichetta: "Simplified check").
 Logica pura in `src/logic/door-graph.ts` e `src/logic/fit-check.ts` (D34 in `docs/plans/M3.md`).
@@ -71,8 +73,7 @@ Esiti attesi sui dati demo (porte di A: `d-entrance` 0,90, `d-living`/`d-bedroom
 ## catalog (`public/catalog/catalog.json`)
 
 `items[]`: `id`, `name`, `kind` (`furniture` | `mobility`), `size` `[w, d, h]` in metri,
-`disassemblable` (letti, armadi, tavoli: il FitCheck risponde "Fits when disassembled" invece di
-bloccarli), `model` (percorso glb, `null` finché l'`asset-curator` non lo assegna), `credit` (id in `CREDITS.md`).
+`disassemblable` (letti, armadi, tavoli; il campo resta nel formato ma non è più usato dall'app dopo la rimozione del FitCheck), `model` (percorso glb, `null` finché l'`asset-curator` non lo assegna), `credit` (id in `CREDITS.md`).
 Schema: `schemas/catalog.schema.json` (vale anche per `my-furniture.json`: senza `model` serve `owner`; con `model` serve `credit`).
 Validazione a mano in `src/logic/catalog.ts` (`checkCatalog`), con in più id univoci. I pezzi piatti
 (`size[2] ≤ 0.02`, il tappeto) non collidono con altri mobili e non bloccano le porte.

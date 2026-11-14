@@ -1,5 +1,7 @@
 # S3.5 · Sedia a rotelle e passeggino
 
+> **REMOVED 2026-11-14 (UI fixes, `qa/reports/UI-FIX-2026-11-14.md`)**: the FitCheck (door-fit label, door markers, `fit` menu tab and the `fit ...` log lines) no longer exists. This scenario is kept as history and is not run any more.
+
 > **Changelog 2026-11-06** (decisione dell'utente sul riporto 6 del gate di M4; piano M5): passo 3: il passeggino non si posa più a +0,06 m dalla sedia (punto non libero): prima del passo 3 la sedia a rotelle si toglie con Undo (`ui:menu-undo`, `furniture:wheelchair#1` sparisce) e il passeggino va sul punto originale `P_BATH`. Nessun criterio cambia.
 
 **Milestone**: M3 · **Tipo**: PC (emulatore IWER via MCP `iwsdk-runtime`) · **Regola di `CLAUDE.md`**: 9 (accessibilità)

@@ -154,16 +154,16 @@ punti di vista, metro (T3.5–T3.17).
   "Tabletop" dal menu per tornare. Presa a distanza nella stanza (T3.15, **tagliabile**: se salta,
   in scala reale si prende solo a portata di braccio e lo si dichiara).
 - `Measure`: pizzico su due punti, aggancio a pareti e spigoli, misura in cm.
-- `FitCheck`: percorso dalla porta d'ingresso alla stanza (grafo delle porte), verifica di ogni
+- ~~`FitCheck`~~ **RIMOSSO il 2026-11-14** (correzioni dell'interfaccia, `qa/reports/UI-FIX-2026-11-14.md`): percorso dalla porta d'ingresso alla stanza (grafo delle porte), verifica di ogni
   porta; lo stesso per sedia a rotelle e passeggino. Messaggio in inglese che spiega il motivo.
 
 | Scenario PC | Verifica |
 |---|---|
 | S3.1 Punto di vista | pizzico su `viewpoint:V1` → camera a scala reale nel soggiorno; "Tabletop" → ritorno |
 | S3.2 Metro | misura la finestra dello studio → 140 cm (± 1) |
-| S3.3 Divano in A | "My sofa 230 × 95 × 85" verso il soggiorno → blocco su `door:d-living`, messaggio "Won't fit: the door is 80 cm wide, the sofa's shortest side is 85 cm" |
-| S3.4 Divano in B | stessa prova in `apartment-b` → passa |
-| S3.5 Sedia a rotelle | verso il bagno di A → blocco su `door:d-bathroom` (75 cm); il passeggino (60 cm) passa |
+| S3.3 Divano in A (**rimosso 2026-11-14**) | "My sofa 230 × 95 × 85" verso il soggiorno → blocco su `door:d-living`, messaggio "Won't fit: the door is 80 cm wide, the sofa's shortest side is 85 cm" |
+| S3.4 Divano in B (**rimosso 2026-11-14**) | stessa prova in `apartment-b` → passa |
+| S3.5 Sedia a rotelle (**rimosso 2026-11-14**) | verso il bagno di A → blocco su `door:d-bathroom` (75 cm); il passeggino (60 cm) passa |
 | S3.0 Persistenza e pausa/ripresa (aggiunto dal piano M3) | `qa/scenarios/M3-persistence.md`: salva, ricarica (stessi pezzi, stessi id), `reset=1` cancella, una chiave per casa, sessione nascosta con un pezzo in mano (nessun duplicato, presa chiusa, stesso id alla ripresa) |
 | S3.6 Palmo e pizzico dalle articolazioni (aggiunto) | `qa/scenarios/M3-joints.md`: sorgente `joints`/`grip`, palmo in su dai giunti, punto di pizzico, `pinch=grip` come riserva |
 | S3.7 Pulsante Menu a una mano e F-A (aggiunto) | `qa/scenarios/M3-menu-button.md`: apertura, pagina, presa, Undo e Recenter con la sola destra; il pizzico in aria della mano del menu non seleziona la stanza |

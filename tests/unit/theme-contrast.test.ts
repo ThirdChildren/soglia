@@ -4,11 +4,8 @@ import {
   HIGH_CONTRAST_PIN_SCALE,
   contrastRatio,
   floorColor,
-  fitColors,
-  getFitColors,
   getPalette,
   getUiColors,
-  highContrastFitColors,
   highContrastPalette,
   highContrastUiColors,
   isHighContrast,
@@ -74,12 +71,6 @@ describe('the pairs of text and background of the panels', () => {
   it('the high-contrast set is the one in the spec: black, white, yellow', () => {
     expect(highContrastUiColors).toMatchObject({ surface: '#000000', ink: '#ffffff', border: '#ffd400' });
   });
-  it('the four borders of the FitCheck label stand out from the surface, in both sets', () => {
-    for (const key of Object.keys(fitColors) as (keyof typeof fitColors)[]) {
-      expect(contrastRatio(fitColors[key], uiColors.surface), `normal ${key}`).toBeGreaterThanOrEqual(GRAPHICS);
-      expect(contrastRatio(highContrastFitColors[key], highContrastUiColors.surface), `high ${key}`).toBeGreaterThanOrEqual(AAA);
-    }
-  });
 });
 
 describe('every colour of the UIKitML files', () => {
@@ -143,12 +134,10 @@ describe('what the getters answer', () => {
     expect(isHighContrast()).toBe(false);
     expect(getPalette()).toBe(palette);
     expect(getUiColors()).toBe(uiColors);
-    expect(getFitColors()).toBe(fitColors);
     expect(setAccessibility({ contrast: true, largeText: false })).toBe(true);
     expect(isHighContrast()).toBe(true);
     expect(getPalette()).toBe(highContrastPalette);
     expect(getUiColors()).toBe(highContrastUiColors);
-    expect(getFitColors()).toBe(highContrastFitColors);
     expect(floorColor('wood')).toBe(highContrastPalette.floor.wood);
     expect(floorColor(undefined)).toBe(highContrastPalette.floor.concrete);
   });

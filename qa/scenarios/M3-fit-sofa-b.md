@@ -1,5 +1,7 @@
 # S3.4 · Lo stesso divano passa in casa B
 
+> **REMOVED 2026-11-14 (UI fixes, `qa/reports/UI-FIX-2026-11-14.md`)**: the FitCheck (door-fit label, door markers, `fit` menu tab and the `fit ...` log lines) no longer exists. This scenario is kept as history and is not run any more.
+
 **Milestone**: M3 · **Tipo**: PC (emulatore IWER via MCP `iwsdk-runtime`)
 Prerequisiti di implementazione: gli stessi di S3.3 (T3.5, T3.7, T3.8, T3.9). Vedi `docs/plans/M3.md`, D34. Convenzioni comuni (pose, `D_GRIP`, `Q_UP`, regola di gate): `qa/scenarios/M3-persistence.md`; sequenze di presa e letture: `qa/scenarios/M3-fit-sofa-a.md`.
 

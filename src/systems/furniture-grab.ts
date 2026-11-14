@@ -82,7 +82,7 @@ let cancelHeldNow: ((reason: string) => boolean) | null = null;
 let heldNow: (() => HeldPiece | null) | null = null;
 const releaseListeners = new Set<(id: string) => void>();
 
-/** The piece in the hand, read-only (the FitCheck follows it; T3.9). */
+/** The piece in the hand, read-only. */
 export interface HeldPiece {
   readonly id: string;
   readonly catalogId: string;

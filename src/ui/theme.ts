@@ -28,7 +28,7 @@ export const palette = {
   /** Outline of a piece on the floor: green = valid, red = not valid (D14). */
   outlineValid: 0x2ecc71,
   outlineInvalid: 0xe5322d,
-  /** Viewpoint markers on the table-top model (T3.12): blue, away from the red/green of the FitCheck and the orange doors. */
+  /** Viewpoint markers on the table-top model (T3.12): blue, away from the red/green of the piece outlines and the orange doors. */
   viewpoint: 0x2a5bd7,
   /** The tape measure (T3.14): amber points over a dark tape, both readable on the light walls and on the dark base. */
   measurePoint: 0xffc400,
@@ -166,29 +166,6 @@ export function chipLook(active: boolean): { readonly backgroundColor: string; r
   return active ? { backgroundColor: c.active, color: c.activeInk } : { backgroundColor: c.surface, color: c.ink };
 }
 
-/**
- * Border colour of the FitCheck label by outcome (CSS strings), T3.9. The text says the same thing in words, so the
- * colour is never the only signal. The markers on the doors use `palette.outlineValid` / `palette.outlineInvalid`.
- */
-export const fitColors = {
-  fits: '#1e8e4e',
-  blocked: '#e5322d',
-  disassembled: '#d97706',
-  noRoute: '#6b6f76',
-} as const;
-
-/** The same four borders, brighter, for a black panel (D58). */
-export const highContrastFitColors: Readonly<Record<keyof typeof fitColors, string>> = {
-  fits: '#3ddc84',
-  blocked: '#ff6b63',
-  disassembled: '#ffb02e',
-  noRoute: '#c8ccd2',
-};
-
-export function getFitColors(): Readonly<Record<keyof typeof fitColors, string>> {
-  return highContrast ? highContrastFitColors : fitColors;
-}
-
 // --- Contrast ratios (WCAG 2.x) --------------------------------------------------------------------------------------------
 
 /** Relative luminance of `#rrggbb` or 0xRRGGBB (WCAG 2.x), 0 (black) to 1 (white). */
@@ -226,11 +203,7 @@ export function themedColor(property: UiColorProperty, original: string): string
     case 'backgroundColor':
       return c === uiColors.surface ? highContrastUiColors.surface : original;
     case 'borderColor':
-      if (c === uiColors.border) return highContrastUiColors.border;
-      for (const key of Object.keys(fitColors) as (keyof typeof fitColors)[]) {
-        if (c === fitColors[key]) return highContrastFitColors[key];
-      }
-      return original;
+      return c === uiColors.border ? highContrastUiColors.border : original;
     case 'color':
       return c === uiColors.ink || SOFT_INKS.has(c) ? highContrastUiColors.ink : original;
   }
