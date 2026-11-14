@@ -37,7 +37,7 @@
 
 ## Prove sul visore (dell'utente, prima dell'unione)
 
-In **due stanze diverse** con Space Setup fatto: la sessione MR parte; i mobili veri compaiono con il nome giusto; il raggio li sceglie da seduti; le misure sono plausibili (±5 cm su un mobile misurato col metro); `Add to Mine` poi FitCheck sull'appartamento; un divano virtuale a 1:1 sul pavimento resta fermo quando ci si gira; collisione con un mobile vero; ≥ 60 fps; senza `?mr=1` l'app è quella di `main`. Se una prova fallisce, la funzione resta sul ramo.
+In **una stanza** con Space Setup fatto (la seconda stanza non serve: decisione dell'utente del 2026-11-14): la sessione MR parte; i mobili veri compaiono con il nome giusto; il raggio li sceglie da seduti; le misure sono plausibili (±5 cm su un mobile misurato col metro); `Add to Mine` poi FitCheck sull'appartamento; un divano virtuale a 1:1 sul pavimento resta fermo quando ci si gira; collisione con un mobile vero; ≥ 60 fps; senza `?mr=1` l'app è quella di `main`. Se una prova fallisce, la funzione resta sul ramo.
 
 ## Changelog
 - 2026-11-11: piano creato dopo la decisione dell'utente (versione completa, ramo separato, mobili virtuali nella stanza).

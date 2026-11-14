@@ -110,10 +110,10 @@ Guida passo passo per l'utente (Fedora, adb, certificato, debug remoto, Meta VR 
 - [ ] **`Rotate`** (12 s dopo la posa) raggiungibile e non premuto per sbaglio; **coach** del pulsante `Menu`
       comprensibile senza spiegazioni.
 - [ ] **Realtà mista `?mr=1`** (ripresa il 2026-11-11, piano `docs/plans/MR.md`; prima D74 la tagliava). Con lo
-      Space Setup fatto, in **due stanze diverse**: la sessione parte con passthrough; `My room` mostra i contorni dei
+      Space Setup fatto, in **una stanza** (decisione dell'utente del 2026-11-14: la seconda stanza non serve): la sessione parte con passthrough; `My room` mostra i contorni dei
       mobili veri con il nome giusto; il raggio della mano li sceglie da seduti; misure entro ±5 cm da un mobile misurato
       col metro; `Add to Mine` poi FitCheck sull'appartamento; un divano virtuale a 1:1 sul pavimento resta fermo quando
-      ci si gira e diventa rosso sopra un mobile vero; percorso a una mano (`Model`/`Menu`); ≥ 60 fps con 12 pezzi;
+      ci si gira e diventa rosso sopra un mobile vero; percorso a una mano (`Model`/`Menu`); fps letti sul visore (nessun tetto di 12 pezzi da provare, decisione del 2026-11-14);
       senza `?mr=1` l'app è quella di `main`. Se una prova fallisce, il ramo non si unisce.
 
 ## Strumenti di M6 (fase A implementata il 2026-11-07, **provati solo sul PC**; i dettagli in `docs/QUEST_SETUP.md`, sezione 11)
