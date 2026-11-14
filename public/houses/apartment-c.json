@@ -1,0 +1,891 @@
+{
+  "id": "apartment-c",
+  "title": "Three-bedroom apartment, 126 m²",
+  "areaM2": 126.1,
+  "floor": 6,
+  "location": {
+    "lat": 45.07,
+    "lon": 7.69
+  },
+  "northAngleDeg": 0,
+  "ceilingHeight": 2.7,
+  "rooms": [
+    {
+      "id": "bedroom-2",
+      "name": "Bedroom 2",
+      "polygon": [
+        [
+          1.48,
+          0.12
+        ],
+        [
+          5.62,
+          0.12
+        ],
+        [
+          5.62,
+          4.3
+        ],
+        [
+          1.48,
+          4.3
+        ]
+      ],
+      "floorMaterial": "wood"
+    },
+    {
+      "id": "bedroom-1",
+      "name": "Bedroom 1",
+      "polygon": [
+        [
+          1.48,
+          4.3
+        ],
+        [
+          5.62,
+          4.3
+        ],
+        [
+          5.62,
+          7.6
+        ],
+        [
+          1.48,
+          7.6
+        ]
+      ],
+      "floorMaterial": "wood"
+    },
+    {
+      "id": "kitchen",
+      "name": "Kitchen",
+      "polygon": [
+        [
+          0.1,
+          7.6
+        ],
+        [
+          5.62,
+          7.6
+        ],
+        [
+          5.62,
+          10.17
+        ],
+        [
+          0.1,
+          10.17
+        ]
+      ],
+      "floorMaterial": "tile"
+    },
+    {
+      "id": "hall",
+      "name": "Hall & corridor",
+      "polygon": [
+        [
+          5.62,
+          2.55
+        ],
+        [
+          6.85,
+          2.55
+        ],
+        [
+          6.85,
+          4.4
+        ],
+        [
+          9.7,
+          4.4
+        ],
+        [
+          9.7,
+          2.55
+        ],
+        [
+          11.15,
+          2.55
+        ],
+        [
+          11.15,
+          4.4
+        ],
+        [
+          10.87,
+          4.4
+        ],
+        [
+          10.87,
+          5.6
+        ],
+        [
+          7.5,
+          5.6
+        ],
+        [
+          7.5,
+          9.3
+        ],
+        [
+          5.62,
+          9.3
+        ]
+      ],
+      "floorMaterial": "wood"
+    },
+    {
+      "id": "storage",
+      "name": "Storage",
+      "polygon": [
+        [
+          6.85,
+          2.55
+        ],
+        [
+          7.95,
+          2.55
+        ],
+        [
+          7.95,
+          4.4
+        ],
+        [
+          6.85,
+          4.4
+        ]
+      ],
+      "floorMaterial": "tile"
+    },
+    {
+      "id": "bathroom-1",
+      "name": "Bathroom 1",
+      "polygon": [
+        [
+          7.95,
+          2.55
+        ],
+        [
+          9.7,
+          2.55
+        ],
+        [
+          9.7,
+          4.4
+        ],
+        [
+          7.95,
+          4.4
+        ]
+      ],
+      "floorMaterial": "tile"
+    },
+    {
+      "id": "bathroom-2",
+      "name": "Bathroom 2",
+      "polygon": [
+        [
+          9.17,
+          0.12
+        ],
+        [
+          11.15,
+          0.12
+        ],
+        [
+          11.15,
+          2.55
+        ],
+        [
+          9.17,
+          2.55
+        ]
+      ],
+      "floorMaterial": "tile"
+    },
+    {
+      "id": "bedroom-3",
+      "name": "Bedroom 3",
+      "polygon": [
+        [
+          11.15,
+          0.12
+        ],
+        [
+          15.95,
+          0.12
+        ],
+        [
+          15.95,
+          4.3
+        ],
+        [
+          11.15,
+          4.3
+        ]
+      ],
+      "floorMaterial": "wood"
+    },
+    {
+      "id": "entrance",
+      "name": "Entrance",
+      "polygon": [
+        [
+          7.5,
+          5.6
+        ],
+        [
+          11.65,
+          5.6
+        ],
+        [
+          11.65,
+          7.67
+        ],
+        [
+          7.5,
+          7.67
+        ]
+      ],
+      "floorMaterial": "wood"
+    },
+    {
+      "id": "living",
+      "name": "Living room",
+      "polygon": [
+        [
+          11.65,
+          4.3
+        ],
+        [
+          15.95,
+          4.3
+        ],
+        [
+          15.95,
+          9.87
+        ],
+        [
+          11.65,
+          9.87
+        ]
+      ],
+      "floorMaterial": "wood"
+    }
+  ],
+  "walls": [
+    {
+      "id": "w-north-west",
+      "from": [
+        1.48,
+        0.12
+      ],
+      "to": [
+        5.62,
+        0.12
+      ],
+      "thickness": 0.25,
+      "exterior": true,
+      "openings": []
+    },
+    {
+      "id": "w-west",
+      "from": [
+        1.48,
+        0.12
+      ],
+      "to": [
+        1.48,
+        7.6
+      ],
+      "thickness": 0.35,
+      "exterior": true,
+      "openings": [
+        {
+          "id": "win-bedroom-2",
+          "type": "window",
+          "offset": 2.33,
+          "width": 1.4,
+          "height": 2.2,
+          "sill": 0.0
+        },
+        {
+          "id": "win-bedroom-1",
+          "type": "window",
+          "offset": 5.33,
+          "width": 1.4,
+          "height": 2.2,
+          "sill": 0.0
+        }
+      ]
+    },
+    {
+      "id": "w-kitchen-west",
+      "from": [
+        0.1,
+        7.6
+      ],
+      "to": [
+        0.1,
+        10.17
+      ],
+      "thickness": 0.2,
+      "exterior": true,
+      "openings": [
+        {
+          "id": "win-kitchen",
+          "type": "window",
+          "offset": 0.43,
+          "width": 1.46,
+          "height": 1.4,
+          "sill": 0.9
+        }
+      ]
+    },
+    {
+      "id": "w-kitchen-south",
+      "from": [
+        0.1,
+        10.17
+      ],
+      "to": [
+        5.62,
+        10.17
+      ],
+      "thickness": 0.25,
+      "exterior": true,
+      "openings": []
+    },
+    {
+      "id": "w-hall-south",
+      "from": [
+        5.62,
+        9.3
+      ],
+      "to": [
+        7.5,
+        9.3
+      ],
+      "thickness": 0.2,
+      "exterior": true,
+      "openings": []
+    },
+    {
+      "id": "w-entrance-south",
+      "from": [
+        7.5,
+        7.67
+      ],
+      "to": [
+        11.65,
+        7.67
+      ],
+      "thickness": 0.2,
+      "exterior": true,
+      "openings": [
+        {
+          "id": "d-entrance",
+          "type": "door",
+          "offset": 0.3,
+          "width": 0.9,
+          "height": 2.1,
+          "connects": [
+            "outside",
+            "entrance"
+          ],
+          "entrance": true
+        }
+      ]
+    },
+    {
+      "id": "w-living-south",
+      "from": [
+        11.65,
+        9.87
+      ],
+      "to": [
+        15.95,
+        9.87
+      ],
+      "thickness": 0.25,
+      "exterior": true,
+      "openings": []
+    },
+    {
+      "id": "w-east",
+      "from": [
+        15.95,
+        0.12
+      ],
+      "to": [
+        15.95,
+        9.87
+      ],
+      "thickness": 0.4,
+      "exterior": true,
+      "openings": [
+        {
+          "id": "win-bedroom-3",
+          "type": "window",
+          "offset": 2.3,
+          "width": 1.46,
+          "height": 2.2,
+          "sill": 0.0
+        },
+        {
+          "id": "win-living-1",
+          "type": "window",
+          "offset": 4.63,
+          "width": 2.2,
+          "height": 2.2,
+          "sill": 0.0
+        },
+        {
+          "id": "win-living-2",
+          "type": "window",
+          "offset": 8.11,
+          "width": 1.49,
+          "height": 2.2,
+          "sill": 0.0
+        }
+      ]
+    },
+    {
+      "id": "w-north-east",
+      "from": [
+        9.17,
+        0.12
+      ],
+      "to": [
+        15.95,
+        0.12
+      ],
+      "thickness": 0.25,
+      "exterior": true,
+      "openings": []
+    },
+    {
+      "id": "w-bath-2-west",
+      "from": [
+        9.17,
+        0.12
+      ],
+      "to": [
+        9.17,
+        2.55
+      ],
+      "thickness": 0.15,
+      "exterior": true,
+      "openings": [
+        {
+          "id": "win-bathroom-2",
+          "type": "window",
+          "offset": 1.17,
+          "width": 0.76,
+          "height": 0.8,
+          "sill": 1.2
+        }
+      ]
+    },
+    {
+      "id": "w-court",
+      "from": [
+        5.62,
+        2.55
+      ],
+      "to": [
+        9.17,
+        2.55
+      ],
+      "thickness": 0.1,
+      "exterior": true,
+      "openings": [
+        {
+          "id": "win-hall",
+          "type": "window",
+          "offset": 0.18,
+          "width": 0.9,
+          "height": 1.2,
+          "sill": 1.0
+        },
+        {
+          "id": "win-storage",
+          "type": "window",
+          "offset": 1.38,
+          "width": 0.8,
+          "height": 0.8,
+          "sill": 1.2
+        },
+        {
+          "id": "win-bathroom-1",
+          "type": "window",
+          "offset": 2.58,
+          "width": 0.85,
+          "height": 0.8,
+          "sill": 1.2
+        }
+      ]
+    },
+    {
+      "id": "w-west-core",
+      "from": [
+        5.62,
+        0.12
+      ],
+      "to": [
+        5.62,
+        10.17
+      ],
+      "thickness": 0.15,
+      "exterior": false,
+      "openings": [
+        {
+          "id": "d-bedroom-2",
+          "type": "door",
+          "offset": 3.03,
+          "width": 0.8,
+          "height": 2.1,
+          "connects": [
+            "hall",
+            "bedroom-2"
+          ]
+        },
+        {
+          "id": "d-bedroom-1",
+          "type": "door",
+          "offset": 6.33,
+          "width": 0.8,
+          "height": 2.1,
+          "connects": [
+            "hall",
+            "bedroom-1"
+          ]
+        },
+        {
+          "id": "d-kitchen",
+          "type": "door",
+          "offset": 7.83,
+          "width": 0.8,
+          "height": 2.1,
+          "connects": [
+            "hall",
+            "kitchen"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "w-bedroom-2-1",
+      "from": [
+        1.48,
+        4.3
+      ],
+      "to": [
+        5.62,
+        4.3
+      ],
+      "thickness": 0.1,
+      "exterior": false,
+      "openings": []
+    },
+    {
+      "id": "w-bedroom-1-kitchen",
+      "from": [
+        0.1,
+        7.6
+      ],
+      "to": [
+        5.62,
+        7.6
+      ],
+      "thickness": 0.1,
+      "exterior": false,
+      "openings": []
+    },
+    {
+      "id": "w-storage-west",
+      "from": [
+        6.85,
+        2.55
+      ],
+      "to": [
+        6.85,
+        4.4
+      ],
+      "thickness": 0.1,
+      "exterior": false,
+      "openings": [
+        {
+          "id": "d-storage",
+          "type": "door",
+          "offset": 0.6,
+          "width": 0.8,
+          "height": 2.1,
+          "connects": [
+            "hall",
+            "storage"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "w-storage-bath-1",
+      "from": [
+        7.95,
+        2.55
+      ],
+      "to": [
+        7.95,
+        4.4
+      ],
+      "thickness": 0.1,
+      "exterior": false,
+      "openings": []
+    },
+    {
+      "id": "w-bath-1-east",
+      "from": [
+        9.7,
+        2.55
+      ],
+      "to": [
+        9.7,
+        4.4
+      ],
+      "thickness": 0.1,
+      "exterior": false,
+      "openings": []
+    },
+    {
+      "id": "w-corridor-north",
+      "from": [
+        6.85,
+        4.4
+      ],
+      "to": [
+        9.7,
+        4.4
+      ],
+      "thickness": 0.1,
+      "exterior": false,
+      "openings": [
+        {
+          "id": "d-bathroom-1",
+          "type": "door",
+          "offset": 1.4,
+          "width": 0.75,
+          "height": 2.1,
+          "connects": [
+            "hall",
+            "bathroom-1"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "w-bath-2-south",
+      "from": [
+        9.17,
+        2.55
+      ],
+      "to": [
+        11.15,
+        2.55
+      ],
+      "thickness": 0.1,
+      "exterior": false,
+      "openings": [
+        {
+          "id": "d-bathroom-2",
+          "type": "door",
+          "offset": 0.63,
+          "width": 0.8,
+          "height": 2.1,
+          "connects": [
+            "hall",
+            "bathroom-2"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "w-bedroom-3-west",
+      "from": [
+        11.15,
+        0.12
+      ],
+      "to": [
+        11.15,
+        4.3
+      ],
+      "thickness": 0.1,
+      "exterior": false,
+      "openings": [
+        {
+          "id": "d-bedroom-3",
+          "type": "door",
+          "offset": 3.08,
+          "width": 0.85,
+          "height": 2.1,
+          "connects": [
+            "hall",
+            "bedroom-3"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "w-bedroom-3-living",
+      "from": [
+        11.15,
+        4.3
+      ],
+      "to": [
+        15.95,
+        4.3
+      ],
+      "thickness": 0.1,
+      "exterior": false,
+      "openings": []
+    },
+    {
+      "id": "w-corridor-south",
+      "from": [
+        7.5,
+        5.6
+      ],
+      "to": [
+        10.87,
+        5.6
+      ],
+      "thickness": 0.1,
+      "exterior": false,
+      "openings": [
+        {
+          "id": "d-hall-entrance",
+          "type": "door",
+          "offset": 1.46,
+          "width": 0.84,
+          "height": 2.1,
+          "connects": [
+            "hall",
+            "entrance"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "w-corridor-east",
+      "from": [
+        10.87,
+        4.4
+      ],
+      "to": [
+        10.87,
+        5.6
+      ],
+      "thickness": 0.15,
+      "exterior": false,
+      "openings": []
+    },
+    {
+      "id": "w-entrance-west",
+      "from": [
+        7.5,
+        5.6
+      ],
+      "to": [
+        7.5,
+        7.67
+      ],
+      "thickness": 0.1,
+      "exterior": false,
+      "openings": []
+    },
+    {
+      "id": "w-hall-landing",
+      "from": [
+        7.5,
+        7.67
+      ],
+      "to": [
+        7.5,
+        9.3
+      ],
+      "thickness": 0.15,
+      "exterior": true,
+      "openings": [
+        {
+          "id": "d-landing",
+          "type": "door",
+          "offset": 0.33,
+          "width": 0.9,
+          "height": 2.1,
+          "connects": [
+            "outside",
+            "hall"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "w-living-west",
+      "from": [
+        11.65,
+        4.3
+      ],
+      "to": [
+        11.65,
+        9.87
+      ],
+      "thickness": 0.2,
+      "exterior": false,
+      "openings": [
+        {
+          "id": "d-living",
+          "type": "door",
+          "offset": 1.65,
+          "width": 1.3,
+          "height": 2.1,
+          "connects": [
+            "entrance",
+            "living"
+          ]
+        }
+      ]
+    }
+  ],
+  "viewpoints": [
+    {
+      "id": "V1",
+      "room": "living",
+      "position": [
+        13.75,
+        7.05
+      ],
+      "yawDeg": 0,
+      "eyeHeight": 1.2
+    },
+    {
+      "id": "V2",
+      "room": "bedroom-3",
+      "position": [
+        13.5,
+        2.25
+      ],
+      "yawDeg": 0,
+      "eyeHeight": 1.2
+    },
+    {
+      "id": "V3",
+      "room": "kitchen",
+      "position": [
+        2.9,
+        8.85
+      ],
+      "yawDeg": 0,
+      "eyeHeight": 1.2
+    }
+  ],
+  "fixtures": []
+}

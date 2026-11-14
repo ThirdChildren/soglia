@@ -17,7 +17,9 @@ import { loadCatalog } from './data/load-catalog';
 import { loadMyFurniture, type LoadMyFurnitureResult } from './data/load-my-furniture';
 import { loadHouse } from './data/load-house';
 import { loadInfoPoints } from './data/load-issues';
+import { createHouseFiles } from './data/house-files';
 import { createSafeStorage } from './data/storage';
+import { createHouseFilePanel } from './ui/house-file-panel';
 import { describeError, slog, swarn } from './log';
 import { formatParamsLine, hasInvalidHouse, mergeParams, parseParams } from './logic/params';
 import { mergeCatalog, menuSections } from './logic/catalog';
@@ -146,7 +148,12 @@ async function start(): Promise<void> {
   } else {
     catalogLoad = loadCatalog();
   }
-  const [result, catalogResult, myResult] = await Promise.all([loadHouse(params.house), catalogLoad, myLoad, fontsReady]);
+  // `house=file-<id>` is a home the user loaded from a file: it comes from storage, never from the network (HF4).
+  const houseFiles = createHouseFiles(storage);
+  const [result, catalogResult, myResult] = await Promise.all([loadHouse(params.house, houseFiles), catalogLoad, myLoad, fontsReady]);
+  // The home panel of the web page (HF1): also when the home fails to load, so another one can be chosen.
+  const housePanel = createHouseFilePanel(world, houseFiles, params.house);
+  housePanel.setCurrent(result.ok ? result.house : null);
   if (params.glyphs) showGlyphTest(world);
   // The catalog the whole app works with: the catalog items plus the user's own pieces (T3.8, D34). A failed load of
   // the own pieces only hides their tab; an own id that the catalog already uses is left out (the catalog wins).

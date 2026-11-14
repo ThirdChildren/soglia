@@ -142,3 +142,5 @@ Riuscito sul visore:
 - Salvataggio automatico (`state saved … reason=debounce`).
 
 Fallito: il menu del palmo non accetta i pizzichi sulle schede (riga M6 qui sopra).
+| HF | Casa da file JSON (`docs/plans/HOUSE-FILE.md`): nel Quest Browser `Load house file` apre il selettore dei file (Download o file del visore) e il pulsante si preme con il puntatore della mano; il pannello 2D non copre l'invito Enter VR | alta | 2026-11-13 | — |
+| HF | Casa da file JSON: la casa caricata si apre in VR con le misure giuste (provato in IWER con una casa di 10 stanze: Bedroom 2 misurata 389 × 401 cm), resta dopo aver chiuso e riaperto il browser, `Remove` la toglie con due pressioni | alta | 2026-11-13 | — |

@@ -125,13 +125,13 @@ describe('the start-up of the app (src/index.ts, review warning 7)', () => {
   it('does not wait for the fonts before it asks for the house and the catalog: they load at the same time', () => {
     expect(index).not.toMatch(/await loadPanelFonts\(\)/);
     const started = index.indexOf('const fontsReady = loadPanelFonts()');
-    const house = index.indexOf('loadHouse(params.house)');
+    const house = index.indexOf('loadHouse(params.house, houseFiles)');
     expect(started).toBeGreaterThan(0);
     expect(house).toBeGreaterThan(started);
   });
 
   it('still waits for the fonts before any panel is built (the glyph test and the house are built after the wait)', () => {
-    const wait = index.indexOf('await Promise.all([loadHouse(params.house), catalogLoad, myLoad, fontsReady])');
+    const wait = index.indexOf('await Promise.all([loadHouse(params.house, houseFiles), catalogLoad, myLoad, fontsReady])');
     expect(wait).toBeGreaterThan(0);
     expect(index.indexOf('showGlyphTest(world)')).toBeGreaterThan(wait);
     expect(index.indexOf('createPalmMenu(', wait)).toBeGreaterThan(wait);

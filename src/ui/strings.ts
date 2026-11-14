@@ -4,6 +4,7 @@ import { fitMessage, type FitItem, type FitResult, type FitTexts } from '../logi
 import { formatSize, formatSizeCompact, lowerName, type ReasonKind } from '../logic/furniture-label';
 import { CATEGORY_LABELS, PHRASES } from '../logic/issue-text';
 import { measureLabelText } from '../logic/measure-tool';
+import { MAX_FILE_BYTES, MAX_HOUSE_FILES, type HouseFileReject } from '../logic/house-file';
 import { formatRoomLabel } from '../logic/room-label';
 
 /** Why a piece is not valid (D27): short texts shown next to it. */
@@ -27,6 +28,61 @@ const fitTexts: FitTexts = {
   fits: (narrowestCm) => `Fits: the narrowest door on the way is ${narrowestCm} cm wide`,
   noRoute: 'No route from the entrance to this room',
 };
+
+/** One decimal at most: 62.5, 114.4, 80. */
+function formatArea(areaM2: number): string {
+  return String(Math.round(areaM2 * 10) / 10);
+}
+
+/**
+ * The panel of the web page (outside the headset) where a house file is loaded and a house is chosen (HF1). It is plain DOM in the
+ * system font, not a UIKit panel, so it is not part of `strings` (the glyph checks of the panel font do not apply to it).
+ */
+export const houseFileStrings = {
+  title: 'Homes',
+  current: 'Open now',
+  noneOpen: 'This home could not be opened. Choose another one.',
+  /** The line under the title of the open home: "62.5 m², 6 rooms" */
+  details: (areaM2: number, rooms: number): string => `${formatArea(areaM2)} m\u00b2, ${rooms} ${rooms === 1 ? 'room' : 'rooms'}`,
+  /** "Flat A (62.5 m²)" */
+  choice: (title: string, areaM2: number): string => `${title} (${formatArea(areaM2)} m\u00b2)`,
+  demoTag: 'Demo',
+  loadedTag: 'Your file',
+  memoryTag: 'This page only',
+  open: 'Open',
+  opened: 'Open now',
+  load: 'Load house file',
+  dropHint: 'or drop a .json file on this page',
+  remove: 'Remove',
+  confirmRemove: 'Press again to remove',
+  listLabel: 'Homes',
+  /** Shown after a file was kept. */
+  loaded: (title: string): string => `Loaded: ${title}. Choose Open to see it.`,
+  replaced: (title: string): string => `Updated: ${title}. Choose Open to see it.`,
+  removed: (title: string): string => `Removed: ${title}.`,
+  /** The headline above the lines that say what is wrong. */
+  rejected: (reason: HouseFileReject | 'index-full' | 'unreadable'): string => {
+    switch (reason) {
+      case 'too-large':
+        return `This file is too large (limit ${Math.round(MAX_FILE_BYTES / (1024 * 1024))} MB).`;
+      case 'empty':
+        return 'This file is empty.';
+      case 'not-json':
+        return 'This file is not a JSON file.';
+      case 'invalid':
+        return 'This file is not a valid home:';
+      case 'too-complex':
+        return 'This home is too big for the headset:';
+      case 'index-full':
+        return `You can keep ${MAX_HOUSE_FILES} homes. Remove a house first.`;
+      case 'unreadable':
+        return 'This file could not be read.';
+    }
+  },
+  /** The storage is missing or full: the home works until the page is closed. */
+  notSaved: 'This home could not be saved in the browser, so it cannot be opened. Free some browser storage and load the file again.',
+  noFileApi: 'This browser cannot read files.',
+} as const;
 
 export const strings = {
   errors: {
